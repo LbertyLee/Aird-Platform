@@ -94,7 +94,7 @@ export function countryCode(name: string): string | undefined {
 }
 
 export function inferQueryCountries(query: string): string[] {
-  const matchedCodes = new Set(
+  const matchedCodes = new Set<string>(
     QUERY_COUNTRIES.filter((country) =>
       country.some((alias) => {
         if (/[\u4e00-\u9fff]/.test(alias))
