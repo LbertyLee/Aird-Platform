@@ -220,12 +220,7 @@ export class ExaContentHydrationService {
 export function needsFullText(source: SourceEntity): boolean {
   if (source.origin !== 'exa' || !source.sourceUrl) return false;
   if (hasStructuredRows(source.structuredData)) return false;
-  if (
-    source.metadata?.contentProvider === 'exa-contents' &&
-    hasFlattenedTableText(source.textContent)
-  ) {
-    return true;
-  }
+  if (hasFlattenedTableText(source.textContent)) return true;
   if (
     source.metadata?.contentMode === 'full' &&
     !isTitleOnly(source.title, source.textContent) &&
@@ -238,15 +233,35 @@ export function needsFullText(source: SourceEntity): boolean {
 
 export function hasFlattenedTableText(text: string): boolean {
   if (!text || hasMarkdownTable(text)) return false;
-  return /(?:^|\n)\s*(?:表\s*[一二三四五六七八九十\d]+|table\s*\d+)\s*[^\n]{0,100}/im.test(
-    text,
-  );
+  if (
+    /(?:^|\n)\s*(?:表\s*[一二三四五六七八九十\d]+|table\s*\d+)\s*[^\n]{0,100}/im.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  return lines.some((_, index) => {
+    const headerEnd = serialContentHeaderEndIndex(lines, index);
+    return (
+      headerEnd !== null &&
+      (Boolean(readSerialContentTable(lines, index)) ||
+        hasRepeatedSerialLabels(lines, headerEnd))
+    );
+  });
 }
 
 export function reconstructFlattenedTables(text: string): string {
   const lines = text.replace(/\r\n?/g, '\n').split('\n');
   const output: string[] = [];
   for (let index = 0; index < lines.length; index += 1) {
+    const serialContentTable = readSerialContentTable(lines, index);
+    if (serialContentTable) {
+      output.push(...serialContentTable.markdown);
+      index = serialContentTable.endIndex;
+      continue;
+    }
+
     const title = lines[index]?.trim() ?? '';
     if (!/^表\s*[一二三四五六七八九十\d]+\s*\S/.test(title)) {
       output.push(lines[index]!);
@@ -310,6 +325,83 @@ export function reconstructFlattenedTables(text: string): string {
     index = cursor - 1;
   }
   return output.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
+function readSerialContentTable(
+  lines: string[],
+  startIndex: number,
+): { markdown: string[]; endIndex: number } | null {
+  const headerEnd = serialContentHeaderEndIndex(lines, startIndex);
+  if (headerEnd === null) return null;
+  let cursor = headerEnd;
+
+  const rows: string[][] = [];
+  let endIndex = cursor - 1;
+  while (cursor < lines.length) {
+    while (cursor < lines.length && !lines[cursor]!.trim()) cursor += 1;
+    if (cursor >= lines.length || isTableSectionTitle(lines[cursor]!)) break;
+
+    const sameLine = lines[cursor]!.trim().match(
+      /^(\d{1,3}月|\d{1,3})\s+(.+)$/,
+    );
+    if (sameLine) {
+      rows.push([sameLine[1], sameLine[2].trim()]);
+      endIndex = cursor;
+      cursor += 1;
+      continue;
+    }
+
+    const label = lines[cursor]!.trim();
+    if (!/^(?:\d{1,3}月|\d{1,3})$/.test(label)) break;
+    let contentIndex = cursor + 1;
+    while (contentIndex < lines.length && !lines[contentIndex]!.trim())
+      contentIndex += 1;
+    const content = lines[contentIndex]?.trim() ?? '';
+    if (
+      !content ||
+      isTableSectionTitle(content) ||
+      /^(?:\d{1,3}月|\d{1,3})$/.test(content)
+    ) {
+      break;
+    }
+    rows.push([label, content]);
+    endIndex = contentIndex;
+    cursor = contentIndex + 1;
+  }
+
+  if (rows.length < 3) return null;
+  return {
+    markdown: [
+      '| 序号 | 内容 |',
+      '| --- | --- |',
+      ...rows.map((row) => `| ${row.map(escapeMarkdownCell).join(' | ')} |`),
+    ],
+    endIndex,
+  };
+}
+
+function serialContentHeaderEndIndex(
+  lines: string[],
+  startIndex: number,
+): number | null {
+  const first = lines[startIndex]?.trim() ?? '';
+  if (/^序号\s+内容$/.test(first)) return startIndex + 1;
+  if (first !== '序号') return null;
+
+  let cursor = startIndex + 1;
+  while (cursor < lines.length && !lines[cursor]!.trim()) cursor += 1;
+  return lines[cursor]?.trim() === '内容' ? cursor + 1 : null;
+}
+
+function hasRepeatedSerialLabels(lines: string[], startIndex: number): boolean {
+  let count = 0;
+  for (let index = startIndex; index < lines.length && count < 3; index += 1) {
+    const line = lines[index]!.trim();
+    if (!line) continue;
+    if (!/^(?:\d{1,3}月|\d{1,3})$/.test(line)) break;
+    count += 1;
+  }
+  return count >= 3;
 }
 
 function isNumericTableValue(value: string): boolean {

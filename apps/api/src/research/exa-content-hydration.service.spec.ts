@@ -86,6 +86,27 @@ describe('exa content hydration helpers', () => {
     expect(text).toContain('全年人口出生率为7.70%。');
   });
 
+  it('detects and reconstructs flattened serial-content monthly tables', () => {
+    const flattened = `2026年国家统计局主要统计信息发布日程表\n序号\n内容\n\n1月\n2025年国民经济运行情况新闻发布会\n\n2月\n2026年1月份国民经济运行情况发布\n\n3月\n2026年2月份国民经济运行情况发布\n\n注：具体安排以实际通知为准。`;
+
+    expect(hasFlattenedTableText(flattened)).toBe(true);
+    expect(reconstructFlattenedTables(flattened)).toContain(
+      '| 1月 | 2025年国民经济运行情况新闻发布会 |',
+    );
+    expect(reconstructFlattenedTables(flattened)).toContain(
+      '| 3月 | 2026年2月份国民经济运行情况发布 |',
+    );
+    expect(reconstructFlattenedTables(flattened)).toContain(
+      '注：具体安排以实际通知为准。',
+    );
+
+    const lostContentColumn = '序号\n内容\n1月\n2月\n3月\n4月';
+    expect(hasFlattenedTableText(lostContentColumn)).toBe(true);
+    expect(reconstructFlattenedTables(lostContentColumn)).toBe(
+      lostContentColumn,
+    );
+  });
+
   it('refetches already hydrated Exa text when its table was flattened', async () => {
     const url = 'https://www.stats.gov.cn/example.html';
     const source: SourceEntity = {
@@ -154,6 +175,25 @@ describe('exa content hydration helpers', () => {
       textContent:
         '表1 2024年年末常住人口数及其构成\n指标\n年末数（万人）\n比重（%）\n常住人口\n891.4\n100',
       metadata: { contentMode: 'full', contentProvider: 'exa-contents' },
+    };
+
+    expect(needsFullText(source)).toBe(true);
+  });
+
+  it('rehydrates a flattened serial-content table from any full-text provider', () => {
+    const source: SourceEntity = {
+      id: 'flattened-monthly-source',
+      title: '2026年国家统计局主要统计信息发布日程表',
+      origin: 'exa',
+      storageType: 'knowledge',
+      sourceUrl: 'https://www.stats.gov.cn/example.html',
+      mimeType: 'text/html',
+      excerpt: '',
+      recordCount: 0,
+      createdAt: new Date().toISOString(),
+      textContent:
+        '序号\n内容\n1月\n一月发布内容\n2月\n二月发布内容\n3月\n三月发布内容',
+      metadata: { contentMode: 'full', contentProvider: 'direct-http' },
     };
 
     expect(needsFullText(source)).toBe(true);
