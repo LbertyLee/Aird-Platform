@@ -1,0 +1,17 @@
+.field-mappings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field-mappings-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.field-mappings-hint {
+  margin-bottom: 0 !important;
+}

@@ -1,0 +1,8 @@
+# 一键部署到服务器的 SSH 配置（复制为 .env.deploy 后填写）
+# 用法：copy deploy/server.deploy.example deploy/.env.deploy
+
+DEPLOY_HOST=124.221.222.3
+DEPLOY_USER=ubuntu
+DEPLOY_PASSWORD=change-me
+DEPLOY_REMOTE_APP=/home/ubuntu/Aird-Platform
+DEPLOY_REMOTE_LOG=/home/ubuntu/Aird-Platform/logs/deploy-latest.log

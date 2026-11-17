@@ -1,0 +1,10 @@
+[
+  {"term":"上半年","category":"time"},
+  {"term":"下半年","category":"time"},
+  {"term":"前三季度","category":"time"},
+  {"term":"同比","category":"time"},
+  {"term":"环比","category":"time"},
+  {"term":"累计","category":"time"},
+  {"term":"十四五","category":"time"},
+  {"term":"十五五","category":"time"}
+]

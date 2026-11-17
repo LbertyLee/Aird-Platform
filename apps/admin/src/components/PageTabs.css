@@ -1,0 +1,140 @@
+.admin-page-tabs {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  gap: 0;
+  min-width: 0;
+  margin: 0 20px;
+  padding: 8px 0 0;
+  background: transparent;
+  border-bottom: 1px solid var(--brand-border);
+}
+
+.admin-page-tabs-scroll {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 0;
+  scrollbar-width: thin;
+}
+
+.admin-page-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--brand-border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: #fff;
+  color: var(--brand-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.admin-page-tab:hover {
+  color: var(--brand-primary);
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.admin-page-tab--active {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.22);
+}
+
+.admin-page-tab--active:hover {
+  color: #fff;
+  border-color: var(--brand-primary);
+  background: var(--brand-primary);
+}
+
+.admin-page-tab-icon {
+  display: inline-flex;
+  font-size: 13px;
+}
+
+.admin-page-tab-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-page-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  border-radius: 4px;
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+.admin-page-tab-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.admin-page-tab--active .admin-page-tab-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.admin-keepalive-root {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-keepalive-pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+
+.admin-keepalive-pane > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-keepalive-root--flush .admin-keepalive-pane {
+  /* 允许纵向滚动，避免子页未做内部滚动时底部（分页等）被裁切 */
+  overflow: auto;
+}
+
+.admin-keepalive-root--flush .admin-keepalive-pane > * {
+  height: 100%;
+  min-height: 0;
+}
+
+.admin-keepalive-pane[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 992px) {
+  .admin-page-tabs {
+    margin: 0 12px;
+  }
+}

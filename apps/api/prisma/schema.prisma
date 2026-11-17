@@ -1,0 +1,2093 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================
+// 枚举
+// =========================
+
+/// 通用启用/禁用状态
+enum CommonStatus {
+  active
+  disabled
+}
+
+/// 用户账号状态
+enum UserStatus {
+  active
+  disabled
+  pending
+}
+
+/// 角色类型：系统预置 / 自定义
+enum RoleType {
+  system
+  custom
+}
+
+/// 权限类型
+enum PermissionType {
+  menu
+  button
+  data
+  export
+}
+
+/// 数据权限范围
+enum DataScopeType {
+  all
+  self
+}
+
+/// 会员等级适用买方范围
+enum MembershipScope {
+  user
+}
+
+/// 权益值类型
+enum BenefitValueType {
+  int
+  bool
+  bytes
+}
+
+/// 订阅状态
+enum SubscriptionStatus {
+  active
+  expired
+  cancelled
+  pending
+}
+
+/// 订单买方类型
+enum BuyerType {
+  user
+}
+
+/// 订单状态
+enum OrderStatus {
+  pending
+  paid
+  cancelled
+  refunded
+  failed
+}
+
+/// 套餐周期类型
+enum PackageType {
+  monthly
+  auto_renew_monthly
+  quarterly
+  yearly
+}
+
+/// 套餐营销标签
+enum PackageTag {
+  on_sale
+  recommended
+  off_shelf
+}
+
+/// 支付状态
+enum PaymentStatus {
+  pending
+  success
+  failed
+  refunded
+}
+
+/// 支付渠道密钥状态（明文密钥禁止回显，仅暴露状态）
+enum PaymentCredentialStatus {
+  /// 已配置可用
+  configured
+  /// 未配置
+  missing
+  /// 已过期，需轮换
+  expired
+}
+
+/// 发票状态
+enum InvoiceStatus {
+  pending
+  issued
+  rejected
+}
+
+/// 续费提醒所属订阅类型
+enum SubscriptionOwnerType {
+  user
+}
+
+/// 导入任务状态
+enum ImportJobStatus {
+  queued
+  running
+  succeeded
+  failed
+  partial
+}
+
+/// 地域层级：国家 / 地区
+enum LocationKind {
+  country
+  region
+}
+
+/// 字典类型（可维护的分类元数据）
+model DictionaryType {
+  id          String       @id @default(cuid())
+  /// 类型编码（仅未软删除唯一，见 dictionary_types_code_active_key）
+  code        String       @db.VarChar(64)
+  /// 展示名称
+  name        String       @db.VarChar(128)
+  /// 说明
+  description String?      @db.VarChar(512)
+  /// 排序
+  sort        Int          @default(0)
+  /// 启用状态
+  status      CommonStatus @default(active)
+  /// 系统内置：禁止改编码、禁止删除
+  isSystem    Boolean      @default(false) @map("is_system")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  @@index([code])
+  @@index([status, sort])
+  @@map("dictionary_types")
+}
+
+/// 数据集可见性：公共 / 仅自己
+enum DatasetVisibility {
+  public
+  private
+}
+
+/// 数据集上下架状态
+enum DatasetPublishStatus {
+  draft
+  published
+  unpublished
+}
+
+/// 数据集关联来源：自动识别 / 人工确认
+enum DatasetLinkSource {
+  auto
+  manual
+}
+
+/// 关联忽略目标类型
+enum DatasetLinkTargetType {
+  indicator
+  dictionary
+}
+
+/// 向量同步状态
+enum VectorSyncStatus {
+  pending
+  processing
+  ready
+  failed
+}
+
+/// 指标字段映射来源
+enum FieldMappingSource {
+  manual
+  auto
+  auto_pending
+}
+
+/// 指标来源字段换算方式
+enum IndicatorSourceTransform {
+  direct
+}
+
+// =========================
+// 用户
+// =========================
+
+/// 平台用户账号
+model User {
+  /// 用户主键
+  id           String     @id @default(cuid())
+  /// 登录名（仅未软删除行唯一，见 users_username_active_key）
+  username     String     @db.VarChar(64)
+  /// 邮箱（仅未软删除且非空唯一，见 users_email_active_key）
+  email        String?    @db.VarChar(128)
+  /// 手机号（仅未软删除且非空唯一，见 users_phone_active_key）
+  phone        String?    @db.VarChar(32)
+  /// 密码哈希，禁止存明文
+  passwordHash String     @map("password_hash") @db.VarChar(255)
+  /// 账号状态
+  status       UserStatus @default(pending)
+  /// 最近登录时间
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
+
+  profile              UserProfile?
+  userRoles            UserRole[]
+  subscriptions        UserSubscription[]
+  pointAccount         PointAccount?
+  pointLedgers         PointLedger[]
+  importJobs           ImportJob[]
+  datasets             Dataset[]
+  submittedKnowledge   KnowledgeItem[]        @relation("KnowledgeSubmittedBy")
+  auditedKnowledge     KnowledgeItem[]        @relation("KnowledgeAuditedBy")
+  knowledgeAuditRecords KnowledgeAuditRecord[]
+  createdKnowledgeLibraries KnowledgeLibrary[] @relation("KnowledgeLibraryCreatedBy")
+  updatedKnowledgeLibraries KnowledgeLibrary[] @relation("KnowledgeLibraryUpdatedBy")
+  createdAnnouncements Announcement[]         @relation("AnnouncementCreatedBy")
+  businessNotifications BusinessNotification[]
+  researchRuns        ResearchRun[]
+  analysisSessions    AnalysisSession[]
+  agents              Agent[]
+
+  @@index([status])
+  @@index([username])
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+/// 用户扩展资料
+model UserProfile {
+  /// 一对一用户 ID
+  userId      String   @id @map("user_id")
+  /// 显示名
+  displayName String?  @map("display_name") @db.VarChar(64)
+  /// 头像 URL
+  avatarUrl   String?  @map("avatar_url") @db.VarChar(512)
+  /// 备注
+  remark      String?  @db.VarChar(512)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+// =========================
+// RBAC
+// =========================
+
+/// 角色
+model Role {
+  /// 角色主键
+  id          String       @id @default(cuid())
+  /// 角色编码（仅未软删除唯一，见 roles_code_active_key）
+  code        String       @db.VarChar(64)
+  /// 角色名称
+  name        String       @db.VarChar(64)
+  /// 系统 / 自定义
+  type        RoleType     @default(custom)
+  /// 状态
+  status      CommonStatus @default(active)
+  /// 描述
+  description String?      @db.VarChar(256)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+  dataScope       DataScope?
+
+  @@index([code])
+  @@map("roles")
+}
+
+model Agent {
+  id          String       @id @default(cuid())
+  name        String       @db.VarChar(128)
+  description String       @db.VarChar(500)
+  /// 智能体分类编码（字典 agent_category）
+  categoryCode String      @map("category_code") @db.VarChar(64)
+  author      String       @db.VarChar(128)
+  /// 为空表示平台维护的公开智能体；非空表示用户个人智能体
+  ownerId     String?      @map("owner_id")
+  icon        String?      @db.VarChar(16)
+  iconColor   String?      @map("icon_color") @db.VarChar(32)
+  usageCount  Int          @default(0) @map("usage_count")
+  status      CommonStatus @default(active)
+  sort        Int          @default(0)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  owner       User?        @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([status, categoryCode, sort])
+  @@index([ownerId, status, sort])
+  @@map("agents")
+}
+
+/// 权限点
+model Permission {
+  /// 权限主键
+  id        String         @id @default(cuid())
+  /// 权限码，如 user:create（仅未软删除唯一，见 permissions_code_active_key）
+  code      String         @db.VarChar(128)
+  /// 显示名
+  name      String         @db.VarChar(128)
+  /// menu / button / data / export
+  type      PermissionType
+  /// 菜单树父节点
+  parentId  String?        @map("parent_id")
+  /// 前端路由 path
+  path      String?        @db.VarChar(256)
+  /// 资源标识
+  resource  String?        @db.VarChar(128)
+  /// 排序
+  sort      Int            @default(0)
+  /// 状态
+  status    CommonStatus   @default(active)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+  deletedAt DateTime?      @map("deleted_at")
+
+  parent          Permission?      @relation("PermTree", fields: [parentId], references: [id])
+  children        Permission[]     @relation("PermTree")
+  rolePermissions RolePermission[]
+
+  @@index([code])
+  @@map("permissions")
+}
+
+/// 角色-权限绑定
+model RolePermission {
+  /// 角色 ID
+  roleId       String   @map("role_id")
+  /// 权限 ID
+  permissionId String   @map("permission_id")
+  /// 绑定时间
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// 用户-角色绑定
+model UserRole {
+  /// 绑定主键
+  id        String   @id @default(cuid())
+  /// 用户 ID
+  userId    String   @map("user_id")
+  /// 角色 ID
+  roleId    String   @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+/// 角色数据权限规则
+model DataScope {
+  /// 规则主键
+  id        String        @id @default(cuid())
+  /// 角色 ID（一期一角色一条）
+  roleId    String        @unique @map("role_id")
+  /// 范围类型
+  scopeType DataScopeType @map("scope_type")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@map("data_scopes")
+}
+
+// =========================
+// 会员
+// =========================
+
+/// 会员等级定义
+model MembershipLevel {
+  /// 等级主键
+  id             String          @id @default(cuid())
+  /// 等级编码（仅未软删除唯一，见 membership_levels_code_active_key）
+  code           String          @db.VarChar(64)
+  /// 等级名称
+  name           String          @db.VarChar(64)
+  /// 适用买方范围
+  scope          MembershipScope
+  /// 标价（兼容字段；套餐价以 MembershipPackage 为准）
+  price          Decimal         @default(0) @db.Decimal(12, 2)
+  /// 有效天数（兼容字段）
+  durationDays   Int             @default(30) @map("duration_days")
+  /// 是否可售
+  status         CommonStatus    @default(active)
+  /// 是否允许前台购买
+  isPurchasable   Boolean         @default(true) @map("is_purchasable")
+  /// 展示排序
+  sort           Int             @default(0)
+  /// 会员月度赠送积分（按自然月发放，不受免费赠分上限约束）
+  monthlyPoints  Int             @default(0) @map("monthly_points")
+  /// 说明
+  description    String?         @db.VarChar(512)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deletedAt      DateTime?       @map("deleted_at")
+
+  benefits          LevelBenefit[]
+  packages          MembershipPackage[]
+  userSubscriptions UserSubscription[]
+  orders            MembershipOrder[]
+
+  @@index([code])
+  @@map("membership_levels")
+}
+
+/// 会员套餐（等级 × 计费周期）
+model MembershipPackage {
+  /// 套餐主键
+  id            String       @id @default(cuid())
+  /// 所属等级 ID
+  levelId       String       @map("level_id")
+  /// 计费周期类型
+  packageType   PackageType  @map("package_type")
+  /// 展示名：单月 / 连续包月 / 年付
+  name          String       @db.VarChar(64)
+  /// 售价
+  price         Decimal      @db.Decimal(12, 2)
+  /// 原价（划线价）
+  originalPrice Decimal?     @map("original_price") @db.Decimal(12, 2)
+  /// 展示文案，如 ¥59 / 月
+  priceLabel    String?      @map("price_label") @db.VarChar(64)
+  /// 套餐说明
+  description   String?      @db.VarChar(512)
+  /// 营销标签
+  tag           PackageTag   @default(on_sale)
+  /// 有效天数
+  durationDays  Int          @map("duration_days")
+  /// 展示排序
+  sort          Int          @default(0)
+  /// 启用状态
+  status        CommonStatus @default(active)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  deletedAt     DateTime?    @map("deleted_at")
+
+  level         MembershipLevel    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  orders        MembershipOrder[]
+  subscriptions UserSubscription[]
+
+  /// 仅未软删除唯一，见 membership_packages_level_package_active_key
+  @@index([levelId, packageType])
+  @@map("membership_packages")
+}
+
+/// 权益项元数据
+model BenefitDefinition {
+  /// 权益定义主键
+  id          String           @id @default(cuid())
+  /// 权益码
+  code        String           @unique @db.VarChar(64)
+  /// 显示名
+  name        String           @db.VarChar(64)
+  /// 值类型
+  valueType   BenefitValueType @map("value_type")
+  /// 单位文案
+  unit        String?          @db.VarChar(32)
+  /// 说明
+  description String?          @db.VarChar(256)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  levelBenefits LevelBenefit[]
+
+  @@map("benefit_definitions")
+}
+
+/// 等级权益值
+model LevelBenefit {
+  /// 关联主键
+  id          String   @id @default(cuid())
+  /// 等级 ID
+  levelId     String   @map("level_id")
+  /// 权益码
+  benefitCode String   @map("benefit_code") @db.VarChar(64)
+  /// 规范化值 JSON
+  valueJson   Json     @map("value_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  level   MembershipLevel   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  benefit BenefitDefinition @relation(fields: [benefitCode], references: [code])
+
+  @@unique([levelId, benefitCode])
+  @@map("level_benefits")
+}
+
+/// 个人订阅
+model UserSubscription {
+  /// 个人订阅主键
+  id        String             @id @default(cuid())
+  /// 用户 ID
+  userId    String             @map("user_id")
+  /// 等级 ID
+  levelId   String             @map("level_id")
+  /// 套餐 ID
+  packageId String?            @map("package_id")
+  /// 支付权益链；人工分配不继承支付权益链
+  entitlementChainId String? @map("entitlement_chain_id")
+  /// 状态
+  status    SubscriptionStatus
+  /// 生效开始
+  startAt   DateTime           @map("start_at")
+  /// 到期时间
+  endAt     DateTime           @map("end_at")
+  /// 是否自动续费
+  autoRenew Boolean            @default(false) @map("auto_renew")
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+  deletedAt DateTime?          @map("deleted_at")
+
+  user    User               @relation(fields: [userId], references: [id])
+  level   MembershipLevel    @relation(fields: [levelId], references: [id])
+  package MembershipPackage? @relation(fields: [packageId], references: [id])
+
+  @@index([userId, status, endAt])
+  @@map("user_subscriptions")
+}
+
+/// 积分发放与计费全局规则（单例，id 固定为 default）。
+model PointRuleConfig {
+  /// 固定主键 default
+  id                 String   @id @default("default")
+  /// 注册赠送积分
+  registrationPoints Int      @default(500) @map("registration_points")
+  /// 所有用户每月自动赠送积分
+  monthlyFreePoints  Int      @default(500) @map("monthly_free_points")
+  /// 每日可领取积分
+  dailyPoints        Int      @default(50) @map("daily_points")
+  /// 免费赠分自然月上限（注册 + 每月自动 + 每日领取）
+  freeMonthlyLimit   Int      @default(2000) @map("free_monthly_limit")
+  /// 每次请求（AI 智搜）消耗积分（历史字段，现多按 Token 折算）
+  searchCostPoints   Int      @default(1) @map("search_cost_points")
+  /// 发起 AI 智搜所需的最低积分余额
+  minSearchPoints    Int      @default(20) @map("min_search_points")
+  /// 积分折算单价（元/积分）
+  yuanPerPoint       Decimal  @default(0.003) @map("yuan_per_point") @db.Decimal(12, 6)
+  /// 模型 Token 单价（元/百万 Token），按模型名存储
+  modelPricing       Json     @default("{}") @map("model_pricing")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("point_rule_configs")
+}
+
+/// 用户搜索可选的大模型配置
+model SearchModelConfig {
+  id        String       @id @default(cuid())
+  value     String       @unique @db.VarChar(128)
+  label     String       @db.VarChar(128)
+  status    CommonStatus @default(active)
+  sort      Int          @default(0)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  @@index([status, sort])
+  @@map("search_model_configs")
+}
+
+/// 用户算力积分账户；余额只由积分流水驱动更新。
+model PointAccount {
+  userId    String   @id @map("user_id")
+  balance   Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("point_accounts")
+}
+
+/// 用户积分收支流水，reference 用于确保发放和领取的幂等性。
+model PointLedger {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  amount      Int
+  balanceAfter Int     @map("balance_after")
+  source      String   @db.VarChar(32)
+  reference   String   @db.VarChar(128)
+  description String   @db.VarChar(128)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reference])
+  @@index([userId, createdAt])
+  @@map("point_ledgers")
+}
+
+/// 会员订单
+model MembershipOrder {
+  /// 订单主键
+  id             String      @id @default(cuid())
+  /// 业务订单号（全局唯一，软删除后仍不可复用，便于支付对账）
+  orderNo        String      @unique @map("order_no") @db.VarChar(64)
+  /// 买方类型
+  buyerType      BuyerType   @map("buyer_type")
+  /// 买方 ID（用户或组织）
+  buyerId        String      @map("buyer_id")
+  /// 购买等级
+  levelId        String      @map("level_id")
+  /// 购买套餐
+  packageId      String?     @map("package_id")
+  /// 展示标题，如 专业版 · 单月
+  title          String?     @db.VarChar(128)
+  /// 应付金额
+  amount         Decimal     @db.Decimal(12, 2)
+  /// 下单时的套餐时长快照（历史订单迁移回填）
+  entitlementChainId String? @map("entitlement_chain_id")
+  durationDays   Int?        @map("duration_days")
+  /// 本订单发放的有效期区间，退款时仅撤回未消费时长
+  entitlementStartAt DateTime? @map("entitlement_start_at")
+  entitlementEndAt DateTime? @map("entitlement_end_at")
+  /// 退款请求持久化标记；渠道超时后可使用同一请求号重试
+  refundRequestedAt DateTime? @map("refund_requested_at")
+  /// 订单状态
+  status         OrderStatus @default(pending)
+  /// 支付渠道编码（对应 PaymentChannel.code，如 wechat / alipay / mock）
+  paymentChannel String?     @map("payment_channel") @db.VarChar(32)
+  /// 微信 Native 支付二维码地址，仅通过支付接口返回
+  paymentCodeUrl  String?     @map("payment_code_url") @db.Text
+  /// 支付完成时间
+  paidAt         DateTime?   @map("paid_at")
+  /// 关闭时间
+  closedAt       DateTime?   @map("closed_at")
+  /// 退款时间
+  refundedAt     DateTime?   @map("refunded_at")
+  /// 退款原因
+  refundReason   String?     @map("refund_reason") @db.VarChar(256)
+  /// 下单操作人
+  createdBy      String?     @map("created_by")
+  /// 备注
+  remark         String?     @db.VarChar(256)
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  deletedAt      DateTime?   @map("deleted_at")
+
+  level    MembershipLevel    @relation(fields: [levelId], references: [id])
+  package  MembershipPackage? @relation(fields: [packageId], references: [id])
+  payments PaymentRecord[]
+  invoice  Invoice?
+  refunds  RefundRecord[]
+
+  @@index([buyerType, buyerId])
+  @@index([status, createdAt])
+  @@map("membership_orders")
+}
+
+/// 退款流水
+model RefundRecord {
+  /// 退款记录主键
+  id         String   @id @default(cuid())
+  /// 所属订单 ID
+  orderId    String   @map("order_id")
+  /// 退款金额
+  amount     Decimal  @db.Decimal(12, 2)
+  /// 退款原因
+  reason     String?  @db.VarChar(256)
+  /// 渠道退款交易号
+  tradeNo    String?  @map("trade_no") @db.VarChar(128)
+  /// 退款完成时间
+  refundedAt DateTime @default(now()) @map("refunded_at")
+  /// 操作人
+  createdBy  String?  @map("created_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  order MembershipOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("refund_records")
+}
+
+/// 支付流水
+model PaymentRecord {
+  /// 支付流水主键
+  id         String        @id @default(cuid())
+  /// 所属订单
+  orderId    String        @map("order_id")
+  /// 支付渠道编码
+  channel    String        @db.VarChar(32)
+  /// 渠道交易号
+  tradeNo    String?       @unique @map("trade_no") @db.VarChar(128)
+  /// 支付金额
+  amount     Decimal       @db.Decimal(12, 2)
+  /// 支付状态
+  status     PaymentStatus
+  /// 成功时间
+  paidAt     DateTime?     @map("paid_at")
+  /// 渠道回调原文（脱敏后）
+  rawPayload Json?         @map("raw_payload")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  order MembershipOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payment_records")
+}
+
+/// 支付全链路事件日志（渠道调用、回调、人工操作和对账）
+model PaymentOperationLog {
+  id          String   @id @default(cuid())
+  action      String   @db.VarChar(64)
+  status      String   @db.VarChar(24)
+  orderId     String?  @map("order_id")
+  orderNo     String?  @map("order_no") @db.VarChar(64)
+  channel     String?  @db.VarChar(32)
+  tradeNo     String?  @map("trade_no") @db.VarChar(128)
+  amount      Decimal? @db.Decimal(12, 2)
+  actorId     String?  @map("actor_id")
+  errorCode   String?  @map("error_code") @db.VarChar(64)
+  message     String?  @db.VarChar(256)
+  durationMs  Int?     @map("duration_ms")
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([orderNo, createdAt])
+  @@index([action, status, createdAt])
+  @@index([actorId, createdAt])
+  @@map("payment_operation_logs")
+}
+
+/// 支付渠道配置（微信 / 支付宝等；密钥单独落库且加密）
+model PaymentChannel {
+  /// 渠道主键
+  id          String       @id @default(cuid())
+  /// 渠道编码（业务唯一，写入订单 payment_channel）
+  code        String       @unique @db.VarChar(32)
+  /// 展示名称，如 微信支付
+  name        String       @db.VarChar(64)
+  /// 商户号
+  merchantId  String       @map("merchant_id") @db.VarChar(128)
+  /// 支付结果回调地址
+  callbackUrl String       @map("callback_url") @db.VarChar(512)
+  /// 启用 / 停用
+  status      CommonStatus @default(active)
+  /// 列表排序（越小越靠前）
+  sort        Int          @default(0)
+  /// 备注
+  remark      String?      @db.VarChar(256)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  credential PaymentChannelCredential?
+
+  @@index([status, sort])
+  @@map("payment_channels")
+}
+
+/// 支付渠道密钥（密文存储；轮换写审计日志，接口不回显明文）
+model PaymentChannelCredential {
+  /// 密钥记录主键
+  id            String                  @id @default(cuid())
+  /// 所属渠道
+  channelId     String                  @unique @map("channel_id")
+  /// 加密后的密钥载荷（API Key / 商户私钥等 JSON）
+  ciphertext    String                  @db.Text
+  /// 密钥版本，每次轮换 +1
+  version       Int                     @default(1)
+  /// 配置状态
+  status        PaymentCredentialStatus @default(configured)
+  /// 上次轮换时间
+  lastRotatedAt DateTime?               @map("last_rotated_at")
+  /// 过期时间（可空表示不强制过期）
+  expiresAt     DateTime?               @map("expires_at")
+  /// 最近更新人
+  updatedBy     String?                 @map("updated_by")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+
+  channel PaymentChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@map("payment_channel_credentials")
+}
+
+/// 发票
+model Invoice {
+  /// 发票主键
+  id        String        @id @default(cuid())
+  /// 订单 ID（一期一单一票）
+  orderId   String        @unique @map("order_id")
+  /// 发票抬头
+  title     String        @db.VarChar(128)
+  /// 税号
+  taxNo     String?       @map("tax_no") @db.VarChar(64)
+  /// 开票状态
+  status    InvoiceStatus @default(pending)
+  /// 开票时间
+  issuedAt  DateTime?     @map("issued_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  order MembershipOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
+}
+
+/// 续费提醒
+model RenewalReminder {
+  /// 提醒主键
+  id               String                @id @default(cuid())
+  /// 订阅类型
+  subscriptionType SubscriptionOwnerType @map("subscription_type")
+  /// 订阅 ID
+  subscriptionId   String                @map("subscription_id")
+  /// 计划提醒时间
+  remindAt         DateTime              @map("remind_at")
+  /// 实际发送时间
+  sentAt           DateTime?             @map("sent_at")
+  /// 通道
+  channel          String                @db.VarChar(32)
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  @@unique([subscriptionType, subscriptionId, remindAt, channel])
+  @@index([remindAt, sentAt])
+  @@map("renewal_reminders")
+}
+
+// =========================
+// 看板与支撑
+// =========================
+
+/// 运营看板日统计（按业务时区日历日聚合，可与明细对账）
+model DashboardDailyStat {
+  /// 统计主键
+  id             String   @id @default(cuid())
+  /// 统计日（业务时区日历日，存为 Date）
+  statDate       DateTime @unique @map("stat_date") @db.Date
+  /// 用户总数快照（未删除账号）
+  userTotal      Int      @default(0) @map("user_total")
+  /// 当日检索量（research_runs 当日创建数）
+  searchCount    Int      @default(0) @map("search_count")
+  /// 数据总量快照（未接入计量时保持 0，接口层返回 null）
+  dataVolume     BigInt   @default(0) @map("data_volume")
+  /// 当日 Agent 任务数（未接入时保持 0，接口层返回 null）
+  agentTaskCount Int      @default(0) @map("agent_task_count")
+  /// 扩展指标（如 newUserCount、口径元数据）
+  metrics        Json     @default("{}")
+  /// 聚合所用业务时区
+  timezone       String   @default("Asia/Shanghai") @db.VarChar(64)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([statDate])
+  @@map("dashboard_daily_stats")
+}
+
+/// 管理操作审计
+model AuditLog {
+  /// 审计主键
+  id           String   @id @default(cuid())
+  /// 操作人用户 ID
+  actorId      String?  @map("actor_id")
+  /// 动作码
+  action       String   @db.VarChar(64)
+  /// 资源类型
+  resourceType String   @map("resource_type") @db.VarChar(64)
+  /// 资源 ID
+  resourceId   String?  @map("resource_id")
+  /// 变更详情（脱敏）
+  detail       Json?
+  /// 来源 IP
+  ip           String?  @db.VarChar(64)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([actorId, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
+}
+
+/// 接口操作日志（全量请求审计）
+model OperLog {
+  /// 日志主键
+  id            String   @id @default(cuid())
+  /// 模块标题
+  title         String   @default("") @db.VarChar(50)
+  /// 业务类型（0其它 1新增 2修改 3删除）
+  businessType  Int      @default(0) @map("business_type")
+  /// 方法名称（Controller.handler）
+  method        String   @default("") @db.VarChar(100)
+  /// 请求方式
+  requestMethod String   @default("") @map("request_method") @db.VarChar(10)
+  /// 操作人员
+  operName      String   @default("") @map("oper_name") @db.VarChar(50)
+  /// 部门名称
+  deptName      String   @default("") @map("dept_name") @db.VarChar(50)
+  /// 请求 URL
+  operUrl       String   @default("") @map("oper_url") @db.VarChar(255)
+  /// 主机地址
+  operIp        String   @default("") @map("oper_ip") @db.VarChar(128)
+  /// 操作地点
+  operLocation  String   @default("") @map("oper_location") @db.VarChar(255)
+  /// 请求参数
+  operParam     String   @default("") @map("oper_param") @db.VarChar(4000)
+  /// 返回参数
+  jsonResult    String   @default("") @map("json_result") @db.VarChar(4000)
+  /// 操作状态（0正常 1异常）
+  status        Int      @default(0)
+  /// 错误消息
+  errorMsg      String   @default("") @map("error_msg") @db.VarChar(4000)
+  /// 操作时间
+  operTime      DateTime @default(now()) @map("oper_time")
+  /// 消耗时间（毫秒）
+  costTime      BigInt   @default(0) @map("cost_time")
+
+  @@index([operTime])
+  @@index([operName])
+  @@index([businessType, operTime])
+  @@index([status, operTime])
+  @@map("oper_logs")
+}
+
+/// 批量导入任务
+model ImportJob {
+  /// 导入任务主键
+  id             String          @id @default(cuid())
+  /// 任务类型，如 user_batch
+  type           String          @db.VarChar(32)
+  /// 任务状态
+  status         ImportJobStatus @default(queued)
+  /// MinIO 对象键
+  fileKey        String          @map("file_key") @db.VarChar(512)
+  /// 总行数
+  totalRows      Int             @default(0) @map("total_rows")
+  /// 成功行数
+  successRows    Int             @default(0) @map("success_rows")
+  /// 失败行数
+  failedRows     Int             @default(0) @map("failed_rows")
+  /// 失败报告文件键
+  errorReportKey String?         @map("error_report_key") @db.VarChar(512)
+  /// 发起人
+  createdBy      String          @map("created_by")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  creator User @relation(fields: [createdBy], references: [id])
+
+  @@map("import_jobs")
+}
+
+// =========================
+// 数据资源（指标 / 字典 / 数据集）
+// =========================
+
+/// 标准指标库
+model Indicator {
+  id           String           @id @default(cuid())
+  /// 指标名称
+  name         String           @db.VarChar(256)
+  /// 指标编码（仅未软删除唯一，见 indicators_code_active_key）
+  code         String           @db.VarChar(128)
+  /// 定义说明
+  definition   String           @db.Text
+  /// 计量单位
+  unit         String           @db.VarChar(64)
+  /// 分类
+  category     String           @db.VarChar(128)
+  /// 来源
+  source       String           @db.VarChar(256)
+  /// 启用状态
+  status       CommonStatus     @default(active)
+  /// 向量同步状态
+  vectorStatus VectorSyncStatus @default(pending) @map("vector_status")
+  /// 向量失败原因
+  vectorError  String?          @map("vector_error") @db.VarChar(1024)
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  deletedAt    DateTime?        @map("deleted_at")
+
+  datasets       DatasetIndicator[]
+  sourceMappings IndicatorSourceMapping[]
+  aliases        IndicatorAlias[]
+  fieldMappings  IndicatorFieldMapping[]
+
+  @@index([code])
+  @@index([category, status])
+  @@index([vectorStatus])
+  @@map("indicators")
+}
+
+/// 指标别名（Semantic Layer 自然语言映射）
+model IndicatorAlias {
+  id          String       @id @default(cuid())
+  indicatorId String       @map("indicator_id")
+  alias       String       @db.VarChar(256)
+  aliasType   String       @default("synonym") @map("alias_type") @db.VarChar(32)
+  confidence  Float        @default(1)
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  indicator Indicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+
+  @@index([indicatorId])
+  @@index([alias])
+  @@map("indicator_aliases")
+}
+
+/// 指标 ↔ 数据集字段映射
+model IndicatorFieldMapping {
+  id             String             @id @default(cuid())
+  indicatorId    String             @map("indicator_id")
+  datasetFieldId String             @map("dataset_field_id")
+  aggregation    String             @default("SUM") @db.VarChar(32)
+  formula        String?            @db.VarChar(512)
+  condition      String?            @db.VarChar(512)
+  priority       Int                @default(0)
+  status         CommonStatus       @default(active)
+  /// 映射来源：手工 / 自动启用 / 自动待确认
+  source         FieldMappingSource @default(manual)
+  /// 自动匹配置信度
+  confidence     Float?
+  /// 命中的指标名/别名（便于解释）
+  matchTerm      String?            @map("match_term") @db.VarChar(256)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  indicator    Indicator    @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+  datasetField DatasetField @relation(fields: [datasetFieldId], references: [id], onDelete: Cascade)
+
+  @@index([indicatorId, status])
+  @@index([datasetFieldId])
+  @@index([source, status])
+  @@map("indicator_field_mappings")
+}
+
+/// 指标外部来源字段映射
+model IndicatorSourceMapping {
+  id          String                   @id @default(cuid())
+  /// 所属指标
+  indicatorId String                   @map("indicator_id")
+  /// 外部数据源名称
+  dataSource  String                   @map("data_source") @db.VarChar(256)
+  /// 来源字段编码
+  sourceField String                   @map("source_field") @db.VarChar(256)
+  /// 换算 / 处理方式
+  transform   IndicatorSourceTransform @default(direct)
+  /// 启用状态
+  status      CommonStatus             @default(active)
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  updatedAt   DateTime                 @updatedAt @map("updated_at")
+  deletedAt   DateTime?                @map("deleted_at")
+
+  indicator Indicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+
+  /// 仅未软删除唯一，见 indicator_source_mappings_active_key
+  @@index([indicatorId, dataSource, sourceField])
+  @@index([indicatorId, status])
+  @@map("indicator_source_mappings")
+}
+
+/// 基础字典项
+model DictionaryItem {
+  id           String           @id @default(cuid())
+  /// 字典类型编码（对应 dictionary_types.code）
+  type         String           @db.VarChar(64)
+  /// country_region 类型的地域层级
+  locationKind LocationKind?    @map("location_kind")
+  /// 编码（类型内唯一）
+  code         String           @db.VarChar(128)
+  /// 名称
+  name         String           @db.Text
+  /// 别名
+  aliases      String[]         @default([])
+  /// 说明
+  description  String?          @db.VarChar(1024)
+  /// 排序
+  sort         Int              @default(0)
+  /// 启用状态
+  status       CommonStatus     @default(active)
+  /// 向量同步状态
+  vectorStatus VectorSyncStatus @default(pending) @map("vector_status")
+  /// 向量失败原因
+  vectorError  String?          @map("vector_error") @db.VarChar(1024)
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  deletedAt    DateTime?        @map("deleted_at")
+
+  datasets DatasetDictionaryItem[]
+
+  /// 仅未软删除唯一，见 dictionary_items_type_code_active_key
+  @@index([type, code])
+  @@index([type, status])
+  @@index([vectorStatus])
+  @@map("dictionary_items")
+}
+
+/// 数据资产（数据集 / 来源）
+model Dataset {
+  id             String               @id @default(cuid())
+  /// 名称
+  name           String               @db.VarChar(256)
+  /// 英文名
+  nameEn         String?              @map("name_en") @db.VarChar(256)
+  /// 编码（仅未软删除唯一，见 datasets_code_active_key）
+  code           String               @db.VarChar(128)
+  /// 来源分类编码（字典 source_category）
+  categoryCode   String?              @map("category_code") @db.VarChar(64)
+  /// 地区/层级
+  regionLevel    String?              @map("region_level") @db.VarChar(128)
+  /// 网站链接
+  websiteUrl     String?              @map("website_url") @db.VarChar(512)
+  /// 备注
+  remark         String?              @db.VarChar(512)
+  /// 启用状态（来源管理）
+  status         CommonStatus         @default(active)
+  /// 描述
+  description    String?              @db.Text
+  /// 可见性：公共 / 仅自己
+  visibility     DatasetVisibility    @default(private)
+  /// 上下架状态
+  publishStatus  DatasetPublishStatus @default(draft) @map("publish_status")
+  /// MinIO 对象键
+  fileKey        String?              @map("file_key") @db.VarChar(512)
+  /// 原始文件名
+  fileName       String?              @map("file_name") @db.VarChar(256)
+  /// MIME
+  mimeType       String?              @map("mime_type") @db.VarChar(128)
+  /// 文件字节数
+  fileSize       Int?                 @map("file_size")
+  /// 上传人 / 创建人
+  createdBy      String?              @map("created_by")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  deletedAt      DateTime?            @map("deleted_at")
+
+  creator      User?                  @relation(fields: [createdBy], references: [id])
+  indicators   DatasetIndicator[]
+  dictionaries DatasetDictionaryItem[]
+  dismissals   DatasetLinkDismissal[]
+  versions     DatasetVersion[]
+
+  @@index([code])
+  @@index([visibility, publishStatus])
+  @@index([status, categoryCode])
+  @@index([createdBy])
+  @@map("datasets")
+}
+
+/// 数据集 ↔ 指标（多对多）
+model DatasetIndicator {
+  datasetId   String            @map("dataset_id")
+  indicatorId String            @map("indicator_id")
+  /// 关联来源
+  source      DatasetLinkSource @default(manual)
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  dataset   Dataset   @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  indicator Indicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+
+  @@id([datasetId, indicatorId])
+  @@index([indicatorId])
+  @@index([source])
+  @@map("dataset_indicators")
+}
+
+/// 数据集 ↔ 字典项（多对多）
+model DatasetDictionaryItem {
+  datasetId        String            @map("dataset_id")
+  dictionaryItemId String            @map("dictionary_item_id")
+  /// 关联来源
+  source           DatasetLinkSource @default(manual)
+  createdAt        DateTime          @default(now()) @map("created_at")
+
+  dataset        Dataset        @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  dictionaryItem DictionaryItem @relation(fields: [dictionaryItemId], references: [id], onDelete: Cascade)
+
+  @@id([datasetId, dictionaryItemId])
+  @@index([dictionaryItemId])
+  @@index([source])
+  @@map("dataset_dictionary_items")
+}
+
+/// 用户从数据集中移除的自动关联（避免再次识别时加回）
+model DatasetLinkDismissal {
+  datasetId  String                @map("dataset_id")
+  targetType DatasetLinkTargetType @map("target_type")
+  targetId   String                @map("target_id")
+  createdAt  DateTime              @default(now()) @map("created_at")
+
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@id([datasetId, targetType, targetId])
+  @@index([datasetId])
+  @@map("dataset_link_dismissals")
+}
+
+/// 数据集版本状态
+enum DatasetVersionStatus {
+  uploaded
+  parsing
+  schema_detected
+  validating
+  normalized
+  indexing
+  ready
+  failed
+}
+
+/// 数据集版本（不可覆盖）
+model DatasetVersion {
+  id             String               @id @default(cuid())
+  datasetId      String               @map("dataset_id")
+  version        Int
+  checksum       String?              @db.VarChar(64)
+  rawObjectPath  String               @map("raw_object_path") @db.VarChar(512)
+  status         DatasetVersionStatus @default(uploaded)
+  isCurrent      Boolean              @default(true) @map("is_current")
+  rowCount       Int                  @default(0) @map("row_count")
+  sizeBytes      Int?                 @map("size_bytes")
+  /// 存储类型：结构化 / 知识
+  storageType    StorageType          @default(KNOWLEDGE) @map("storage_type")
+  errorMessage   String?              @map("error_message") @db.VarChar(1024)
+  createdBy      String?              @map("created_by")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  dataset Dataset        @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  schema  DatasetSchema?
+  records DatasetRecord[]
+  jobs    IngestionJob[]
+
+  @@unique([datasetId, version])
+  @@index([datasetId, isCurrent])
+  @@index([status])
+  @@map("dataset_versions")
+}
+
+/// 数据集 Schema
+model DatasetSchema {
+  id               String   @id @default(cuid())
+  datasetVersionId String   @unique @map("dataset_version_id")
+  schemaJson       Json     @map("schema_json")
+  schemaHash       String   @map("schema_hash") @db.VarChar(64)
+  detectedAt       DateTime @default(now()) @map("detected_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  datasetVersion DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+  fields         DatasetField[]
+
+  @@map("dataset_schemas")
+}
+
+/// 数据集字段
+model DatasetField {
+  id              String   @id @default(cuid())
+  datasetSchemaId String   @map("dataset_schema_id")
+  fieldName       String   @map("field_name") @db.VarChar(128)
+  displayName     String?  @map("display_name") @db.VarChar(256)
+  dataType        String   @map("data_type") @db.VarChar(32)
+  semanticType    String?  @map("semantic_type") @db.VarChar(32)
+  description     String?  @db.VarChar(512)
+  unit            String?  @db.VarChar(64)
+  nullable        Boolean  @default(true)
+  isPrimaryKey    Boolean  @default(false) @map("is_primary_key")
+  ordinal         Int      @default(0)
+  sampleValues    Json?    @map("sample_values")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  datasetSchema  DatasetSchema           @relation(fields: [datasetSchemaId], references: [id], onDelete: Cascade)
+  fieldMappings  IndicatorFieldMapping[]
+
+  @@index([datasetSchemaId, ordinal])
+  @@index([fieldName])
+  @@map("dataset_fields")
+}
+
+/// 结构化数据行（Silver 层 JSONB 存储）
+model DatasetRecord {
+  id               String   @id @default(cuid())
+  datasetVersionId String   @map("dataset_version_id")
+  rowIndex         Int      @map("row_index")
+  data             Json
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  datasetVersion DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([datasetVersionId, rowIndex])
+  @@index([datasetVersionId])
+  @@map("dataset_records")
+}
+
+/// 接入任务类型
+enum IngestionTargetType {
+  dataset
+  knowledge
+}
+
+/// 接入任务状态
+enum IngestionJobStatus {
+  pending
+  running
+  succeeded
+  failed
+  cancelled
+}
+
+/// 数据接入任务
+model IngestionJob {
+  billingState Json? @map("billing_state")
+  id           String              @id @default(cuid())
+  targetType   IngestionTargetType @map("target_type")
+  targetId     String              @map("target_id")
+  datasetVersionId String?         @map("dataset_version_id")
+  knowledgeVersionId String?       @map("knowledge_version_id")
+  jobType      String              @default("full") @map("job_type") @db.VarChar(32)
+  status       IngestionJobStatus  @default(pending)
+  currentStep  String?             @map("current_step") @db.VarChar(64)
+  progress     Int                 @default(0)
+  retryCount   Int                 @default(0) @map("retry_count")
+  errorMessage String?             @map("error_message") @db.Text
+  startedAt    DateTime?           @map("started_at")
+  completedAt  DateTime?           @map("completed_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  datasetVersion   DatasetVersion?   @relation(fields: [datasetVersionId], references: [id], onDelete: SetNull)
+  knowledgeVersion KnowledgeVersion? @relation(fields: [knowledgeVersionId], references: [id], onDelete: SetNull)
+
+  @@index([targetType, targetId])
+  @@index([status, createdAt])
+  @@map("ingestion_jobs")
+}
+
+/// 知识文档版本状态
+enum KnowledgeVersionStatus {
+  uploaded
+  parsing
+  parsed
+  chunking
+  chunked
+  indexing
+  indexed
+  ready
+  failed
+}
+
+/// 知识文档版本
+model KnowledgeVersion {
+  id              String                 @id @default(cuid())
+  knowledgeItemId String                 @map("knowledge_item_id")
+  version         Int
+  checksum        String?                @db.VarChar(64)
+  minioObjectPath String                 @map("minio_object_path") @db.VarChar(512)
+  fileSize        Int?                   @map("file_size")
+  status          KnowledgeVersionStatus @default(uploaded)
+  isCurrent       Boolean                @default(true) @map("is_current")
+  errorMessage    String?                @map("error_message") @db.VarChar(1024)
+  createdBy       String?                @map("created_by")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  knowledgeItem KnowledgeItem  @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+  chunks        DocumentChunk[]
+  jobs          IngestionJob[]
+
+  @@unique([knowledgeItemId, version])
+  @@index([knowledgeItemId, isCurrent])
+  @@index([status])
+  @@map("knowledge_versions")
+}
+
+/// 文档分块元数据（向量在 Milvus，原文在 PG）
+model DocumentChunk {
+  id                 String   @id @default(cuid())
+  knowledgeVersionId String   @map("knowledge_version_id")
+  chunkIndex         Int      @map("chunk_index")
+  content            String   @db.Text
+  /// 页码
+  pageNumber         Int?     @map("page_number")
+  section            String?  @db.VarChar(256)
+  sheetName          String?  @map("sheet_name") @db.VarChar(256)
+  tableName          String?  @map("table_name") @db.VarChar(256)
+  rowStart           Int?     @map("row_start")
+  rowEnd             Int?     @map("row_end")
+  searchText         String?  @map("search_text") @db.Text
+  tokenCount         Int      @default(0) @map("token_count")
+  milvusId           String?  @map("milvus_id") @db.VarChar(128)
+  metadataJson       Json?    @map("metadata_json")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  knowledgeVersion KnowledgeVersion @relation(fields: [knowledgeVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([knowledgeVersionId, chunkIndex])
+  @@index([knowledgeVersionId])
+  @@map("document_chunks")
+}
+
+/// 语义实体
+model SemanticEntity {
+  id            String       @id @default(cuid())
+  code          String       @unique @db.VarChar(128)
+  name          String       @db.VarChar(256)
+  canonicalName String       @map("canonical_name") @db.VarChar(256)
+  entityType    String       @default("company") @map("entity_type") @db.VarChar(64)
+  description   String?      @db.VarChar(512)
+  status        CommonStatus @default(active)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  aliases SemanticEntityAlias[]
+
+  @@index([status])
+  @@map("semantic_entities")
+}
+
+/// 语义实体别名
+model SemanticEntityAlias {
+  id         String   @id @default(cuid())
+  entityId   String   @map("entity_id")
+  alias      String   @db.VarChar(256)
+  aliasType  String   @default("synonym") @map("alias_type") @db.VarChar(32)
+  confidence Float    @default(1)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  entity SemanticEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([entityId])
+  @@index([alias])
+  @@map("semantic_entity_aliases")
+}
+
+/// 业务概念
+model SemanticConcept {
+  id          String       @id @default(cuid())
+  code        String       @unique @db.VarChar(128)
+  name        String       @db.VarChar(256)
+  conceptType String       @default("industry") @map("concept_type") @db.VarChar(64)
+  description String?      @db.VarChar(512)
+  status      CommonStatus @default(active)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  aliases SemanticConceptAlias[]
+
+  @@index([status])
+  @@map("semantic_concepts")
+}
+
+/// 业务概念别名
+model SemanticConceptAlias {
+  id         String   @id @default(cuid())
+  conceptId  String   @map("concept_id")
+  alias      String   @db.VarChar(256)
+  aliasType  String   @default("synonym") @map("alias_type") @db.VarChar(32)
+  confidence Float    @default(1)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  concept SemanticConcept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@index([conceptId])
+  @@index([alias])
+  @@map("semantic_concept_aliases")
+}
+
+/// AI 查询路由类型
+enum QueryRouteType {
+  structured
+  semantic
+  hybrid
+}
+
+/// AI 查询状态
+enum AiQueryStatus {
+  pending
+  running
+  completed
+  failed
+}
+
+/// AI 查询记录
+model AiQuery {
+  id            String         @id @default(cuid())
+  userId        String?        @map("user_id")
+  sessionId     String?        @map("session_id") @db.VarChar(64)
+  userQuery     String         @map("user_query") @db.Text
+  intent        String?        @db.VarChar(64)
+  routeType     QueryRouteType @default(semantic) @map("route_type")
+  status        AiQueryStatus  @default(pending)
+  queryPlanJson Json?          @map("query_plan_json")
+  answer        String?        @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at")
+  completedAt   DateTime?      @map("completed_at")
+
+  semanticQuery SemanticQuery?
+  evidence      QueryEvidence[]
+
+  @@index([status, createdAt])
+  @@index([sessionId])
+  @@map("ai_queries")
+}
+
+/// 语义解析结果
+model SemanticQuery {
+  id                String   @id @default(cuid())
+  aiQueryId         String   @unique @map("ai_query_id")
+  metricsJson       Json?    @map("metrics_json")
+  entitiesJson      Json?    @map("entities_json")
+  dimensionsJson    Json?    @map("dimensions_json")
+  conceptsJson      Json?    @map("concepts_json")
+  timeJson          Json?    @map("time_json")
+  resolvedQueryJson Json?    @map("resolved_query_json")
+  confidence        Float    @default(0)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  aiQuery AiQuery @relation(fields: [aiQueryId], references: [id], onDelete: Cascade)
+
+  @@map("semantic_queries")
+}
+
+/// 证据类型
+enum EvidenceType {
+  sql
+  document
+  vector
+  external
+}
+
+/// 查询证据
+model QueryEvidence {
+  id           String       @id @default(cuid())
+  aiQueryId    String       @map("ai_query_id")
+  evidenceType EvidenceType @map("evidence_type")
+  sourceType   String       @map("source_type") @db.VarChar(64)
+  sourceId     String?      @map("source_id") @db.VarChar(128)
+  sql          String?      @db.Text
+  content      String?      @db.Text
+  score        Float?
+  metadataJson Json?        @map("metadata_json")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  aiQuery AiQuery @relation(fields: [aiQueryId], references: [id], onDelete: Cascade)
+
+  @@index([aiQueryId])
+  @@index([evidenceType])
+  @@index([aiQueryId, evidenceType, createdAt])
+  @@map("query_evidence")
+}
+
+/// 研究来源起源
+enum SourceOrigin {
+  UPLOAD
+  EXA
+  LOCAL
+}
+
+/// 存储类型：结构化数据 / 知识文档
+enum StorageType {
+  STRUCTURED
+  KNOWLEDGE
+}
+
+/// 研究检索任务状态
+enum ResearchRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+/// 用户数据分析会话状态
+enum AnalysisSessionStatus {
+  READY
+  PARTIAL
+  FAILED
+}
+
+/// 从检索结果进入分析工作台后的可复现分析上下文。
+model AnalysisSession {
+  id                   String                @id @default(cuid())
+  userId               String                @map("user_id")
+  query                String                @db.Text
+  status               AnalysisSessionStatus @default(READY)
+  selectedSourceIds    Json                  @map("selected_source_ids")
+  selectedIndicatorIds Json?                 @map("selected_indicator_ids")
+  sourceSummary        Json?                 @map("source_summary")
+  resultJson           Json?                 @map("result_json")
+  errorMessage         String?               @map("error_message") @db.Text
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("analysis_sessions")
+}
+
+/// 研究检索来源（本地缓存或 Exa 拉取）
+model ResearchSource {
+  id             String       @id @default(cuid())
+  title          String
+  origin         SourceOrigin
+  storageType    StorageType
+  sourceUrl      String?      @unique
+  mimeType       String?
+  textContent    String       @db.Text
+  searchText     String       @db.Text
+  structuredData Json?
+  metadata       Json?
+  recordCount    Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([storageType, createdAt])
+  @@index([origin, createdAt])
+}
+
+/// 研究检索运行记录（含报告与缓存）
+model ResearchRun {
+  id             String            @id @default(cuid())
+  userId         String?           @map("user_id")
+  query          String            @db.Text
+  queryFingerprint String?         @map("query_fingerprint") @db.VarChar(64)
+  filters        Json?
+  cacheExpiresAt DateTime?         @map("cache_expires_at")
+  status         ResearchRunStatus @default(RUNNING)
+  matchedLocally Boolean           @default(false)
+  usedExa        Boolean           @default(false)
+  sourceIds      Json?
+  sourceScores   Json?             @map("source_scores")
+  reportTitle    String?
+  reportMarkdown String?           @db.Text
+  resultJson     Json?             @map("result_json")
+  errorMessage   String?           @db.Text
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status, createdAt])
+  @@index([queryFingerprint, status, cacheExpiresAt])
+  @@index([userId, createdAt])
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+/// 研究检索分支结果缓存
+model ResearchBranchCache {
+  id              String   @id @default(cuid())
+  fingerprint     String   @unique @db.VarChar(64)
+  sourceIds       Json     @map("source_ids")
+  sourceScores    Json?    @map("source_scores")
+  cacheExpiresAt  DateTime @map("cache_expires_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([cacheExpiresAt])
+  @@map("research_branch_cache")
+}
+
+// =========================
+// 知识库
+// =========================
+
+/// 知识库类型：普通知识库 / 历史问答库
+enum KnowledgeLibraryType {
+  normal
+  qa
+}
+
+/// 平台知识库（容器）
+model KnowledgeLibrary {
+  id          String               @id @default(cuid())
+  name        String               @db.VarChar(256)
+  /// 仅未软删除唯一，见 knowledge_libraries_code_active_key
+  code        String               @db.VarChar(128)
+  type        KnowledgeLibraryType @default(normal)
+  /// 是否公用知识库：public 公用 / private 私有
+  visibility  KnowledgeVisibility  @default(private)
+  intro       String?              @db.VarChar(1024)
+  /// 知识分组字典编码（knowledge_group）
+  groupCode   String?              @map("group_code") @db.VarChar(128)
+  icon        String               @default("📚") @db.VarChar(16)
+  color       String               @default("#e6efff") @db.VarChar(32)
+  fileTotal   Int                  @default(0) @map("file_total")
+  /// 累计文件字节数
+  fileSize    Int                  @default(0) @map("file_size")
+  /// 分段方式：smart 智能分段 / fixed 固定长度
+  chunkMethod String               @default("smart") @map("chunk_method") @db.VarChar(32)
+  /// 分段长度（字符）
+  chunkSize   Int                  @default(800) @map("chunk_size")
+  /// 重叠长度（字符）
+  chunkOverlap Int                 @default(120) @map("chunk_overlap")
+  structuredIndexMode String       @default("hybrid") @map("structured_index_mode") @db.VarChar(16)
+  /// 向量模型标识（展示/配置用；实际 embedding 仍走环境变量）
+  embeddingModel String            @default("text-embedding-v3") @map("embedding_model") @db.VarChar(128)
+  /// 默认召回条数 TopK
+  recallTopK  Int                  @default(8) @map("recall_top_k")
+  /// 相似度阈值（0~1，余弦）
+  similarityThreshold Float        @default(0.6) @map("similarity_threshold")
+  /// 混合检索语义权重
+  hybridSemanticWeight Float       @default(0.7) @map("hybrid_semantic_weight")
+  /// 混合检索关键词权重
+  hybridKeywordWeight Float        @default(0.3) @map("hybrid_keyword_weight")
+  status      CommonStatus         @default(active)
+  createdBy   String?              @map("created_by")
+  updatedBy   String?              @map("updated_by")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+  deletedAt   DateTime?            @map("deleted_at")
+
+  creator User? @relation("KnowledgeLibraryCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("KnowledgeLibraryUpdatedBy", fields: [updatedBy], references: [id])
+  items   KnowledgeItem[]
+  documentGroups KnowledgeDocumentGroup[]
+
+  @@index([code])
+  @@index([groupCode])
+  @@index([type, status])
+  @@index([visibility, status])
+  @@index([status])
+  @@map("knowledge_libraries")
+}
+
+/// 知识库独立文档分组；相同编码覆盖系统预设，软删除用于隐藏预设分组。
+model KnowledgeDocumentGroup {
+  id        String    @id @default(cuid())
+  libraryId String    @map("library_id")
+  code      String    @db.VarChar(128)
+  name      String    @db.VarChar(64)
+  deletedAt DateTime? @map("deleted_at")
+  library   KnowledgeLibrary @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+
+  @@unique([libraryId, code])
+  @@index([libraryId])
+  @@map("knowledge_document_groups")
+}
+
+/// 知识条目审核状态
+enum KnowledgeAuditStatus {
+  pending
+  approved
+  rejected
+}
+
+/// 知识条目可见性
+enum KnowledgeVisibility {
+  public
+  private
+}
+
+/// 知识条目上下架状态
+enum KnowledgePublishStatus {
+  draft
+  published
+  unpublished
+}
+
+/// 知识条目来源类型
+enum KnowledgeSourceType {
+  admin
+  research_upload
+}
+
+/// 审核动作
+enum KnowledgeAuditAction {
+  approve
+  reject
+  resubmit
+}
+
+/// 知识分类（树形）
+model KnowledgeCategory {
+  id          String       @id @default(cuid())
+  name        String       @db.VarChar(128)
+  /// 仅未软删除唯一，见 knowledge_categories_code_active_key
+  code        String       @db.VarChar(128)
+  parentId    String?      @map("parent_id")
+  sort        Int          @default(0)
+  status      CommonStatus @default(active)
+  description String?      @db.VarChar(512)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  parent   KnowledgeCategory?  @relation("KnowledgeCategoryTree", fields: [parentId], references: [id])
+  children KnowledgeCategory[] @relation("KnowledgeCategoryTree")
+  items    KnowledgeItem[]
+
+  @@index([code])
+  @@index([parentId, sort])
+  @@index([status])
+  @@map("knowledge_categories")
+}
+
+/// 知识标签
+model KnowledgeTag {
+  id        String       @id @default(cuid())
+  name      String       @db.VarChar(64)
+  /// 仅未软删除唯一，见 knowledge_tags_code_active_key
+  code      String       @db.VarChar(128)
+  status    CommonStatus @default(active)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  deletedAt DateTime?    @map("deleted_at")
+
+  items KnowledgeItemTag[]
+
+  @@index([code])
+  @@index([status])
+  @@map("knowledge_tags")
+}
+
+/// 知识条目
+model KnowledgeItem {
+  id             String                 @id @default(cuid())
+  title          String                 @db.VarChar(256)
+  /// 仅未软删除唯一，见 knowledge_items_code_active_key
+  code           String                 @db.VarChar(128)
+  summary        String?                @db.Text
+  content        String?                @db.Text
+  visibility     KnowledgeVisibility    @default(private)
+  auditStatus    KnowledgeAuditStatus   @default(pending) @map("audit_status")
+  publishStatus  KnowledgePublishStatus @default(draft) @map("publish_status")
+  categoryId     String?                @map("category_id")
+  /// 所属平台知识库
+  libraryId      String?                @map("library_id")
+  /// 知识分组字典编码（knowledge_group）
+  groupCode      String?                @map("group_code") @db.VarChar(128)
+  sourceType     KnowledgeSourceType    @default(admin) @map("source_type")
+  sourceMeta     Json?                  @map("source_meta")
+  fileKey        String?                @map("file_key") @db.VarChar(512)
+  fileName       String?                @map("file_name") @db.VarChar(256)
+  mimeType       String?                @map("mime_type") @db.VarChar(128)
+  fileSize       Int?                   @map("file_size")
+  chunkCount     Int                    @default(0) @map("chunk_count")
+  /// 检索命中次数（向量/RAG 命中该知识条目时累加）
+  hitCount       Int                    @default(0) @map("hit_count")
+  vectorSyncedAt DateTime?              @map("vector_synced_at")
+  vectorStatus   VectorSyncStatus       @default(pending) @map("vector_status")
+  vectorError    String?                @map("vector_error") @db.VarChar(1024)
+  submittedBy    String?                @map("submitted_by")
+  auditedBy      String?                @map("audited_by")
+  auditedAt      DateTime?              @map("audited_at")
+  rejectReason   String?                @map("reject_reason") @db.VarChar(1024)
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  deletedAt      DateTime?              @map("deleted_at")
+
+  category KnowledgeCategory?    @relation(fields: [categoryId], references: [id])
+  library  KnowledgeLibrary?     @relation(fields: [libraryId], references: [id])
+  submitter User?                @relation("KnowledgeSubmittedBy", fields: [submittedBy], references: [id])
+  auditor   User?                @relation("KnowledgeAuditedBy", fields: [auditedBy], references: [id])
+  tags      KnowledgeItemTag[]
+  audits    KnowledgeAuditRecord[]
+  versions  KnowledgeVersion[]
+
+  @@index([code])
+  @@index([auditStatus, publishStatus])
+  @@index([visibility, publishStatus])
+  @@index([categoryId])
+  @@index([libraryId])
+  @@index([groupCode])
+  @@index([submittedBy])
+  @@index([vectorStatus])
+  @@index([sourceType])
+  @@map("knowledge_items")
+}
+
+/// 知识条目 ↔ 标签
+model KnowledgeItemTag {
+  knowledgeItemId String   @map("knowledge_item_id")
+  tagId           String   @map("tag_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+  tag           KnowledgeTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([knowledgeItemId, tagId])
+  @@index([tagId])
+  @@map("knowledge_item_tags")
+}
+
+/// 知识审核流水
+model KnowledgeAuditRecord {
+  id              String               @id @default(cuid())
+  knowledgeItemId String               @map("knowledge_item_id")
+  action          KnowledgeAuditAction
+  actorId         String?              @map("actor_id")
+  remark          String?              @db.VarChar(1024)
+  snapshot        Json?
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+  actor         User?         @relation(fields: [actorId], references: [id])
+
+  @@index([knowledgeItemId, createdAt])
+  @@index([actorId])
+  @@map("knowledge_audit_records")
+}
+
+// =========================
+// 运营管理
+// =========================
+
+/// 公告接收范围
+enum AnnouncementAudienceScope {
+  all_users
+  specified_roles
+  pro_members
+}
+
+/// 公告发布状态
+enum AnnouncementStatus {
+  draft
+  published
+  recalled
+}
+
+/// 业务通知已读状态
+enum BusinessNotificationStatus {
+  unread
+  read
+}
+
+/// 敏感词类型
+enum SensitiveWordCategory {
+  political
+  porn
+  ad
+}
+
+/// 平台公告
+model Announcement {
+  id               String                    @id @default(cuid())
+  title            String                    @db.VarChar(60)
+  content          String                    @db.VarChar(500)
+  audienceScope    AnnouncementAudienceScope @default(all_users) @map("audience_scope")
+  audienceRoleIds  Json?                     @map("audience_role_ids")
+  status           AnnouncementStatus        @default(draft)
+  publishedAt      DateTime?                 @map("published_at")
+  recalledAt       DateTime?                 @map("recalled_at")
+  createdBy        String?                   @map("created_by")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  deletedAt        DateTime?                 @map("deleted_at")
+
+  creator User? @relation("AnnouncementCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([status, createdAt])
+  @@index([deletedAt])
+  @@map("announcements")
+}
+
+/// 业务通知（站内信类记录）
+model BusinessNotification {
+  id         String                     @id @default(cuid())
+  content    String                     @db.VarChar(512)
+  receiverId String                     @map("receiver_id")
+  status     BusinessNotificationStatus @default(unread)
+  bizType    String                     @default("general") @map("biz_type") @db.VarChar(64)
+  sentAt     DateTime                   @default(now()) @map("sent_at")
+  createdAt  DateTime                   @default(now()) @map("created_at")
+  updatedAt  DateTime                   @updatedAt @map("updated_at")
+
+  receiver User @relation(fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([receiverId, status])
+  @@index([sentAt])
+  @@map("business_notifications")
+}
+
+/// 搜索敏感词
+model SensitiveWord {
+  id        String                @id @default(cuid())
+  /// 仅未软删除唯一，见 sensitive_words_word_active_key
+  word      String                @db.VarChar(64)
+  category  SensitiveWordCategory
+  hitCount  Int                   @default(0) @map("hit_count")
+  status    CommonStatus          @default(active)
+  createdAt DateTime              @default(now()) @map("created_at")
+  updatedAt DateTime              @updatedAt @map("updated_at")
+  deletedAt DateTime?             @map("deleted_at")
+
+  @@index([word])
+  @@index([status])
+  @@index([category])
+  @@map("sensitive_words")
+}
+
+/// 快捷检索词
+model SearchQuickKeyword {
+  id        String   @id @default(cuid())
+  keyword   String   @unique @db.VarChar(128)
+  enabled   Boolean  @default(true)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([enabled, sort])
+  @@map("search_quick_keywords")
+}
+
+/// 无结果搜索词处理标记
+model SearchNoResultMark {
+  id        String   @id @default(cuid())
+  keyword   String   @unique @db.VarChar(256)
+  handled   Boolean  @default(false)
+  note      String?  @db.VarChar(256)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([handled])
+  @@map("search_no_result_marks")
+}
+
+/// 系统备份任务状态
+enum BackupJobStatus {
+  pending
+  running
+  success
+  failed
+}
+
+/// 系统备份触发方式
+enum BackupTrigger {
+  scheduled
+  manual
+}
+
+/// 系统数据备份任务记录
+model BackupJob {
+  id             String          @id @default(cuid())
+  /// 任务状态
+  status         BackupJobStatus @default(pending)
+  /// 触发方式
+  trigger        BackupTrigger
+  /// MinIO 备份集前缀，如 system-backups/{id}/
+  prefix         String          @db.VarChar(512)
+  /// 开始时间
+  startedAt      DateTime?       @map("started_at")
+  /// 结束时间
+  finishedAt     DateTime?       @map("finished_at")
+  /// 数据库备份大小（字节）
+  dbSizeBytes    BigInt?         @map("db_size_bytes")
+  /// 备份的对象文件数
+  filesCount     Int             @default(0) @map("files_count")
+  /// 对象文件总大小（字节）
+  filesSizeBytes BigInt          @default(0) @map("files_size_bytes")
+  /// 是否包含环境配置快照
+  envIncluded    Boolean         @default(false) @map("env_included")
+  /// 失败原因
+  errorMessage   String?         @map("error_message") @db.VarChar(2000)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@map("backup_jobs")
+}

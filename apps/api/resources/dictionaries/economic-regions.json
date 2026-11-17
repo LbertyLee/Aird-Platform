@@ -1,0 +1,11 @@
+[
+  {"term":"长三角","aliases":["长江三角洲"],"category":"economic_region"},
+  {"term":"珠三角","aliases":["珠江三角洲"],"category":"economic_region"},
+  {"term":"粤港澳大湾区","aliases":["大湾区"],"category":"economic_region"},
+  {"term":"京津冀","category":"economic_region"},
+  {"term":"成渝地区双城经济圈","aliases":["成渝地区","成渝经济圈"],"category":"economic_region"},
+  {"term":"长江经济带","category":"economic_region"},
+  {"term":"黄河流域","category":"economic_region"},
+  {"term":"城市群","category":"economic_region"},
+  {"term":"都市圈","category":"economic_region"}
+]

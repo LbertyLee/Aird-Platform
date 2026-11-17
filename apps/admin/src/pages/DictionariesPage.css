@@ -1,0 +1,87 @@
+.dictionaries-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dictionaries-section {
+  padding: 12px 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.dictionaries-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dictionaries-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.dictionaries-tabs.ant-tabs {
+  margin-bottom: 0;
+}
+
+.dictionaries-tabs .ant-tabs-nav {
+  margin-bottom: 12px;
+}
+
+.dictionaries-tabs .ant-tabs-tab {
+  padding: 8px 4px;
+  font-size: 14px;
+}
+
+.dictionaries-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+.dictionaries-table .ant-table-tbody > tr:hover > td {
+  background: var(--brand-primary-soft) !important;
+}
+
+.dictionaries-action-link {
+  padding: 0 4px;
+  height: auto;
+  font-size: 13px;
+}
+
+.dictionaries-action-link--warning {
+  color: #e6a23c !important;
+}
+
+.dictionaries-action-link--warning:hover {
+  color: #cf9236 !important;
+}
+
+.dictionaries-action-link--danger {
+  color: #f56c6c !important;
+}
+
+.dictionaries-action-link--danger:hover {
+  color: #dd6161 !important;
+}
+
+.dictionaries-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.dictionaries-footer-tip {
+  color: #a8abb2;
+  font-size: 12px;
+  line-height: 1.5;
+}

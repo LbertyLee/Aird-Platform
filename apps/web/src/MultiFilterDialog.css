@@ -1,0 +1,157 @@
+.filter-dialog-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(20, 43, 41, 0.34);
+}
+
+.filter-dialog {
+  display: flex;
+  width: min(430px, 100vw);
+  height: 100%;
+  flex-direction: column;
+  background: #fff;
+  box-shadow: -10px 0 26px rgba(25, 57, 53, 0.15);
+}
+
+.filter-dialog > header {
+  display: flex;
+  min-height: 78px;
+  padding: 0 16px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #dfe8e6;
+}
+
+.filter-dialog header span {
+  color: #667976;
+  font-size: 11px;
+}
+
+.filter-dialog header h2 {
+  margin: 4px 0 0;
+  color: #223c38;
+  font-size: 18px;
+}
+
+.filter-dialog-body {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.filter-search {
+  display: flex;
+  height: 38px;
+  padding: 0 10px;
+  align-items: center;
+  gap: 8px;
+  color: #79908b;
+  border: 1px solid #ccd9d7;
+  border-radius: 4px;
+}
+
+.filter-search input {
+  min-width: 0;
+  flex: 1;
+  color: #334d49;
+  border: 0;
+  outline: 0;
+  font-size: 12px;
+}
+
+.filter-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.filter-option {
+  position: relative;
+  display: grid;
+  min-height: 60px;
+  padding: 10px 9px 8px 38px;
+  align-content: center;
+  border: 1px solid #d5e0de;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.filter-option:hover,
+.filter-option:has(input:checked) {
+  background: #f0f8f5;
+  border-color: #8ebcb3;
+}
+
+.filter-option input {
+  position: absolute;
+  opacity: 0;
+}
+
+.filter-option > span {
+  position: absolute;
+  top: 19px;
+  left: 13px;
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  color: transparent;
+  border: 1px solid #879b97;
+  border-radius: 3px;
+}
+
+.filter-option input:checked + span {
+  color: #fff;
+  background: #18776c;
+  border-color: #18776c;
+}
+
+.filter-option strong {
+  color: #2d4542;
+  font-size: 12px;
+}
+
+.filter-option small {
+  margin-top: 3px;
+  color: #7a8b87;
+  font-size: 9px;
+}
+
+.filter-no-result {
+  margin: 24px 0;
+  color: #7c8b89;
+  font-size: 12px;
+  text-align: center;
+}
+
+.filter-dialog > footer {
+  display: flex;
+  min-height: 66px;
+  padding: 0 16px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #dfe8e6;
+}
+
+.filter-dialog footer > div {
+  display: flex;
+  gap: 8px;
+}
+
+.text-button {
+  padding: 0;
+  color: #436761;
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+}
+
+@media (max-width: 500px) {
+  .filter-option-grid {
+    grid-template-columns: 1fr;
+  }
+}

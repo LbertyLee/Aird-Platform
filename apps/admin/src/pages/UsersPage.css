@@ -1,0 +1,129 @@
+.users-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.users-section {
+  padding: 12px 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background: #fff;
+  min-width: 0;
+}
+
+.users-section--toolbar {
+  flex-shrink: 0;
+}
+
+.users-table-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.users-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.users-toolbar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 280px;
+}
+
+.users-toolbar .ant-select.users-filter-select--role {
+  flex: 1 1 140px;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.users-toolbar .ant-select.users-filter-select--status {
+  flex: 1 1 120px;
+  min-width: 110px;
+  max-width: 160px;
+}
+
+.users-search-btn {
+  color: var(--brand-primary) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+.users-table-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.users-table-meta {
+  color: #a8abb2;
+  font-size: 12px;
+}
+
+.users-membership-empty {
+  color: #a8abb2;
+  font-size: 13px;
+}
+
+.users-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+.users-table .ant-table-tbody > tr:hover > td {
+  background: var(--brand-primary-soft) !important;
+}
+
+.users-action-link {
+  padding: 0 4px;
+  height: auto;
+  font-size: 13px;
+}
+
+.users-action-link--warning {
+  color: #e6a23c !important;
+}
+
+.users-action-link--warning:hover {
+  color: #cf9236 !important;
+}
+
+.users-action-link--success {
+  color: #67c23a !important;
+}
+
+.users-action-link--success:hover {
+  color: #529b2e !important;
+}
+
+.users-action-link--danger {
+  color: #f56c6c !important;
+}
+
+.users-action-link--danger:hover {
+  color: #dd6161 !important;
+}
+
+.users-tip {
+  flex-shrink: 0;
+  margin-top: 12px;
+  border: 1px solid #e1f0ff;
+  background: #f4f9ff;
+}
+
+.users-tip .ant-alert-icon {
+  color: var(--brand-primary);
+}

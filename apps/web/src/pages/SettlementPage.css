@@ -1,0 +1,475 @@
+.settlement-page {
+  width: min(960px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 36px 0 72px;
+  color: #102444;
+}
+
+.settlement-cashier-code {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 280px;
+  padding: 16px 0;
+}
+
+.settlement-cashier-frame {
+  display: block;
+  width: 248px;
+  height: 248px;
+  flex: 0 0 248px;
+  border: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.settlement-cashier-hint {
+  margin: 8px 0 12px;
+  color: #6b829f;
+  font-size: 12px;
+}
+
+.settlement-hero {
+  margin-bottom: 18px;
+}
+
+.settlement-hero h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #0d2345;
+}
+
+.settlement-hero p {
+  margin: 8px 0 0;
+  color: #6b829f;
+  font-size: 13px;
+}
+
+.settlement-notice {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.settlement-notice.is-error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.settlement-status-card,
+.settlement-pending-card,
+.settlement-channel-card,
+.settlement-history-card,
+.settlement-empty-pending {
+  background: #fff;
+  border: 1px solid #e3ebf5;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(16, 36, 68, 0.05);
+}
+
+.settlement-status-card,
+.settlement-pending-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+
+.settlement-status-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.settlement-crown {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: #d97706;
+  background: #fff7dc;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.settlement-status-left strong {
+  display: block;
+  font-size: 15px;
+}
+
+.settlement-status-left p,
+.settlement-pending-meta {
+  margin: 6px 0 0;
+  color: #6b829f;
+  font-size: 12px;
+}
+
+.settlement-primary-btn {
+  min-height: 40px;
+  padding: 0 16px;
+  color: #fff;
+  background: #2563eb;
+  border: 0;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.settlement-primary-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.settlement-primary-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.settlement-primary-btn.is-ghost {
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.settlement-pending-title {
+  color: #334e75;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.settlement-pending-price {
+  margin-top: 8px;
+  color: #2563eb;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.settlement-empty-pending {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  color: #6b829f;
+  font-size: 13px;
+}
+
+.settlement-empty-pending button {
+  min-height: 36px;
+  padding: 0 14px;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.settlement-channel-card,
+.settlement-history-card {
+  padding: 18px 20px 20px;
+  margin-bottom: 14px;
+}
+
+.settlement-channel-card h2,
+.settlement-history-head h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #0d2345;
+}
+
+.settlement-channel-single {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.settlement-channel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settlement-channel-single .settlement-channel {
+  width: 100%;
+  text-align: left;
+}
+
+.settlement-order-actions,
+.settlement-checkout-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.settlement-checkout-actions {
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #eef3f9;
+}
+
+.settlement-checkout-actions > span {
+  margin-right: auto;
+  color: #6b829f;
+  font-size: 13px;
+}
+
+.settlement-countdown {
+  margin-top: 12px;
+  color: #b45309;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settlement-countdown strong {
+  margin-left: 6px;
+  font-size: 16px;
+}
+
+.settlement-countdown.is-expired {
+  color: #b91c1c;
+}
+
+.settlement-channel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.settlement-channel {
+  display: flex;
+  min-height: 64px;
+  padding: 0 16px;
+  align-items: center;
+  gap: 12px;
+  color: #334e75;
+  background: #fff;
+  border: 1.5px solid #d7e2ef;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settlement-channel.active {
+  color: #1d4ed8;
+  border-color: #2563eb;
+  background: #f8fbff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.channel-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.channel-icon.wechat {
+  background: #12b76a;
+}
+
+.channel-icon.alipay {
+  background: #1677ff;
+}
+
+.channel-logo.alipay {
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.settlement-channel-hint {
+  margin: 12px 0 0;
+  color: #8aa0bb;
+  font-size: 12px;
+}
+
+.settlement-mode-switch {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 4px;
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+
+.settlement-mode-switch button {
+  min-height: 36px;
+  padding: 0 14px;
+  color: #475569;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.settlement-mode-switch button.active {
+  color: #0f172a;
+  background: #fff;
+  box-shadow: 0 1px 3px #0f172a20;
+}
+
+.settlement-qr-panel {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 24px;
+  margin-bottom: 14px;
+  background: #fff;
+  border: 1px solid #d8e3ef;
+  border-radius: 12px;
+}
+
+.settlement-qr-code {
+  display: grid;
+  width: 256px;
+  height: 256px;
+  flex: 0 0 256px;
+  place-items: center;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+}
+
+.settlement-qr-code svg {
+  display: block;
+  width: 224px;
+  height: 224px;
+}
+
+.settlement-qr-details h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.settlement-qr-details strong {
+  color: #1677ff;
+  font-size: 28px;
+}
+.settlement-qr-details p {
+  color: #64748b;
+}
+
+.settlement-history-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.settlement-history-head span {
+  color: #8aa0bb;
+  font-size: 12px;
+}
+
+.settlement-table-wrap {
+  overflow-x: auto;
+}
+
+.settlement-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.settlement-table th,
+.settlement-table td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid #eef3f9;
+  white-space: nowrap;
+}
+
+.settlement-table th {
+  color: #6b829f;
+  font-weight: 650;
+}
+
+.settlement-table td.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #334e75;
+}
+
+.settlement-table td.amount {
+  font-weight: 700;
+}
+
+.settlement-empty {
+  color: #8aa0bb;
+  text-align: center !important;
+  padding: 36px 12px !important;
+}
+
+.settlement-pill {
+  display: inline-flex;
+  min-height: 24px;
+  padding: 0 10px;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.settlement-pill.channel {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.settlement-pill.ok {
+  color: #15803d;
+  background: #f0fdf4;
+}
+
+.settlement-pill.warn {
+  color: #c2410c;
+  background: #fff7ed;
+}
+
+.settlement-pill.danger {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.settlement-pill.muted {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+@media (max-width: 720px) {
+  .settlement-page {
+    width: calc(100% - 32px);
+  }
+
+  .settlement-status-card,
+  .settlement-pending-card,
+  .settlement-empty-pending {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settlement-qr-panel {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .settlement-channel-grid {
+    grid-template-columns: 1fr;
+  }
+}

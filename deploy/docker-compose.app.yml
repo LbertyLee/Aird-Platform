@@ -1,0 +1,78 @@
+name: aird-platform-app
+
+# 复用服务器已有中间件（forge Postgres/Redis/MinIO/Milvus），只部署应用三件套。
+# 一键部署脚本会优先使用本文件覆盖到远程 deploy/docker-compose.yml。
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    image: aird-platform-api:latest
+    container_name: aird-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      API_PORT: 3000
+    ports:
+      - '${API_HOST_PORT:-13000}:3000'
+    volumes:
+      - ../apps/api/config/wechat:/app/apps/api/config/wechat:ro
+      - ../storage/official-data:/app/apps/api/storage/official-data
+      - ../storage/structured-data:/app/apps/api/storage/structured-data
+    networks:
+      - forge-net
+      - app-net
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/v1').then(r=>process.exit(r.status < 500 ? 0 : 1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+
+  admin:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.admin
+      args:
+        VITE_API_BASE_URL: /api/v1
+    image: aird-platform-admin:latest
+    container_name: aird-admin
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '${ADMIN_HOST_PORT:-13001}:80'
+    networks:
+      - app-net
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+      args:
+        VITE_API_BASE_URL: /api/v1
+    image: aird-platform-web:latest
+    container_name: aird-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '${WEB_HOST_PORT:-13002}:80'
+    networks:
+      - app-net
+
+networks:
+  forge-net:
+    external: true
+    name: insight-forge-middleware_forge-net
+  app-net:
+    driver: bridge

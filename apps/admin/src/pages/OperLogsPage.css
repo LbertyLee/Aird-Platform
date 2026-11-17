@@ -1,0 +1,137 @@
+.oper-logs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.oper-logs-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.oper-logs-tabs.ant-tabs {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.oper-logs-tabs .ant-tabs-nav {
+  margin-bottom: 12px;
+}
+
+.oper-logs-tabs .ant-tabs-tab {
+  padding: 8px 4px;
+  font-size: 14px;
+}
+
+.oper-logs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.oper-logs-toolbar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.oper-logs-filter-user {
+  width: 180px;
+}
+
+.oper-logs-filter-keyword {
+  width: 200px;
+}
+
+.oper-logs-filter-range {
+  width: 280px;
+}
+
+.oper-logs-table-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.oper-logs-table-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.oper-logs-table-meta {
+  color: #a8abb2;
+  font-size: 12px;
+}
+
+.oper-logs-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.oper-logs-table-wrap .ant-spin-nested-loading,
+.oper-logs-table-wrap .ant-spin-container,
+.oper-logs-table-wrap .ant-table-wrapper {
+  height: 100%;
+}
+
+.oper-logs-table-wrap .ant-spin-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.oper-logs-table-wrap .ant-table {
+  flex: 1;
+  min-height: 0;
+}
+
+.oper-logs-table-wrap .ant-pagination {
+  flex-shrink: 0;
+  margin: 12px 0 0 !important;
+}
+
+.oper-logs-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+.oper-logs-table .ant-table-tbody > tr:hover > td {
+  background: var(--brand-primary-soft, #eff6ff) !important;
+}
+
+.oper-log-json {
+  margin: 8px 0 0;
+  padding: 12px;
+  max-height: 280px;
+  overflow: auto;
+  background: #f7f8fa;
+  border: 1px solid #eef0f3;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

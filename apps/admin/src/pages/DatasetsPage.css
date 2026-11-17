@@ -1,0 +1,146 @@
+.sources-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sources-section {
+  padding: 12px 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.sources-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.sources-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.sources-stats-tip {
+  color: #a8abb2;
+  font-size: 12px;
+}
+
+.sources-tabs.ant-tabs .ant-tabs-nav {
+  margin-bottom: 12px;
+}
+
+.sources-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sources-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.sources-toolbar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sources-toolbar-filters {
+  flex: 1 1 280px;
+}
+
+.sources-toolbar-filters .ant-select.sources-filter-region {
+  flex: 1 1 140px;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.sources-search-btn {
+  color: var(--brand-primary) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+.sources-table-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sources-table-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.sources-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+.sources-table .ant-table-tbody > tr:hover > td {
+  background: var(--brand-primary-soft) !important;
+}
+
+.sources-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sources-name-main {
+  color: #303133;
+  font-weight: 600;
+}
+
+.sources-name-en {
+  color: #a8abb2;
+  font-size: 12px;
+}
+
+.sources-link {
+  color: var(--brand-primary);
+}
+
+.sources-link--muted {
+  color: #a8abb2;
+}
+
+.sources-action-link {
+  padding: 0 4px;
+  height: auto;
+  font-size: 13px;
+}
+
+.sources-action-link--warning {
+  color: #e6a23c !important;
+}
+
+.sources-action-link--warning:hover {
+  color: #cf9236 !important;
+}
+
+.sources-action-link--danger {
+  color: #f56c6c !important;
+}
+
+.sources-action-link--danger:hover {
+  color: #dd6161 !important;
+}

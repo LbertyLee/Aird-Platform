@@ -1,0 +1,183 @@
+.indicators-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.indicators-section {
+  padding: 12px 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.indicators-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.indicators-toolbar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.indicators-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.indicators-toolbar-filters {
+  flex: 1 1 280px;
+}
+
+.indicators-toolbar .ant-select.indicators-filter-select--category {
+  flex: 1 1 140px;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.indicators-toolbar .ant-select.indicators-filter-select--status {
+  flex: 1 1 120px;
+  min-width: 110px;
+  max-width: 160px;
+}
+
+.indicators-search-btn {
+  color: var(--brand-primary) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+.indicators-table-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.indicators-table-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.indicators-table-meta {
+  color: #a8abb2;
+  font-size: 12px;
+}
+
+.indicators-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+.indicators-table .indicators-code-cell {
+  white-space: nowrap;
+}
+
+.indicators-table .ant-table-tbody > tr:hover > td {
+  background: var(--brand-primary-soft) !important;
+}
+
+.indicators-action-link {
+  padding: 0 4px;
+  height: auto;
+  font-size: 13px;
+}
+
+.indicators-action-link--warning {
+  color: #e6a23c !important;
+}
+
+.indicators-action-link--warning:hover {
+  color: #cf9236 !important;
+}
+
+.indicators-def-cell {
+  max-width: 220px;
+  color: #606266;
+}
+
+.indicators-mapping-empty {
+  color: #a8abb2;
+  font-size: 13px;
+}
+
+.indicators-mapping-drawer .ant-drawer-body,
+.indicators-mapping-form-drawer .ant-drawer-body {
+  padding-top: 8px;
+}
+
+.indicators-mapping-drawer .ant-drawer-header,
+.indicators-mapping-form-drawer .ant-drawer-header {
+  border-bottom: 1px solid #ebeef5;
+}
+
+.indicators-mapping-form-drawer {
+  z-index: 1001;
+}
+
+.indicators-mapping-subtitle {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.indicators-mapping-summary {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+  background: #f5f7fa;
+}
+
+.indicators-mapping-summary-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.indicators-mapping-summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.indicators-mapping-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.indicators-mapping-count {
+  font-size: 13px;
+  color: #606266;
+}
+
+.indicators-mapping-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+.indicators-mapping-action-danger {
+  color: #f56c6c !important;
+}
+
+.indicators-mapping-action-danger:hover {
+  color: #dd6161 !important;
+}
+

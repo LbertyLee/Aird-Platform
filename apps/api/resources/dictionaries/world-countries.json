@@ -1,0 +1,3251 @@
+[
+  {
+    "term": "阿鲁巴",
+    "aliases": [
+      "Aruba",
+      "AW",
+      "ABW"
+    ],
+    "category": "country",
+    "code": "ABW"
+  },
+  {
+    "term": "阿富汗",
+    "aliases": [
+      "阿富汗伊斯兰共和国",
+      "Afghanistan",
+      "Islamic Republic of Afghanistan",
+      "AF",
+      "Afġānistān",
+      "AFG"
+    ],
+    "category": "country",
+    "code": "AFG"
+  },
+  {
+    "term": "安哥拉",
+    "aliases": [
+      "安哥拉共和国",
+      "Angola",
+      "Republic of Angola",
+      "AO",
+      "República de Angola",
+      "ʁɛpublika de an'ɡɔla",
+      "AGO"
+    ],
+    "category": "country",
+    "code": "AGO"
+  },
+  {
+    "term": "安圭拉",
+    "aliases": [
+      "Anguilla",
+      "AI",
+      "AIA"
+    ],
+    "category": "country",
+    "code": "AIA"
+  },
+  {
+    "term": "奥兰群岛",
+    "aliases": [
+      "Åland Islands",
+      "AX",
+      "Aaland",
+      "Aland",
+      "Ahvenanmaa",
+      "ALA"
+    ],
+    "category": "country",
+    "code": "ALA"
+  },
+  {
+    "term": "阿尔巴尼亚",
+    "aliases": [
+      "阿尔巴尼亚共和国",
+      "Albania",
+      "Republic of Albania",
+      "AL",
+      "Shqipëri",
+      "Shqipëria",
+      "Shqipnia",
+      "ALB"
+    ],
+    "category": "country",
+    "code": "ALB"
+  },
+  {
+    "term": "安道尔",
+    "aliases": [
+      "安道尔公国",
+      "Andorra",
+      "Principality of Andorra",
+      "AD",
+      "Principat d'Andorra",
+      "AND"
+    ],
+    "category": "country",
+    "code": "AND"
+  },
+  {
+    "term": "阿拉伯联合酋长国",
+    "aliases": [
+      "United Arab Emirates",
+      "AE",
+      "UAE",
+      "Emirates",
+      "ARE"
+    ],
+    "category": "country",
+    "code": "ARE"
+  },
+  {
+    "term": "阿根廷",
+    "aliases": [
+      "阿根廷共和国",
+      "Argentina",
+      "Argentine Republic",
+      "AR",
+      "República Argentina",
+      "ARG"
+    ],
+    "category": "country",
+    "code": "ARG"
+  },
+  {
+    "term": "亚美尼亚",
+    "aliases": [
+      "亚美尼亚共和国",
+      "Armenia",
+      "Republic of Armenia",
+      "AM",
+      "Hayastan",
+      "Հայաստանի Հանրապետություն",
+      "ARM"
+    ],
+    "category": "country",
+    "code": "ARM"
+  },
+  {
+    "term": "美属萨摩亚",
+    "aliases": [
+      "American Samoa",
+      "AS",
+      "Amerika Sāmoa",
+      "Amelika Sāmoa",
+      "Sāmoa Amelika",
+      "ASM"
+    ],
+    "category": "country",
+    "code": "ASM"
+  },
+  {
+    "term": "南极洲",
+    "aliases": [
+      "Antarctica",
+      "AQ",
+      "ATA"
+    ],
+    "category": "country",
+    "code": "ATA"
+  },
+  {
+    "term": "法国南部和南极土地",
+    "aliases": [
+      "French Southern and Antarctic Lands",
+      "Territory of the French Southern and Antarctic Lands",
+      "TF",
+      "French Southern Territories",
+      "ATF"
+    ],
+    "category": "country",
+    "code": "ATF"
+  },
+  {
+    "term": "安提瓜和巴布达",
+    "aliases": [
+      "Antigua and Barbuda",
+      "AG",
+      "ATG"
+    ],
+    "category": "country",
+    "code": "ATG"
+  },
+  {
+    "term": "澳大利亚",
+    "aliases": [
+      "澳大利亚联邦",
+      "Australia",
+      "Commonwealth of Australia",
+      "AU",
+      "AUS"
+    ],
+    "category": "country",
+    "code": "AUS"
+  },
+  {
+    "term": "奥地利",
+    "aliases": [
+      "奥地利共和国",
+      "Austria",
+      "Republic of Austria",
+      "AT",
+      "Osterreich",
+      "Oesterreich",
+      "AUT"
+    ],
+    "category": "country",
+    "code": "AUT"
+  },
+  {
+    "term": "阿塞拜疆",
+    "aliases": [
+      "阿塞拜疆共和国",
+      "Azerbaijan",
+      "Republic of Azerbaijan",
+      "AZ",
+      "Azərbaycan Respublikası",
+      "AZE"
+    ],
+    "category": "country",
+    "code": "AZE"
+  },
+  {
+    "term": "布隆迪",
+    "aliases": [
+      "布隆迪共和国",
+      "Burundi",
+      "Republic of Burundi",
+      "BI",
+      "Republika y'Uburundi",
+      "République du Burundi",
+      "BDI"
+    ],
+    "category": "country",
+    "code": "BDI"
+  },
+  {
+    "term": "比利时",
+    "aliases": [
+      "比利时王国",
+      "Belgium",
+      "Kingdom of Belgium",
+      "BE",
+      "België",
+      "Belgie",
+      "Belgien",
+      "Belgique",
+      "Koninkrijk België",
+      "Royaume de Belgique",
+      "Königreich Belgien",
+      "BEL"
+    ],
+    "category": "country",
+    "code": "BEL"
+  },
+  {
+    "term": "贝宁",
+    "aliases": [
+      "贝宁共和国",
+      "Benin",
+      "Republic of Benin",
+      "BJ",
+      "République du Bénin",
+      "BEN"
+    ],
+    "category": "country",
+    "code": "BEN"
+  },
+  {
+    "term": "布基纳法索",
+    "aliases": [
+      "Burkina Faso",
+      "BF",
+      "BFA"
+    ],
+    "category": "country",
+    "code": "BFA"
+  },
+  {
+    "term": "孟加拉国",
+    "aliases": [
+      "孟加拉人民共和国",
+      "Bangladesh",
+      "People's Republic of Bangladesh",
+      "BD",
+      "Gônôprôjatôntri Bangladesh",
+      "BGD"
+    ],
+    "category": "country",
+    "code": "BGD"
+  },
+  {
+    "term": "保加利亚",
+    "aliases": [
+      "保加利亚共和国",
+      "Bulgaria",
+      "Republic of Bulgaria",
+      "BG",
+      "Република България",
+      "BGR"
+    ],
+    "category": "country",
+    "code": "BGR"
+  },
+  {
+    "term": "巴林",
+    "aliases": [
+      "巴林王国",
+      "Bahrain",
+      "Kingdom of Bahrain",
+      "BH",
+      "Mamlakat al-Baḥrayn",
+      "BHR"
+    ],
+    "category": "country",
+    "code": "BHR"
+  },
+  {
+    "term": "巴哈马",
+    "aliases": [
+      "巴哈马联邦",
+      "Bahamas",
+      "Commonwealth of the Bahamas",
+      "BS",
+      "BHS"
+    ],
+    "category": "country",
+    "code": "BHS"
+  },
+  {
+    "term": "波斯尼亚和黑塞哥维那",
+    "aliases": [
+      "Bosnia and Herzegovina",
+      "BA",
+      "Bosnia-Herzegovina",
+      "Босна и Херцеговина",
+      "BIH"
+    ],
+    "category": "country",
+    "code": "BIH"
+  },
+  {
+    "term": "圣巴泰勒米",
+    "aliases": [
+      "圣巴泰勒米集体",
+      "Saint Barthélemy",
+      "Collectivity of Saint Barthélemy",
+      "BL",
+      "St. Barthelemy",
+      "Collectivité de Saint-Barthélemy",
+      "BLM"
+    ],
+    "category": "country",
+    "code": "BLM"
+  },
+  {
+    "term": "圣赫勒拿、阿森松和特里斯坦-达库尼亚",
+    "aliases": [
+      "Saint Helena, Ascension and Tristan da Cunha",
+      "Saint Helena",
+      "St. Helena, Ascension and Tristan da Cunha",
+      "SH",
+      "SHN"
+    ],
+    "category": "country",
+    "code": "SHN"
+  },
+  {
+    "term": "白俄罗斯",
+    "aliases": [
+      "白俄罗斯共和国",
+      "Belarus",
+      "Republic of Belarus",
+      "BY",
+      "Bielaruś",
+      "Белоруссия",
+      "Республика Белоруссия",
+      "BLR"
+    ],
+    "category": "country",
+    "code": "BLR"
+  },
+  {
+    "term": "伯利兹",
+    "aliases": [
+      "Belize",
+      "BZ",
+      "BLZ"
+    ],
+    "category": "country",
+    "code": "BLZ"
+  },
+  {
+    "term": "百慕大",
+    "aliases": [
+      "Bermuda",
+      "BM",
+      "The Islands of Bermuda",
+      "The Bermudas",
+      "Somers Isles",
+      "BMU"
+    ],
+    "category": "country",
+    "code": "BMU"
+  },
+  {
+    "term": "玻利维亚",
+    "aliases": [
+      "多民族玻利维亚国",
+      "Bolivia",
+      "Plurinational State of Bolivia",
+      "BO",
+      "Buliwya",
+      "Wuliwya",
+      "Bolivia, Plurinational State of",
+      "Estado Plurinacional de Bolivia",
+      "Buliwya Mamallaqta",
+      "Wuliwya Suyu",
+      "Tetã Volívia",
+      "BOL"
+    ],
+    "category": "country",
+    "code": "BOL"
+  },
+  {
+    "term": "荷蘭加勒比區",
+    "aliases": [
+      "Caribbean Netherlands",
+      "Bonaire, Sint Eustatius and Saba",
+      "BES islands",
+      "Bonaire Sint Eustatius and Saba",
+      "BQ",
+      "BES"
+    ],
+    "category": "country",
+    "code": "BES"
+  },
+  {
+    "term": "巴西",
+    "aliases": [
+      "巴西联邦共和国",
+      "Brazil",
+      "Federative Republic of Brazil",
+      "BR",
+      "Brasil",
+      "República Federativa do Brasil",
+      "BRA"
+    ],
+    "category": "country",
+    "code": "BRA"
+  },
+  {
+    "term": "巴巴多斯",
+    "aliases": [
+      "Barbados",
+      "BB",
+      "BRB"
+    ],
+    "category": "country",
+    "code": "BRB"
+  },
+  {
+    "term": "文莱",
+    "aliases": [
+      "文莱和平之国",
+      "Brunei",
+      "Nation of Brunei, Abode of Peace",
+      "BN",
+      "Brunei Darussalam",
+      "Nation of Brunei",
+      "the Abode of Peace",
+      "BRN"
+    ],
+    "category": "country",
+    "code": "BRN"
+  },
+  {
+    "term": "不丹",
+    "aliases": [
+      "不丹王国",
+      "Bhutan",
+      "Kingdom of Bhutan",
+      "BT",
+      "BTN"
+    ],
+    "category": "country",
+    "code": "BTN"
+  },
+  {
+    "term": "布维岛",
+    "aliases": [
+      "Bouvet Island",
+      "BV",
+      "Bouvetøya",
+      "Bouvet-øya",
+      "BVT"
+    ],
+    "category": "country",
+    "code": "BVT"
+  },
+  {
+    "term": "博茨瓦纳",
+    "aliases": [
+      "博茨瓦纳共和国",
+      "Botswana",
+      "Republic of Botswana",
+      "BW",
+      "Lefatshe la Botswana",
+      "BWA"
+    ],
+    "category": "country",
+    "code": "BWA"
+  },
+  {
+    "term": "中非共和国",
+    "aliases": [
+      "Central African Republic",
+      "CF",
+      "République centrafricaine",
+      "CAF"
+    ],
+    "category": "country",
+    "code": "CAF"
+  },
+  {
+    "term": "加拿大",
+    "aliases": [
+      "Canada",
+      "CA",
+      "CAN"
+    ],
+    "category": "country",
+    "code": "CAN"
+  },
+  {
+    "term": "科科斯",
+    "aliases": [
+      "Cocos (Keeling) Islands",
+      "Territory of the Cocos (Keeling) Islands",
+      "CC",
+      "Keeling Islands",
+      "Cocos Islands",
+      "CCK"
+    ],
+    "category": "country",
+    "code": "CCK"
+  },
+  {
+    "term": "瑞士",
+    "aliases": [
+      "瑞士联邦",
+      "Switzerland",
+      "Swiss Confederation",
+      "CH",
+      "Schweiz",
+      "Suisse",
+      "Svizzera",
+      "Svizra",
+      "CHE"
+    ],
+    "category": "country",
+    "code": "CHE"
+  },
+  {
+    "term": "智利",
+    "aliases": [
+      "智利共和国",
+      "Chile",
+      "Republic of Chile",
+      "CL",
+      "República de Chile",
+      "CHL"
+    ],
+    "category": "country",
+    "code": "CHL"
+  },
+  {
+    "term": "中国",
+    "aliases": [
+      "中华人民共和国",
+      "China",
+      "People's Republic of China",
+      "CN",
+      "Zhōngguó",
+      "Zhongguo",
+      "Zhonghua",
+      "Zhōnghuá Rénmín Gònghéguó",
+      "CHN"
+    ],
+    "category": "country",
+    "code": "CHN"
+  },
+  {
+    "term": "科特迪瓦",
+    "aliases": [
+      "科特迪瓦共和国",
+      "Ivory Coast",
+      "Republic of Côte d'Ivoire",
+      "CI",
+      "Côte d'Ivoire",
+      "Cote d'Ivoire",
+      "République de Côte d'Ivoire",
+      "CIV"
+    ],
+    "category": "country",
+    "code": "CIV"
+  },
+  {
+    "term": "喀麦隆",
+    "aliases": [
+      "喀麦隆共和国",
+      "Cameroon",
+      "Republic of Cameroon",
+      "CM",
+      "République du Cameroun",
+      "CMR"
+    ],
+    "category": "country",
+    "code": "CMR"
+  },
+  {
+    "term": "民主刚果",
+    "aliases": [
+      "刚果民主共和国",
+      "DR Congo",
+      "Democratic Republic of the Congo",
+      "CD",
+      "Congo-Kinshasa",
+      "Congo, the Democratic Republic of the",
+      "Democratic Republic of Congo",
+      "DRC",
+      "COD"
+    ],
+    "category": "country",
+    "code": "COD"
+  },
+  {
+    "term": "刚果",
+    "aliases": [
+      "刚果共和国",
+      "Congo",
+      "Republic of the Congo",
+      "CG",
+      "Congo-Brazzaville",
+      "COG"
+    ],
+    "category": "country",
+    "code": "COG"
+  },
+  {
+    "term": "库克群岛",
+    "aliases": [
+      "Cook Islands",
+      "CK",
+      "Kūki 'Āirani",
+      "COK"
+    ],
+    "category": "country",
+    "code": "COK"
+  },
+  {
+    "term": "哥伦比亚",
+    "aliases": [
+      "哥伦比亚共和国",
+      "Colombia",
+      "Republic of Colombia",
+      "CO",
+      "República de Colombia",
+      "COL"
+    ],
+    "category": "country",
+    "code": "COL"
+  },
+  {
+    "term": "科摩罗",
+    "aliases": [
+      "科摩罗联盟",
+      "Comoros",
+      "Union of the Comoros",
+      "KM",
+      "Union des Comores",
+      "Udzima wa Komori",
+      "al-Ittiḥād al-Qumurī",
+      "COM"
+    ],
+    "category": "country",
+    "code": "COM"
+  },
+  {
+    "term": "佛得角",
+    "aliases": [
+      "佛得角共和国",
+      "Cape Verde",
+      "Republic of Cabo Verde",
+      "CV",
+      "República de Cabo Verde",
+      "CPV"
+    ],
+    "category": "country",
+    "code": "CPV"
+  },
+  {
+    "term": "哥斯达黎加",
+    "aliases": [
+      "哥斯达黎加共和国",
+      "Costa Rica",
+      "Republic of Costa Rica",
+      "CR",
+      "República de Costa Rica",
+      "CRI"
+    ],
+    "category": "country",
+    "code": "CRI"
+  },
+  {
+    "term": "古巴",
+    "aliases": [
+      "古巴共和国",
+      "Cuba",
+      "Republic of Cuba",
+      "CU",
+      "República de Cuba",
+      "CUB"
+    ],
+    "category": "country",
+    "code": "CUB"
+  },
+  {
+    "term": "库拉索",
+    "aliases": [
+      "Curaçao",
+      "Country of Curaçao",
+      "CW",
+      "Curacao",
+      "Kòrsou",
+      "Land Curaçao",
+      "Pais Kòrsou",
+      "CUW"
+    ],
+    "category": "country",
+    "code": "CUW"
+  },
+  {
+    "term": "圣诞岛",
+    "aliases": [
+      "Christmas Island",
+      "Territory of Christmas Island",
+      "CX",
+      "CXR"
+    ],
+    "category": "country",
+    "code": "CXR"
+  },
+  {
+    "term": "开曼群岛",
+    "aliases": [
+      "Cayman Islands",
+      "KY",
+      "CYM"
+    ],
+    "category": "country",
+    "code": "CYM"
+  },
+  {
+    "term": "塞浦路斯",
+    "aliases": [
+      "塞浦路斯共和国",
+      "Cyprus",
+      "Republic of Cyprus",
+      "CY",
+      "Kýpros",
+      "Kıbrıs",
+      "Κυπριακή Δημοκρατία",
+      "Kıbrıs Cumhuriyeti",
+      "CYP"
+    ],
+    "category": "country",
+    "code": "CYP"
+  },
+  {
+    "term": "捷克",
+    "aliases": [
+      "捷克共和国",
+      "Czechia",
+      "Czech Republic",
+      "CZ",
+      "Česká republika",
+      "Česko",
+      "CZE"
+    ],
+    "category": "country",
+    "code": "CZE"
+  },
+  {
+    "term": "德国",
+    "aliases": [
+      "德意志联邦共和国",
+      "Germany",
+      "Federal Republic of Germany",
+      "DE",
+      "Bundesrepublik Deutschland",
+      "DEU"
+    ],
+    "category": "country",
+    "code": "DEU"
+  },
+  {
+    "term": "吉布提",
+    "aliases": [
+      "吉布提共和国",
+      "Djibouti",
+      "Republic of Djibouti",
+      "DJ",
+      "Jabuuti",
+      "Gabuuti",
+      "République de Djibouti",
+      "Gabuutih Ummuuno",
+      "Jamhuuriyadda Jabuuti",
+      "DJI"
+    ],
+    "category": "country",
+    "code": "DJI"
+  },
+  {
+    "term": "多米尼加",
+    "aliases": [
+      "多米尼加共和国",
+      "Dominica",
+      "Commonwealth of Dominica",
+      "DM",
+      "Dominique",
+      "Wai‘tu kubuli",
+      "DMA"
+    ],
+    "category": "country",
+    "code": "DMA"
+  },
+  {
+    "term": "丹麦",
+    "aliases": [
+      "丹麦王国",
+      "Denmark",
+      "Kingdom of Denmark",
+      "DK",
+      "Danmark",
+      "Kongeriget Danmark",
+      "DNK"
+    ],
+    "category": "country",
+    "code": "DNK"
+  },
+  {
+    "term": "多明尼加",
+    "aliases": [
+      "多明尼加共和国",
+      "Dominican Republic",
+      "DO",
+      "DOM"
+    ],
+    "category": "country",
+    "code": "DOM"
+  },
+  {
+    "term": "阿尔及利亚",
+    "aliases": [
+      "阿尔及利亚人民民主共和国",
+      "Algeria",
+      "People's Democratic Republic of Algeria",
+      "DZ",
+      "Dzayer",
+      "Algérie",
+      "DZA"
+    ],
+    "category": "country",
+    "code": "DZA"
+  },
+  {
+    "term": "厄瓜多尔",
+    "aliases": [
+      "厄瓜多尔共和国",
+      "Ecuador",
+      "Republic of Ecuador",
+      "EC",
+      "República del Ecuador",
+      "ECU"
+    ],
+    "category": "country",
+    "code": "ECU"
+  },
+  {
+    "term": "埃及",
+    "aliases": [
+      "阿拉伯埃及共和国",
+      "Egypt",
+      "Arab Republic of Egypt",
+      "EG",
+      "EGY"
+    ],
+    "category": "country",
+    "code": "EGY"
+  },
+  {
+    "term": "厄立特里亚",
+    "aliases": [
+      "Eritrea",
+      "State of Eritrea",
+      "ER",
+      "ሃገረ ኤርትራ",
+      "Dawlat Iritriyá",
+      "ʾErtrā",
+      "Iritriyā",
+      "ERI"
+    ],
+    "category": "country",
+    "code": "ERI"
+  },
+  {
+    "term": "西撒哈拉",
+    "aliases": [
+      "阿拉伯撒哈拉民主共和国",
+      "Western Sahara",
+      "Sahrawi Arab Democratic Republic",
+      "EH",
+      "Taneẓroft Tutrimt",
+      "ESH"
+    ],
+    "category": "country",
+    "code": "ESH"
+  },
+  {
+    "term": "西班牙",
+    "aliases": [
+      "西班牙王国",
+      "Spain",
+      "Kingdom of Spain",
+      "ES",
+      "Reino de España",
+      "ESP"
+    ],
+    "category": "country",
+    "code": "ESP"
+  },
+  {
+    "term": "爱沙尼亚",
+    "aliases": [
+      "爱沙尼亚共和国",
+      "Estonia",
+      "Republic of Estonia",
+      "EE",
+      "Eesti",
+      "Eesti Vabariik",
+      "EST"
+    ],
+    "category": "country",
+    "code": "EST"
+  },
+  {
+    "term": "埃塞俄比亚",
+    "aliases": [
+      "埃塞俄比亚联邦民主共和国",
+      "Ethiopia",
+      "Federal Democratic Republic of Ethiopia",
+      "ET",
+      "ʾĪtyōṗṗyā",
+      "የኢትዮጵያ ፌዴራላዊ ዲሞክራሲያዊ ሪፐብሊክ",
+      "ETH"
+    ],
+    "category": "country",
+    "code": "ETH"
+  },
+  {
+    "term": "芬兰",
+    "aliases": [
+      "芬兰共和国",
+      "Finland",
+      "Republic of Finland",
+      "FI",
+      "Suomi",
+      "Suomen tasavalta",
+      "Republiken Finland",
+      "FIN"
+    ],
+    "category": "country",
+    "code": "FIN"
+  },
+  {
+    "term": "斐济",
+    "aliases": [
+      "斐济共和国",
+      "Fiji",
+      "Republic of Fiji",
+      "FJ",
+      "Viti",
+      "Matanitu ko Viti",
+      "Fijī Gaṇarājya",
+      "FJI"
+    ],
+    "category": "country",
+    "code": "FJI"
+  },
+  {
+    "term": "福克兰群岛",
+    "aliases": [
+      "Falkland Islands",
+      "FK",
+      "Islas Malvinas",
+      "Falkland Islands (Malvinas)",
+      "FLK"
+    ],
+    "category": "country",
+    "code": "FLK"
+  },
+  {
+    "term": "法国",
+    "aliases": [
+      "法兰西共和国",
+      "France",
+      "French Republic",
+      "FR",
+      "République française",
+      "FRA"
+    ],
+    "category": "country",
+    "code": "FRA"
+  },
+  {
+    "term": "法罗群岛",
+    "aliases": [
+      "Faroe Islands",
+      "FO",
+      "Føroyar",
+      "Færøerne",
+      "Faeroe Islands",
+      "FRO"
+    ],
+    "category": "country",
+    "code": "FRO"
+  },
+  {
+    "term": "密克罗尼西亚",
+    "aliases": [
+      "密克罗尼西亚联邦",
+      "Micronesia",
+      "Federated States of Micronesia",
+      "FM",
+      "Micronesia, Federated States of",
+      "FSM"
+    ],
+    "category": "country",
+    "code": "FSM"
+  },
+  {
+    "term": "加蓬",
+    "aliases": [
+      "加蓬共和国",
+      "Gabon",
+      "Gabonese Republic",
+      "GA",
+      "République Gabonaise",
+      "GAB"
+    ],
+    "category": "country",
+    "code": "GAB"
+  },
+  {
+    "term": "英国",
+    "aliases": [
+      "大不列颠及北爱尔兰联合王国",
+      "United Kingdom",
+      "United Kingdom of Great Britain and Northern Ireland",
+      "GB",
+      "UK",
+      "Great Britain",
+      "GBR"
+    ],
+    "category": "country",
+    "code": "GBR"
+  },
+  {
+    "term": "格鲁吉亚",
+    "aliases": [
+      "Georgia",
+      "GE",
+      "Sakartvelo",
+      "GEO"
+    ],
+    "category": "country",
+    "code": "GEO"
+  },
+  {
+    "term": "根西岛",
+    "aliases": [
+      "Guernsey",
+      "Bailiwick of Guernsey",
+      "GG",
+      "Bailliage de Guernesey",
+      "GGY"
+    ],
+    "category": "country",
+    "code": "GGY"
+  },
+  {
+    "term": "加纳",
+    "aliases": [
+      "加纳共和国",
+      "Ghana",
+      "Republic of Ghana",
+      "GH",
+      "GHA"
+    ],
+    "category": "country",
+    "code": "GHA"
+  },
+  {
+    "term": "直布罗陀",
+    "aliases": [
+      "Gibraltar",
+      "GI",
+      "GIB"
+    ],
+    "category": "country",
+    "code": "GIB"
+  },
+  {
+    "term": "几内亚",
+    "aliases": [
+      "几内亚共和国",
+      "Guinea",
+      "Republic of Guinea",
+      "GN",
+      "République de Guinée",
+      "GIN"
+    ],
+    "category": "country",
+    "code": "GIN"
+  },
+  {
+    "term": "瓜德罗普岛",
+    "aliases": [
+      "Guadeloupe",
+      "GP",
+      "Gwadloup",
+      "GLP"
+    ],
+    "category": "country",
+    "code": "GLP"
+  },
+  {
+    "term": "冈比亚",
+    "aliases": [
+      "冈比亚共和国",
+      "Gambia",
+      "Republic of the Gambia",
+      "GM",
+      "GMB"
+    ],
+    "category": "country",
+    "code": "GMB"
+  },
+  {
+    "term": "几内亚比绍",
+    "aliases": [
+      "几内亚比绍共和国",
+      "Guinea-Bissau",
+      "Republic of Guinea-Bissau",
+      "GW",
+      "República da Guiné-Bissau",
+      "GNB"
+    ],
+    "category": "country",
+    "code": "GNB"
+  },
+  {
+    "term": "赤道几内亚",
+    "aliases": [
+      "赤道几内亚共和国",
+      "Equatorial Guinea",
+      "Republic of Equatorial Guinea",
+      "GQ",
+      "República de Guinea Ecuatorial",
+      "République de Guinée équatoriale",
+      "República da Guiné Equatorial",
+      "GNQ"
+    ],
+    "category": "country",
+    "code": "GNQ"
+  },
+  {
+    "term": "希腊",
+    "aliases": [
+      "希腊共和国",
+      "Greece",
+      "Hellenic Republic",
+      "GR",
+      "Elláda",
+      "Ελληνική Δημοκρατία",
+      "GRC"
+    ],
+    "category": "country",
+    "code": "GRC"
+  },
+  {
+    "term": "格林纳达",
+    "aliases": [
+      "Grenada",
+      "GD",
+      "GRD"
+    ],
+    "category": "country",
+    "code": "GRD"
+  },
+  {
+    "term": "格陵兰",
+    "aliases": [
+      "Greenland",
+      "GL",
+      "Grønland",
+      "GRL"
+    ],
+    "category": "country",
+    "code": "GRL"
+  },
+  {
+    "term": "危地马拉",
+    "aliases": [
+      "危地马拉共和国",
+      "Guatemala",
+      "Republic of Guatemala",
+      "GT",
+      "GTM"
+    ],
+    "category": "country",
+    "code": "GTM"
+  },
+  {
+    "term": "法属圭亚那",
+    "aliases": [
+      "French Guiana",
+      "Guiana",
+      "GF",
+      "Guyane",
+      "GUF"
+    ],
+    "category": "country",
+    "code": "GUF"
+  },
+  {
+    "term": "关岛",
+    "aliases": [
+      "Guam",
+      "GU",
+      "Guåhån",
+      "GUM"
+    ],
+    "category": "country",
+    "code": "GUM"
+  },
+  {
+    "term": "圭亚那",
+    "aliases": [
+      "圭亚那共和国",
+      "Guyana",
+      "Co-operative Republic of Guyana",
+      "GY",
+      "GUY"
+    ],
+    "category": "country",
+    "code": "GUY"
+  },
+  {
+    "term": "香港",
+    "aliases": [
+      "中华人民共和国香港特别行政区",
+      "Hong Kong",
+      "Hong Kong Special Administrative Region of the People's Republic of China",
+      "HK",
+      "HKG"
+    ],
+    "category": "country",
+    "code": "HKG"
+  },
+  {
+    "term": "赫德岛和麦当劳群岛",
+    "aliases": [
+      "Heard Island and McDonald Islands",
+      "HM",
+      "HMD"
+    ],
+    "category": "country",
+    "code": "HMD"
+  },
+  {
+    "term": "洪都拉斯",
+    "aliases": [
+      "洪都拉斯共和国",
+      "Honduras",
+      "Republic of Honduras",
+      "HN",
+      "República de Honduras",
+      "HND"
+    ],
+    "category": "country",
+    "code": "HND"
+  },
+  {
+    "term": "克罗地亚",
+    "aliases": [
+      "克罗地亚共和国",
+      "Croatia",
+      "Republic of Croatia",
+      "HR",
+      "Hrvatska",
+      "Republika Hrvatska",
+      "HRV"
+    ],
+    "category": "country",
+    "code": "HRV"
+  },
+  {
+    "term": "海地",
+    "aliases": [
+      "海地共和国",
+      "Haiti",
+      "Republic of Haiti",
+      "HT",
+      "République d'Haïti",
+      "Repiblik Ayiti",
+      "HTI"
+    ],
+    "category": "country",
+    "code": "HTI"
+  },
+  {
+    "term": "匈牙利",
+    "aliases": [
+      "Hungary",
+      "HU",
+      "HUN"
+    ],
+    "category": "country",
+    "code": "HUN"
+  },
+  {
+    "term": "印度尼西亚",
+    "aliases": [
+      "印度尼西亚共和国",
+      "Indonesia",
+      "Republic of Indonesia",
+      "ID",
+      "Republik Indonesia",
+      "IDN"
+    ],
+    "category": "country",
+    "code": "IDN"
+  },
+  {
+    "term": "马恩岛",
+    "aliases": [
+      "Isle of Man",
+      "IM",
+      "Ellan Vannin",
+      "Mann",
+      "Mannin",
+      "IMN"
+    ],
+    "category": "country",
+    "code": "IMN"
+  },
+  {
+    "term": "印度",
+    "aliases": [
+      "印度共和国",
+      "India",
+      "Republic of India",
+      "IN",
+      "Bhārat",
+      "Bharat Ganrajya",
+      "இந்தியா",
+      "IND"
+    ],
+    "category": "country",
+    "code": "IND"
+  },
+  {
+    "term": "英属印度洋领地",
+    "aliases": [
+      "British Indian Ocean Territory",
+      "IO",
+      "IOT"
+    ],
+    "category": "country",
+    "code": "IOT"
+  },
+  {
+    "term": "爱尔兰",
+    "aliases": [
+      "爱尔兰共和国",
+      "Ireland",
+      "Republic of Ireland",
+      "IE",
+      "Éire",
+      "Poblacht na hÉireann",
+      "IRL"
+    ],
+    "category": "country",
+    "code": "IRL"
+  },
+  {
+    "term": "伊朗",
+    "aliases": [
+      "伊朗伊斯兰共和国",
+      "Iran",
+      "Islamic Republic of Iran",
+      "IR",
+      "Iran, Islamic Republic of",
+      "Jomhuri-ye Eslāmi-ye Irān",
+      "IRN"
+    ],
+    "category": "country",
+    "code": "IRN"
+  },
+  {
+    "term": "伊拉克",
+    "aliases": [
+      "伊拉克共和国",
+      "Iraq",
+      "Republic of Iraq",
+      "IQ",
+      "Jumhūriyyat al-‘Irāq",
+      "IRQ"
+    ],
+    "category": "country",
+    "code": "IRQ"
+  },
+  {
+    "term": "冰岛",
+    "aliases": [
+      "Iceland",
+      "IS",
+      "Island",
+      "Republic of Iceland",
+      "Lýðveldið Ísland",
+      "ISL"
+    ],
+    "category": "country",
+    "code": "ISL"
+  },
+  {
+    "term": "以色列",
+    "aliases": [
+      "以色列国",
+      "Israel",
+      "State of Israel",
+      "IL",
+      "Medīnat Yisrā'el",
+      "ISR"
+    ],
+    "category": "country",
+    "code": "ISR"
+  },
+  {
+    "term": "意大利",
+    "aliases": [
+      "意大利共和国",
+      "Italy",
+      "Italian Republic",
+      "IT",
+      "Repubblica italiana",
+      "ITA"
+    ],
+    "category": "country",
+    "code": "ITA"
+  },
+  {
+    "term": "牙买加",
+    "aliases": [
+      "Jamaica",
+      "JM",
+      "JAM"
+    ],
+    "category": "country",
+    "code": "JAM"
+  },
+  {
+    "term": "泽西岛",
+    "aliases": [
+      "Jersey",
+      "Bailiwick of Jersey",
+      "JE",
+      "Bailliage de Jersey",
+      "Bailliage dé Jèrri",
+      "JEY"
+    ],
+    "category": "country",
+    "code": "JEY"
+  },
+  {
+    "term": "约旦",
+    "aliases": [
+      "约旦哈希姆王国",
+      "Jordan",
+      "Hashemite Kingdom of Jordan",
+      "JO",
+      "al-Mamlakah al-Urdunīyah al-Hāshimīyah",
+      "JOR"
+    ],
+    "category": "country",
+    "code": "JOR"
+  },
+  {
+    "term": "日本",
+    "aliases": [
+      "日本国",
+      "Japan",
+      "JP",
+      "Nippon",
+      "Nihon",
+      "JPN"
+    ],
+    "category": "country",
+    "code": "JPN"
+  },
+  {
+    "term": "哈萨克斯坦",
+    "aliases": [
+      "哈萨克斯坦共和国",
+      "Kazakhstan",
+      "Republic of Kazakhstan",
+      "KZ",
+      "Qazaqstan",
+      "Казахстан",
+      "Қазақстан Республикасы",
+      "Qazaqstan Respublïkası",
+      "Республика Казахстан",
+      "Respublika Kazakhstan",
+      "KAZ"
+    ],
+    "category": "country",
+    "code": "KAZ"
+  },
+  {
+    "term": "肯尼亚",
+    "aliases": [
+      "肯尼亚共和国",
+      "Kenya",
+      "Republic of Kenya",
+      "KE",
+      "Jamhuri ya Kenya",
+      "KEN"
+    ],
+    "category": "country",
+    "code": "KEN"
+  },
+  {
+    "term": "吉尔吉斯斯坦",
+    "aliases": [
+      "吉尔吉斯斯坦共和国",
+      "Kyrgyzstan",
+      "Kyrgyz Republic",
+      "KG",
+      "Киргизия",
+      "Кыргыз Республикасы",
+      "Kyrgyz Respublikasy",
+      "KGZ"
+    ],
+    "category": "country",
+    "code": "KGZ"
+  },
+  {
+    "term": "柬埔寨",
+    "aliases": [
+      "柬埔寨王国",
+      "Cambodia",
+      "Kingdom of Cambodia",
+      "KH",
+      "KHM"
+    ],
+    "category": "country",
+    "code": "KHM"
+  },
+  {
+    "term": "基里巴斯",
+    "aliases": [
+      "基里巴斯共和国",
+      "Kiribati",
+      "Independent and Sovereign Republic of Kiribati",
+      "KI",
+      "Republic of Kiribati",
+      "Ribaberiki Kiribati",
+      "KIR"
+    ],
+    "category": "country",
+    "code": "KIR"
+  },
+  {
+    "term": "圣基茨和尼维斯",
+    "aliases": [
+      "圣克里斯托弗和尼维斯联邦",
+      "Saint Kitts and Nevis",
+      "Federation of Saint Christopher and Nevis",
+      "KN",
+      "KNA"
+    ],
+    "category": "country",
+    "code": "KNA"
+  },
+  {
+    "term": "韩国",
+    "aliases": [
+      "大韩民国",
+      "South Korea",
+      "Republic of Korea",
+      "KR",
+      "Korea, Republic of",
+      "남한",
+      "남조선",
+      "KOR"
+    ],
+    "category": "country",
+    "code": "KOR"
+  },
+  {
+    "term": "科索沃",
+    "aliases": [
+      "科索沃共和国",
+      "Kosovo",
+      "Republic of Kosovo",
+      "XK",
+      "Република Косово",
+      "UNK"
+    ],
+    "category": "country",
+    "code": "UNK"
+  },
+  {
+    "term": "科威特",
+    "aliases": [
+      "科威特国",
+      "Kuwait",
+      "State of Kuwait",
+      "KW",
+      "Dawlat al-Kuwait",
+      "KWT"
+    ],
+    "category": "country",
+    "code": "KWT"
+  },
+  {
+    "term": "老挝",
+    "aliases": [
+      "老挝人民民主共和国",
+      "Laos",
+      "Lao People's Democratic Republic",
+      "LA",
+      "Lao",
+      "Sathalanalat Paxathipatai Paxaxon Lao",
+      "LAO"
+    ],
+    "category": "country",
+    "code": "LAO"
+  },
+  {
+    "term": "黎巴嫩",
+    "aliases": [
+      "黎巴嫩共和国",
+      "Lebanon",
+      "Lebanese Republic",
+      "LB",
+      "Al-Jumhūrīyah Al-Libnānīyah",
+      "LBN"
+    ],
+    "category": "country",
+    "code": "LBN"
+  },
+  {
+    "term": "利比里亚",
+    "aliases": [
+      "利比里亚共和国",
+      "Liberia",
+      "Republic of Liberia",
+      "LR",
+      "LBR"
+    ],
+    "category": "country",
+    "code": "LBR"
+  },
+  {
+    "term": "利比亚",
+    "aliases": [
+      "利比亚国",
+      "Libya",
+      "State of Libya",
+      "LY",
+      "Dawlat Libya",
+      "LBY"
+    ],
+    "category": "country",
+    "code": "LBY"
+  },
+  {
+    "term": "圣卢西亚",
+    "aliases": [
+      "Saint Lucia",
+      "LC",
+      "LCA"
+    ],
+    "category": "country",
+    "code": "LCA"
+  },
+  {
+    "term": "列支敦士登",
+    "aliases": [
+      "列支敦士登公国",
+      "Liechtenstein",
+      "Principality of Liechtenstein",
+      "LI",
+      "Fürstentum Liechtenstein",
+      "LIE"
+    ],
+    "category": "country",
+    "code": "LIE"
+  },
+  {
+    "term": "斯里兰卡",
+    "aliases": [
+      "斯里兰卡民主社会主义共和国",
+      "Sri Lanka",
+      "Democratic Socialist Republic of Sri Lanka",
+      "LK",
+      "ilaṅkai",
+      "LKA"
+    ],
+    "category": "country",
+    "code": "LKA"
+  },
+  {
+    "term": "莱索托",
+    "aliases": [
+      "莱索托王国",
+      "Lesotho",
+      "Kingdom of Lesotho",
+      "LS",
+      "Muso oa Lesotho",
+      "LSO"
+    ],
+    "category": "country",
+    "code": "LSO"
+  },
+  {
+    "term": "立陶宛",
+    "aliases": [
+      "立陶宛共和国",
+      "Lithuania",
+      "Republic of Lithuania",
+      "LT",
+      "Lietuvos Respublika",
+      "LTU"
+    ],
+    "category": "country",
+    "code": "LTU"
+  },
+  {
+    "term": "卢森堡",
+    "aliases": [
+      "卢森堡大公国",
+      "Luxembourg",
+      "Grand Duchy of Luxembourg",
+      "LU",
+      "Grand-Duché de Luxembourg",
+      "Großherzogtum Luxemburg",
+      "Groussherzogtum Lëtzebuerg",
+      "LUX"
+    ],
+    "category": "country",
+    "code": "LUX"
+  },
+  {
+    "term": "拉脱维亚",
+    "aliases": [
+      "拉脱维亚共和国",
+      "Latvia",
+      "Republic of Latvia",
+      "LV",
+      "Latvijas Republika",
+      "LVA"
+    ],
+    "category": "country",
+    "code": "LVA"
+  },
+  {
+    "term": "澳门",
+    "aliases": [
+      "中华人民共和国澳门特别行政区",
+      "Macau",
+      "Macao Special Administrative Region of the People's Republic of China",
+      "MO",
+      "Macao",
+      "中華人民共和國澳門特別行政區",
+      "Região Administrativa Especial de Macau da República Popular da China",
+      "MAC"
+    ],
+    "category": "country",
+    "code": "MAC"
+  },
+  {
+    "term": "圣马丁",
+    "aliases": [
+      "Saint Martin",
+      "MF",
+      "Collectivity of Saint Martin",
+      "Collectivité de Saint-Martin",
+      "Saint Martin (French part)",
+      "MAF"
+    ],
+    "category": "country",
+    "code": "MAF"
+  },
+  {
+    "term": "摩洛哥",
+    "aliases": [
+      "摩洛哥王国",
+      "Morocco",
+      "Kingdom of Morocco",
+      "MA",
+      "Al-Mamlakah al-Maġribiyah",
+      "MAR"
+    ],
+    "category": "country",
+    "code": "MAR"
+  },
+  {
+    "term": "摩纳哥",
+    "aliases": [
+      "摩纳哥公国",
+      "Monaco",
+      "Principality of Monaco",
+      "MC",
+      "Principauté de Monaco",
+      "MCO"
+    ],
+    "category": "country",
+    "code": "MCO"
+  },
+  {
+    "term": "摩尔多瓦",
+    "aliases": [
+      "摩尔多瓦共和国",
+      "Moldova",
+      "Republic of Moldova",
+      "MD",
+      "Moldova, Republic of",
+      "Republica Moldova",
+      "MDA"
+    ],
+    "category": "country",
+    "code": "MDA"
+  },
+  {
+    "term": "马达加斯加",
+    "aliases": [
+      "马达加斯加共和国",
+      "Madagascar",
+      "Republic of Madagascar",
+      "MG",
+      "Repoblikan'i Madagasikara",
+      "République de Madagascar",
+      "MDG"
+    ],
+    "category": "country",
+    "code": "MDG"
+  },
+  {
+    "term": "马尔代夫",
+    "aliases": [
+      "马尔代夫共和国",
+      "Maldives",
+      "Republic of the Maldives",
+      "MV",
+      "Maldive Islands",
+      "Dhivehi Raajjeyge Jumhooriyya",
+      "MDV"
+    ],
+    "category": "country",
+    "code": "MDV"
+  },
+  {
+    "term": "墨西哥",
+    "aliases": [
+      "墨西哥合众国",
+      "Mexico",
+      "United Mexican States",
+      "MX",
+      "Mexicanos",
+      "Estados Unidos Mexicanos",
+      "MEX"
+    ],
+    "category": "country",
+    "code": "MEX"
+  },
+  {
+    "term": "马绍尔群岛",
+    "aliases": [
+      "马绍尔群岛共和国",
+      "Marshall Islands",
+      "Republic of the Marshall Islands",
+      "MH",
+      "Aolepān Aorōkin M̧ajeļ",
+      "MHL"
+    ],
+    "category": "country",
+    "code": "MHL"
+  },
+  {
+    "term": "北馬其頓",
+    "aliases": [
+      "北馬其頓共和國",
+      "North Macedonia",
+      "Republic of North Macedonia",
+      "MK",
+      "The former Yugoslav Republic of Macedonia",
+      "Macedonia, The Former Yugoslav Republic of",
+      "Република Северна Македонија",
+      "Macedonia",
+      "MKD"
+    ],
+    "category": "country",
+    "code": "MKD"
+  },
+  {
+    "term": "马里",
+    "aliases": [
+      "马里共和国",
+      "Mali",
+      "Republic of Mali",
+      "ML",
+      "République du Mali",
+      "MLI"
+    ],
+    "category": "country",
+    "code": "MLI"
+  },
+  {
+    "term": "马耳他",
+    "aliases": [
+      "马耳他共和国",
+      "Malta",
+      "Republic of Malta",
+      "MT",
+      "Repubblika ta' Malta",
+      "MLT"
+    ],
+    "category": "country",
+    "code": "MLT"
+  },
+  {
+    "term": "缅甸",
+    "aliases": [
+      "缅甸联邦共和国",
+      "Myanmar",
+      "Republic of the Union of Myanmar",
+      "MM",
+      "Burma",
+      "Pyidaunzu Thanmăda Myăma Nainngandaw",
+      "MMR"
+    ],
+    "category": "country",
+    "code": "MMR"
+  },
+  {
+    "term": "黑山",
+    "aliases": [
+      "Montenegro",
+      "ME",
+      "Crna Gora",
+      "MNE"
+    ],
+    "category": "country",
+    "code": "MNE"
+  },
+  {
+    "term": "蒙古",
+    "aliases": [
+      "Mongolia",
+      "MN",
+      "MNG"
+    ],
+    "category": "country",
+    "code": "MNG"
+  },
+  {
+    "term": "北马里亚纳群岛",
+    "aliases": [
+      "Northern Mariana Islands",
+      "Commonwealth of the Northern Mariana Islands",
+      "MP",
+      "Sankattan Siha Na Islas Mariånas",
+      "MNP"
+    ],
+    "category": "country",
+    "code": "MNP"
+  },
+  {
+    "term": "莫桑比克",
+    "aliases": [
+      "莫桑比克共和国",
+      "Mozambique",
+      "Republic of Mozambique",
+      "MZ",
+      "República de Moçambique",
+      "MOZ"
+    ],
+    "category": "country",
+    "code": "MOZ"
+  },
+  {
+    "term": "毛里塔尼亚",
+    "aliases": [
+      "毛里塔尼亚伊斯兰共和国",
+      "Mauritania",
+      "Islamic Republic of Mauritania",
+      "MR",
+      "al-Jumhūriyyah al-ʾIslāmiyyah al-Mūrītāniyyah",
+      "MRT"
+    ],
+    "category": "country",
+    "code": "MRT"
+  },
+  {
+    "term": "蒙特塞拉特",
+    "aliases": [
+      "Montserrat",
+      "MS",
+      "MSR"
+    ],
+    "category": "country",
+    "code": "MSR"
+  },
+  {
+    "term": "马提尼克",
+    "aliases": [
+      "Martinique",
+      "MQ",
+      "MTQ"
+    ],
+    "category": "country",
+    "code": "MTQ"
+  },
+  {
+    "term": "毛里求斯",
+    "aliases": [
+      "毛里求斯共和国",
+      "Mauritius",
+      "Republic of Mauritius",
+      "MU",
+      "République de Maurice",
+      "MUS"
+    ],
+    "category": "country",
+    "code": "MUS"
+  },
+  {
+    "term": "马拉维",
+    "aliases": [
+      "马拉维共和国",
+      "Malawi",
+      "Republic of Malawi",
+      "MW",
+      "MWI"
+    ],
+    "category": "country",
+    "code": "MWI"
+  },
+  {
+    "term": "马来西亚",
+    "aliases": [
+      "Malaysia",
+      "MY",
+      "MYS"
+    ],
+    "category": "country",
+    "code": "MYS"
+  },
+  {
+    "term": "马约特",
+    "aliases": [
+      "Mayotte",
+      "Department of Mayotte",
+      "YT",
+      "Département de Mayotte",
+      "MYT"
+    ],
+    "category": "country",
+    "code": "MYT"
+  },
+  {
+    "term": "纳米比亚",
+    "aliases": [
+      "纳米比亚共和国",
+      "Namibia",
+      "Republic of Namibia",
+      "NA",
+      "Namibië",
+      "NAM"
+    ],
+    "category": "country",
+    "code": "NAM"
+  },
+  {
+    "term": "新喀里多尼亚",
+    "aliases": [
+      "New Caledonia",
+      "NC",
+      "NCL"
+    ],
+    "category": "country",
+    "code": "NCL"
+  },
+  {
+    "term": "尼日尔",
+    "aliases": [
+      "尼日尔共和国",
+      "Niger",
+      "Republic of Niger",
+      "NE",
+      "Nijar",
+      "NER"
+    ],
+    "category": "country",
+    "code": "NER"
+  },
+  {
+    "term": "诺福克岛",
+    "aliases": [
+      "Norfolk Island",
+      "Territory of Norfolk Island",
+      "NF",
+      "Teratri of Norf'k Ailen",
+      "NFK"
+    ],
+    "category": "country",
+    "code": "NFK"
+  },
+  {
+    "term": "尼日利亚",
+    "aliases": [
+      "尼日利亚联邦共和国",
+      "Nigeria",
+      "Federal Republic of Nigeria",
+      "NG",
+      "Nijeriya",
+      "Naíjíríà",
+      "NGA"
+    ],
+    "category": "country",
+    "code": "NGA"
+  },
+  {
+    "term": "尼加拉瓜",
+    "aliases": [
+      "尼加拉瓜共和国",
+      "Nicaragua",
+      "Republic of Nicaragua",
+      "NI",
+      "República de Nicaragua",
+      "NIC"
+    ],
+    "category": "country",
+    "code": "NIC"
+  },
+  {
+    "term": "纽埃",
+    "aliases": [
+      "Niue",
+      "NU",
+      "NIU"
+    ],
+    "category": "country",
+    "code": "NIU"
+  },
+  {
+    "term": "荷兰",
+    "aliases": [
+      "Netherlands",
+      "Kingdom of the Netherlands",
+      "NL",
+      "Holland",
+      "Nederland",
+      "The Netherlands",
+      "NLD"
+    ],
+    "category": "country",
+    "code": "NLD"
+  },
+  {
+    "term": "挪威",
+    "aliases": [
+      "挪威王国",
+      "Norway",
+      "Kingdom of Norway",
+      "NO",
+      "Norge",
+      "Noreg",
+      "Kongeriket Norge",
+      "Kongeriket Noreg",
+      "NOR"
+    ],
+    "category": "country",
+    "code": "NOR"
+  },
+  {
+    "term": "尼泊尔",
+    "aliases": [
+      "尼泊尔联邦民主共和国",
+      "Nepal",
+      "Federal Democratic Republic of Nepal",
+      "NP",
+      "Loktāntrik Ganatantra Nepāl",
+      "NPL"
+    ],
+    "category": "country",
+    "code": "NPL"
+  },
+  {
+    "term": "瑙鲁",
+    "aliases": [
+      "瑙鲁共和国",
+      "Nauru",
+      "Republic of Nauru",
+      "NR",
+      "Naoero",
+      "Pleasant Island",
+      "Ripublik Naoero",
+      "NRU"
+    ],
+    "category": "country",
+    "code": "NRU"
+  },
+  {
+    "term": "新西兰",
+    "aliases": [
+      "New Zealand",
+      "NZ",
+      "Aotearoa",
+      "NZL"
+    ],
+    "category": "country",
+    "code": "NZL"
+  },
+  {
+    "term": "阿曼",
+    "aliases": [
+      "阿曼苏丹国",
+      "Oman",
+      "Sultanate of Oman",
+      "OM",
+      "Salṭanat ʻUmān",
+      "OMN"
+    ],
+    "category": "country",
+    "code": "OMN"
+  },
+  {
+    "term": "巴基斯坦",
+    "aliases": [
+      "巴基斯坦伊斯兰共和国",
+      "Pakistan",
+      "Islamic Republic of Pakistan",
+      "PK",
+      "Pākistān",
+      "Islāmī Jumhūriya'eh Pākistān",
+      "PAK"
+    ],
+    "category": "country",
+    "code": "PAK"
+  },
+  {
+    "term": "巴拿马",
+    "aliases": [
+      "巴拿马共和国",
+      "Panama",
+      "Republic of Panama",
+      "PA",
+      "República de Panamá",
+      "PAN"
+    ],
+    "category": "country",
+    "code": "PAN"
+  },
+  {
+    "term": "皮特凯恩群岛",
+    "aliases": [
+      "Pitcairn Islands",
+      "Pitcairn Group of Islands",
+      "PN",
+      "Pitcairn",
+      "Pitcairn Henderson Ducie and Oeno Islands",
+      "PCN"
+    ],
+    "category": "country",
+    "code": "PCN"
+  },
+  {
+    "term": "秘鲁",
+    "aliases": [
+      "秘鲁共和国",
+      "Peru",
+      "Republic of Peru",
+      "PE",
+      "República del Perú",
+      "PER"
+    ],
+    "category": "country",
+    "code": "PER"
+  },
+  {
+    "term": "菲律宾",
+    "aliases": [
+      "菲律宾共和国",
+      "Philippines",
+      "Republic of the Philippines",
+      "PH",
+      "Repúblika ng Pilipinas",
+      "PHL"
+    ],
+    "category": "country",
+    "code": "PHL"
+  },
+  {
+    "term": "帕劳",
+    "aliases": [
+      "帕劳共和国",
+      "Palau",
+      "Republic of Palau",
+      "PW",
+      "Beluu er a Belau",
+      "PLW"
+    ],
+    "category": "country",
+    "code": "PLW"
+  },
+  {
+    "term": "巴布亚新几内亚",
+    "aliases": [
+      "Papua New Guinea",
+      "Independent State of Papua New Guinea",
+      "PG",
+      "Independen Stet bilong Papua Niugini",
+      "PNG"
+    ],
+    "category": "country",
+    "code": "PNG"
+  },
+  {
+    "term": "波兰",
+    "aliases": [
+      "波兰共和国",
+      "Poland",
+      "Republic of Poland",
+      "PL",
+      "Rzeczpospolita Polska",
+      "POL"
+    ],
+    "category": "country",
+    "code": "POL"
+  },
+  {
+    "term": "波多黎各",
+    "aliases": [
+      "波多黎各联邦",
+      "Puerto Rico",
+      "Commonwealth of Puerto Rico",
+      "PR",
+      "Estado Libre Asociado de Puerto Rico",
+      "PRI"
+    ],
+    "category": "country",
+    "code": "PRI"
+  },
+  {
+    "term": "朝鲜",
+    "aliases": [
+      "朝鲜人民民主共和国",
+      "North Korea",
+      "Democratic People's Republic of Korea",
+      "KP",
+      "DPRK",
+      "조선민주주의인민공화국",
+      "Chosŏn Minjujuŭi Inmin Konghwaguk",
+      "Korea, Democratic People's Republic of",
+      "북한",
+      "북조선",
+      "PRK"
+    ],
+    "category": "country",
+    "code": "PRK"
+  },
+  {
+    "term": "葡萄牙",
+    "aliases": [
+      "葡萄牙共和国",
+      "Portugal",
+      "Portuguese Republic",
+      "PT",
+      "Portuguesa",
+      "República Portuguesa",
+      "PRT"
+    ],
+    "category": "country",
+    "code": "PRT"
+  },
+  {
+    "term": "巴拉圭",
+    "aliases": [
+      "巴拉圭共和国",
+      "Paraguay",
+      "Republic of Paraguay",
+      "PY",
+      "República del Paraguay",
+      "Tetã Paraguái",
+      "PRY"
+    ],
+    "category": "country",
+    "code": "PRY"
+  },
+  {
+    "term": "巴勒斯坦",
+    "aliases": [
+      "巴勒斯坦国",
+      "Palestine",
+      "State of Palestine",
+      "PS",
+      "Palestine, State of",
+      "Dawlat Filasṭin",
+      "PSE"
+    ],
+    "category": "country",
+    "code": "PSE"
+  },
+  {
+    "term": "法属波利尼西亚",
+    "aliases": [
+      "French Polynesia",
+      "PF",
+      "Polynésie française",
+      "Pōrīnetia Farāni",
+      "PYF"
+    ],
+    "category": "country",
+    "code": "PYF"
+  },
+  {
+    "term": "卡塔尔",
+    "aliases": [
+      "卡塔尔国",
+      "Qatar",
+      "State of Qatar",
+      "QA",
+      "Dawlat Qaṭar",
+      "QAT"
+    ],
+    "category": "country",
+    "code": "QAT"
+  },
+  {
+    "term": "留尼旺岛",
+    "aliases": [
+      "Réunion",
+      "Réunion Island",
+      "RE",
+      "Reunion",
+      "REU"
+    ],
+    "category": "country",
+    "code": "REU"
+  },
+  {
+    "term": "罗马尼亚",
+    "aliases": [
+      "Romania",
+      "RO",
+      "Rumania",
+      "Roumania",
+      "România",
+      "ROU"
+    ],
+    "category": "country",
+    "code": "ROU"
+  },
+  {
+    "term": "俄罗斯",
+    "aliases": [
+      "俄罗斯联邦",
+      "Russia",
+      "Russian Federation",
+      "RU",
+      "Российская Федерация",
+      "RUS"
+    ],
+    "category": "country",
+    "code": "RUS"
+  },
+  {
+    "term": "卢旺达",
+    "aliases": [
+      "卢旺达共和国",
+      "Rwanda",
+      "Republic of Rwanda",
+      "RW",
+      "Repubulika y'u Rwanda",
+      "République du Rwanda",
+      "RWA"
+    ],
+    "category": "country",
+    "code": "RWA"
+  },
+  {
+    "term": "沙特阿拉伯",
+    "aliases": [
+      "沙特阿拉伯王国",
+      "Saudi Arabia",
+      "Kingdom of Saudi Arabia",
+      "Saudi",
+      "SA",
+      "Al-Mamlakah al-‘Arabiyyah as-Su‘ūdiyyah",
+      "SAU"
+    ],
+    "category": "country",
+    "code": "SAU"
+  },
+  {
+    "term": "苏丹",
+    "aliases": [
+      "苏丹共和国",
+      "Sudan",
+      "Republic of the Sudan",
+      "SD",
+      "Jumhūrīyat as-Sūdān",
+      "SDN"
+    ],
+    "category": "country",
+    "code": "SDN"
+  },
+  {
+    "term": "塞内加尔",
+    "aliases": [
+      "塞内加尔共和国",
+      "Senegal",
+      "Republic of Senegal",
+      "SN",
+      "République du Sénégal",
+      "SEN"
+    ],
+    "category": "country",
+    "code": "SEN"
+  },
+  {
+    "term": "新加坡",
+    "aliases": [
+      "新加坡共和国",
+      "Singapore",
+      "Republic of Singapore",
+      "SG",
+      "Singapura",
+      "Republik Singapura",
+      "SGP"
+    ],
+    "category": "country",
+    "code": "SGP"
+  },
+  {
+    "term": "南乔治亚",
+    "aliases": [
+      "南乔治亚岛和南桑威奇群岛",
+      "South Georgia",
+      "South Georgia and the South Sandwich Islands",
+      "GS",
+      "SGS"
+    ],
+    "category": "country",
+    "code": "SGS"
+  },
+  {
+    "term": "斯瓦尔巴特",
+    "aliases": [
+      "Svalbard and Jan Mayen",
+      "Svalbard og Jan Mayen",
+      "SJ",
+      "Svalbard and Jan Mayen Islands",
+      "SJM"
+    ],
+    "category": "country",
+    "code": "SJM"
+  },
+  {
+    "term": "所罗门群岛",
+    "aliases": [
+      "Solomon Islands",
+      "SB",
+      "SLB"
+    ],
+    "category": "country",
+    "code": "SLB"
+  },
+  {
+    "term": "塞拉利昂",
+    "aliases": [
+      "塞拉利昂共和国",
+      "Sierra Leone",
+      "Republic of Sierra Leone",
+      "SL",
+      "SLE"
+    ],
+    "category": "country",
+    "code": "SLE"
+  },
+  {
+    "term": "萨尔瓦多",
+    "aliases": [
+      "萨尔瓦多共和国",
+      "El Salvador",
+      "Republic of El Salvador",
+      "SV",
+      "República de El Salvador",
+      "SLV"
+    ],
+    "category": "country",
+    "code": "SLV"
+  },
+  {
+    "term": "圣马力诺",
+    "aliases": [
+      "圣马力诺共和国",
+      "San Marino",
+      "Most Serene Republic of San Marino",
+      "SM",
+      "Republic of San Marino",
+      "Repubblica di San Marino",
+      "SMR"
+    ],
+    "category": "country",
+    "code": "SMR"
+  },
+  {
+    "term": "索马里",
+    "aliases": [
+      "索马里共和国",
+      "Somalia",
+      "Federal Republic of Somalia",
+      "SO",
+      "aṣ-Ṣūmāl",
+      "Jamhuuriyadda Federaalka Soomaaliya",
+      "Jumhūriyyat aṣ-Ṣūmāl al-Fiderāliyya",
+      "SOM"
+    ],
+    "category": "country",
+    "code": "SOM"
+  },
+  {
+    "term": "圣皮埃尔和密克隆",
+    "aliases": [
+      "Saint Pierre and Miquelon",
+      "PM",
+      "Collectivité territoriale de Saint-Pierre-et-Miquelon",
+      "SPM"
+    ],
+    "category": "country",
+    "code": "SPM"
+  },
+  {
+    "term": "塞尔维亚",
+    "aliases": [
+      "塞尔维亚共和国",
+      "Serbia",
+      "Republic of Serbia",
+      "RS",
+      "Srbija",
+      "Republika Srbija",
+      "Србија",
+      "Република Србија",
+      "SRB"
+    ],
+    "category": "country",
+    "code": "SRB"
+  },
+  {
+    "term": "南苏丹",
+    "aliases": [
+      "南苏丹共和国",
+      "South Sudan",
+      "Republic of South Sudan",
+      "SS",
+      "SSD"
+    ],
+    "category": "country",
+    "code": "SSD"
+  },
+  {
+    "term": "圣多美和普林西比",
+    "aliases": [
+      "圣多美和普林西比民主共和国",
+      "São Tomé and Príncipe",
+      "Democratic Republic of São Tomé and Príncipe",
+      "ST",
+      "Sao Tome and Principe",
+      "República Democrática de São Tomé e Príncipe",
+      "STP"
+    ],
+    "category": "country",
+    "code": "STP"
+  },
+  {
+    "term": "苏里南",
+    "aliases": [
+      "苏里南共和国",
+      "Suriname",
+      "Republic of Suriname",
+      "SR",
+      "Sarnam",
+      "Sranangron",
+      "Republiek Suriname",
+      "SUR"
+    ],
+    "category": "country",
+    "code": "SUR"
+  },
+  {
+    "term": "斯洛伐克",
+    "aliases": [
+      "斯洛伐克共和国",
+      "Slovakia",
+      "Slovak Republic",
+      "SK",
+      "Slovenská republika",
+      "SVK"
+    ],
+    "category": "country",
+    "code": "SVK"
+  },
+  {
+    "term": "斯洛文尼亚",
+    "aliases": [
+      "斯洛文尼亚共和国",
+      "Slovenia",
+      "Republic of Slovenia",
+      "SI",
+      "Republika Slovenija",
+      "SVN"
+    ],
+    "category": "country",
+    "code": "SVN"
+  },
+  {
+    "term": "瑞典",
+    "aliases": [
+      "瑞典王国",
+      "Sweden",
+      "Kingdom of Sweden",
+      "SE",
+      "Konungariket Sverige",
+      "SWE"
+    ],
+    "category": "country",
+    "code": "SWE"
+  },
+  {
+    "term": "斯威士兰",
+    "aliases": [
+      "斯威士兰王国",
+      "Eswatini",
+      "Kingdom of Eswatini",
+      "SZ",
+      "Swaziland",
+      "weSwatini",
+      "Swatini",
+      "Ngwane",
+      "Umbuso weSwatini",
+      "SWZ"
+    ],
+    "category": "country",
+    "code": "SWZ"
+  },
+  {
+    "term": "圣马丁岛",
+    "aliases": [
+      "Sint Maarten",
+      "SX",
+      "Sint Maarten (Dutch part)",
+      "SXM"
+    ],
+    "category": "country",
+    "code": "SXM"
+  },
+  {
+    "term": "塞舌尔",
+    "aliases": [
+      "塞舌尔共和国",
+      "Seychelles",
+      "Republic of Seychelles",
+      "SC",
+      "Repiblik Sesel",
+      "République des Seychelles",
+      "SYC"
+    ],
+    "category": "country",
+    "code": "SYC"
+  },
+  {
+    "term": "叙利亚",
+    "aliases": [
+      "叙利亚阿拉伯共和国",
+      "Syria",
+      "Syrian Arab Republic",
+      "SY",
+      "Al-Jumhūrīyah Al-ʻArabīyah As-Sūrīyah",
+      "SYR"
+    ],
+    "category": "country",
+    "code": "SYR"
+  },
+  {
+    "term": "特克斯和凯科斯群岛",
+    "aliases": [
+      "Turks and Caicos Islands",
+      "TC",
+      "TCA"
+    ],
+    "category": "country",
+    "code": "TCA"
+  },
+  {
+    "term": "乍得",
+    "aliases": [
+      "乍得共和国",
+      "Chad",
+      "Republic of Chad",
+      "TD",
+      "Tchad",
+      "République du Tchad",
+      "TCD"
+    ],
+    "category": "country",
+    "code": "TCD"
+  },
+  {
+    "term": "多哥",
+    "aliases": [
+      "多哥共和国",
+      "Togo",
+      "Togolese Republic",
+      "TG",
+      "Togolese",
+      "République Togolaise",
+      "TGO"
+    ],
+    "category": "country",
+    "code": "TGO"
+  },
+  {
+    "term": "泰国",
+    "aliases": [
+      "泰王国",
+      "Thailand",
+      "Kingdom of Thailand",
+      "TH",
+      "Prathet",
+      "Thai",
+      "ราชอาณาจักรไทย",
+      "Ratcha Anachak Thai",
+      "THA"
+    ],
+    "category": "country",
+    "code": "THA"
+  },
+  {
+    "term": "塔吉克斯坦",
+    "aliases": [
+      "塔吉克斯坦共和国",
+      "Tajikistan",
+      "Republic of Tajikistan",
+      "TJ",
+      "Toçikiston",
+      "Ҷумҳурии Тоҷикистон",
+      "Çumhuriyi Toçikiston",
+      "TJK"
+    ],
+    "category": "country",
+    "code": "TJK"
+  },
+  {
+    "term": "托克劳",
+    "aliases": [
+      "Tokelau",
+      "TK",
+      "TKL"
+    ],
+    "category": "country",
+    "code": "TKL"
+  },
+  {
+    "term": "土库曼斯坦",
+    "aliases": [
+      "Turkmenistan",
+      "TM",
+      "TKM"
+    ],
+    "category": "country",
+    "code": "TKM"
+  },
+  {
+    "term": "东帝汶",
+    "aliases": [
+      "东帝汶民主共和国",
+      "Timor-Leste",
+      "Democratic Republic of Timor-Leste",
+      "TL",
+      "East Timor",
+      "Timor",
+      "República Democrática de Timor-Leste",
+      "Repúblika Demokrátika Timór-Leste",
+      "Timór Lorosa'e",
+      "Timor Lorosae",
+      "TLS"
+    ],
+    "category": "country",
+    "code": "TLS"
+  },
+  {
+    "term": "汤加",
+    "aliases": [
+      "汤加王国",
+      "Tonga",
+      "Kingdom of Tonga",
+      "TO",
+      "TON"
+    ],
+    "category": "country",
+    "code": "TON"
+  },
+  {
+    "term": "特立尼达和多巴哥",
+    "aliases": [
+      "特立尼达和多巴哥共和国",
+      "Trinidad and Tobago",
+      "Republic of Trinidad and Tobago",
+      "TT",
+      "TTO"
+    ],
+    "category": "country",
+    "code": "TTO"
+  },
+  {
+    "term": "突尼斯",
+    "aliases": [
+      "突尼斯共和国",
+      "Tunisia",
+      "Tunisian Republic",
+      "TN",
+      "Republic of Tunisia",
+      "al-Jumhūriyyah at-Tūnisiyyah",
+      "TUN"
+    ],
+    "category": "country",
+    "code": "TUN"
+  },
+  {
+    "term": "土耳其",
+    "aliases": [
+      "土耳其共和国",
+      "Türkiye",
+      "Republic of Türkiye",
+      "TR",
+      "Turkiye",
+      "Republic of Turkey",
+      "Türkiye Cumhuriyeti",
+      "TUR"
+    ],
+    "category": "country",
+    "code": "TUR"
+  },
+  {
+    "term": "图瓦卢",
+    "aliases": [
+      "Tuvalu",
+      "TV",
+      "TUV"
+    ],
+    "category": "country",
+    "code": "TUV"
+  },
+  {
+    "term": "台灣",
+    "aliases": [
+      "中華民國",
+      "Taiwan",
+      "Republic of China (Taiwan)",
+      "TW",
+      "Táiwān",
+      "Republic of China",
+      "Zhōnghuá Mínguó",
+      "Chinese Taipei",
+      "TWN"
+    ],
+    "category": "country",
+    "code": "TWN"
+  },
+  {
+    "term": "坦桑尼亚",
+    "aliases": [
+      "坦桑尼亚联合共和国",
+      "Tanzania",
+      "United Republic of Tanzania",
+      "TZ",
+      "Tanzania, United Republic of",
+      "Jamhuri ya Muungano wa Tanzania",
+      "TZA"
+    ],
+    "category": "country",
+    "code": "TZA"
+  },
+  {
+    "term": "乌干达",
+    "aliases": [
+      "乌干达共和国",
+      "Uganda",
+      "Republic of Uganda",
+      "UG",
+      "Jamhuri ya Uganda",
+      "UGA"
+    ],
+    "category": "country",
+    "code": "UGA"
+  },
+  {
+    "term": "乌克兰",
+    "aliases": [
+      "Ukraine",
+      "UA",
+      "Ukrayina",
+      "UKR"
+    ],
+    "category": "country",
+    "code": "UKR"
+  },
+  {
+    "term": "美国本土外小岛屿",
+    "aliases": [
+      "United States Minor Outlying Islands",
+      "UM",
+      "UMI"
+    ],
+    "category": "country",
+    "code": "UMI"
+  },
+  {
+    "term": "乌拉圭",
+    "aliases": [
+      "乌拉圭东岸共和国",
+      "Uruguay",
+      "Oriental Republic of Uruguay",
+      "UY",
+      "República Oriental del Uruguay",
+      "URY"
+    ],
+    "category": "country",
+    "code": "URY"
+  },
+  {
+    "term": "美国",
+    "aliases": [
+      "美利坚合众国",
+      "United States",
+      "United States of America",
+      "US",
+      "USA"
+    ],
+    "category": "country",
+    "code": "USA"
+  },
+  {
+    "term": "乌兹别克斯坦",
+    "aliases": [
+      "乌兹别克斯坦共和国",
+      "Uzbekistan",
+      "Republic of Uzbekistan",
+      "UZ",
+      "O‘zbekiston Respublikasi",
+      "Ўзбекистон Республикаси",
+      "UZB"
+    ],
+    "category": "country",
+    "code": "UZB"
+  },
+  {
+    "term": "梵蒂冈",
+    "aliases": [
+      "梵蒂冈城国",
+      "Vatican City",
+      "Vatican City State",
+      "VA",
+      "Holy See (Vatican City State)",
+      "Vatican",
+      "Stato della Città del Vaticano",
+      "VAT"
+    ],
+    "category": "country",
+    "code": "VAT"
+  },
+  {
+    "term": "圣文森特和格林纳丁斯",
+    "aliases": [
+      "Saint Vincent and the Grenadines",
+      "VC",
+      "VCT"
+    ],
+    "category": "country",
+    "code": "VCT"
+  },
+  {
+    "term": "委内瑞拉",
+    "aliases": [
+      "委内瑞拉玻利瓦尔共和国",
+      "Venezuela",
+      "Bolivarian Republic of Venezuela",
+      "VE",
+      "Venezuela, Bolivarian Republic of",
+      "República Bolivariana de Venezuela",
+      "VEN"
+    ],
+    "category": "country",
+    "code": "VEN"
+  },
+  {
+    "term": "英属维尔京群岛",
+    "aliases": [
+      "British Virgin Islands",
+      "Virgin Islands",
+      "VG",
+      "Virgin Islands, British",
+      "VGB"
+    ],
+    "category": "country",
+    "code": "VGB"
+  },
+  {
+    "term": "美属维尔京群岛",
+    "aliases": [
+      "United States Virgin Islands",
+      "Virgin Islands of the United States",
+      "VI",
+      "Virgin Islands, U.S.",
+      "VIR"
+    ],
+    "category": "country",
+    "code": "VIR"
+  },
+  {
+    "term": "越南",
+    "aliases": [
+      "越南社会主义共和国",
+      "Vietnam",
+      "Socialist Republic of Vietnam",
+      "VN",
+      "Cộng hòa Xã hội chủ nghĩa Việt Nam",
+      "Viet Nam",
+      "VNM"
+    ],
+    "category": "country",
+    "code": "VNM"
+  },
+  {
+    "term": "瓦努阿图",
+    "aliases": [
+      "瓦努阿图共和国",
+      "Vanuatu",
+      "Republic of Vanuatu",
+      "VU",
+      "Ripablik blong Vanuatu",
+      "République de Vanuatu",
+      "VUT"
+    ],
+    "category": "country",
+    "code": "VUT"
+  },
+  {
+    "term": "瓦利斯和富图纳群岛",
+    "aliases": [
+      "Wallis and Futuna",
+      "Territory of the Wallis and Futuna Islands",
+      "WF",
+      "Territoire des îles Wallis et Futuna",
+      "WLF"
+    ],
+    "category": "country",
+    "code": "WLF"
+  },
+  {
+    "term": "萨摩亚",
+    "aliases": [
+      "萨摩亚独立国",
+      "Samoa",
+      "Independent State of Samoa",
+      "WS",
+      "Malo Saʻoloto Tutoʻatasi o Sāmoa",
+      "WSM"
+    ],
+    "category": "country",
+    "code": "WSM"
+  },
+  {
+    "term": "也门",
+    "aliases": [
+      "也门共和国",
+      "Yemen",
+      "Republic of Yemen",
+      "YE",
+      "Yemeni Republic",
+      "al-Jumhūriyyah al-Yamaniyyah",
+      "YEM"
+    ],
+    "category": "country",
+    "code": "YEM"
+  },
+  {
+    "term": "南非",
+    "aliases": [
+      "南非共和国",
+      "South Africa",
+      "Republic of South Africa",
+      "ZA",
+      "RSA",
+      "Suid-Afrika",
+      "ZAF"
+    ],
+    "category": "country",
+    "code": "ZAF"
+  },
+  {
+    "term": "赞比亚",
+    "aliases": [
+      "赞比亚共和国",
+      "Zambia",
+      "Republic of Zambia",
+      "ZM",
+      "ZMB"
+    ],
+    "category": "country",
+    "code": "ZMB"
+  },
+  {
+    "term": "津巴布韦",
+    "aliases": [
+      "津巴布韦共和国",
+      "Zimbabwe",
+      "Republic of Zimbabwe",
+      "ZW",
+      "ZWE"
+    ],
+    "category": "country",
+    "code": "ZWE"
+  }
+]

@@ -1,0 +1,24 @@
+**/node_modules
+**/dist
+**/.turbo
+**/.git
+**/.env
+**/.env.*
+!**/.env.example
+**/coverage
+**/*.md
+!README.md
+docs
+中间件链接文档.md
+_tmp_*.py
+**/.DS_Store
+**/Thumbs.db
+apps/web/dist
+apps/admin/dist
+apps/api/dist
+packages/contracts/dist
+agent-transcripts
+.cursor
+*.log
+# Runtime payment secrets are bind-mounted; exclude the parent before traversal.
+apps/api/config

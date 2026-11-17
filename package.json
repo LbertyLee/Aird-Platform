@@ -1,0 +1,32 @@
+{
+  "name": "ai-research-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI digital intelligence research platform monorepo",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "dev:api": "pnpm --filter @agent/contracts build && pnpm --filter @agent/api start:dev",
+    "dev:web": "pnpm --filter @agent/contracts build && pnpm --filter @agent/web dev",
+    "dev:admin": "pnpm --filter @agent/admin dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "pnpm --filter @agent/api prisma:generate",
+    "db:migrate": "pnpm --filter @agent/api prisma:migrate",
+    "db:studio": "pnpm --filter @agent/api prisma:studio",
+    "tunnel:mw": "python scripts/ssh_mw_tunnels.py",
+    "infra:up": "docker compose up -d postgres redis minio",
+    "infra:down": "docker compose down",
+    "deploy:server": "python deploy/deploy-to-server.py"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.3"
+  }
+}

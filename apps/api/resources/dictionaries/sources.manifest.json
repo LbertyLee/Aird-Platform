@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-09-22T07:35:25.668Z",
+  "sources": [
+    {
+      "id": "thuocl-finance",
+      "url": "https://raw.githubusercontent.com/thunlp/THUOCL/master/data/THUOCL_caijing.txt",
+      "file": "thuocl-finance.txt",
+      "format": "txt"
+    },
+    {
+      "id": "thuocl-places",
+      "url": "https://raw.githubusercontent.com/thunlp/THUOCL/master/data/THUOCL_diming.txt",
+      "file": "thuocl-places.txt",
+      "format": "txt"
+    },
+    {
+      "id": "zoning",
+      "url": "https://raw.githubusercontent.com/netnr/zoning/main/0.json",
+      "file": "zoning.json",
+      "format": "json"
+    },
+    {
+      "id": "world-countries",
+      "url": "https://raw.githubusercontent.com/mledoze/countries/master/countries.json",
+      "file": "world-countries.json",
+      "format": "countries"
+    }
+  ]
+}

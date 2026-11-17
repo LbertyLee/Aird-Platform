@@ -1,0 +1,23 @@
+.admin-table-row-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.admin-table-row-actions .ant-btn-link {
+  padding-inline: 4px;
+  height: auto;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.admin-table-row-actions-more {
+  padding-inline: 2px 4px !important;
+}
+
+.admin-table-row-actions-more .anticon {
+  font-size: 12px;
+}

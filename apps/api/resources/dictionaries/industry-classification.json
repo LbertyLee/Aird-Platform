@@ -1,0 +1,10 @@
+[
+  {"term":"新能源汽车","category":"industry","code":"NEV"},
+  {"term":"先进制造业","category":"industry"},
+  {"term":"数字经济","category":"industry"},
+  {"term":"现代服务业","category":"industry"},
+  {"term":"战略性新兴产业","category":"industry"},
+  {"term":"高技术制造业","category":"industry"},
+  {"term":"集成电路产业","category":"industry"},
+  {"term":"生物医药产业","category":"industry"}
+]

@@ -1,0 +1,245 @@
+# Compose 项目名：卷、网络等资源将以此作为统一前缀。
+name: aird-platform
+
+services:
+  # 业务主数据库：pgvector 提供 PostgreSQL 与向量字段扩展。
+  # 不映射宿主机端口，仅允许 Compose 内的 API 访问。
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agent}
+      POSTGRES_USER: ${POSTGRES_USER:-agent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      # 数据库数据持久化；docker compose down 不会删除该卷。
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [aird-net]
+
+  # 缓存、登录令牌和 BullMQ 队列。
+  # noeviction 防止队列任务被 Redis 内存淘汰。
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory-policy noeviction --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in deploy/.env}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in deploy/.env}
+    volumes:
+      # AOF 持久化文件。
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" ping | grep PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [aird-net]
+
+  # S3 兼容对象存储：上传文件、数据集和系统备份均保存在此处。
+  # 9000 为对象 API，9001 为管理控制台，均可由 .env 调整宿主机端口。
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-agent}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in deploy/.env}
+    ports:
+      - '${MINIO_API_HOST_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_HOST_PORT:-9001}:9001'
+    volumes:
+      # 对象存储所有文件的持久化卷。
+      - minio_data:/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mc ready local || curl -fsS http://127.0.0.1:9000/minio/health/live',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [aird-net]
+
+  # 一次性初始化任务：创建 API 使用的 MINIO_BUCKET，成功后自动退出。
+  # API 与 Milvus 会等待它执行完成，避免首次部署时因桶不存在而失败。
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    restart: 'no'
+    entrypoint: ['/bin/sh']
+    command:
+      - -ec
+      - |
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing "local/$${MINIO_BUCKET}"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-agent}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in deploy/.env}
+      MINIO_BUCKET: ${MINIO_BUCKET:-ai-research}
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks: [aird-net]
+
+  # Milvus 的元数据服务。业务应用不直接访问。
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.18
+    restart: unless-stopped
+    command: >-
+      etcd --name aird-etcd --data-dir /etcd
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://etcd:2379
+    volumes:
+      - etcd_data:/etcd
+    healthcheck:
+      test: ['CMD', 'etcdctl', 'endpoint', 'health']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [aird-net]
+
+  # 向量数据库：语义检索与向量同步使用，元数据存入 etcd、索引文件存入 MinIO。
+  # 不映射 19530 到宿主机，只供 API 在 aird-net 内访问。
+  milvus:
+    image: milvusdb/milvus:v2.5.10
+    restart: unless-stopped
+    command: ['milvus', 'run', 'standalone']
+    environment:
+      # 以下凭据必须与 MinIO 服务保持一致。
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-agent}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in deploy/.env}
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    volumes:
+      - milvus_data:/var/lib/milvus
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:9091/healthz']
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks: [aird-net]
+
+  # NestJS API。启动顺序：数据库、Redis、MinIO、业务桶和 Milvus 均健康后再启动。
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    image: aird-platform-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # 生产基础设施配置来自 deploy/.env；应用级模型配置复用 apps/api/.env。
+    # env_file 后者覆盖前者；下面 environment 中的容器基础设施地址优先级最高。
+    env_file:
+      - .env
+      - ../apps/api/.env
+    environment:
+      # 基础设施地址在此固定为 Compose 服务名，避免依赖服务器 IP。
+      NODE_ENV: production
+      API_PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-agent}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-agent}?schema=public&connection_limit=5&pool_timeout=20
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: 0
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/.env}
+      # 内部地址供 API 写入对象；公网地址只用于返回给浏览器的签名下载链接。
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:?Set MINIO_PUBLIC_ENDPOINT in deploy/.env}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-agent}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in deploy/.env}
+      MINIO_BUCKET: ${MINIO_BUCKET:-ai-research}
+      MINIO_FALLBACK_BUCKETS: ${MINIO_FALLBACK_BUCKETS:-}
+      MILVUS_ADDRESS: milvus:19530
+      MILVUS_SCHEMA_CHANGES_ON_START: ${MILVUS_SCHEMA_CHANGES_ON_START:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS in deploy/.env}
+    ports:
+      - '${API_HOST_PORT:-13000}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+    volumes:
+      - ../apps/api/config/alipay:/app/apps/api/config/alipay:ro
+      - ../apps/api/config/wechat:/app/apps/api/config/wechat:ro
+      # 可选的本机备份目录，对应 BACKUP_LOCAL_DIR=/backups。
+      - backups_data:/backups
+      - official_data:/app/apps/api/storage/official-data
+      - structured_data:/app/apps/api/storage/structured-data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/v1').then(r=>process.exit(r.status < 500 ? 0 : 1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    networks: [aird-net]
+
+  # 管理端静态站点。/api、/docs 由容器内 Nginx 转发给 API。
+  admin:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.admin
+      args:
+        VITE_API_BASE_URL: /api/v1
+    image: aird-platform-admin:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${ADMIN_HOST_PORT:-13001}:80'
+    networks: [aird-net]
+
+  # 用户端静态站点。/api 由容器内 Nginx 转发给 API。
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+      args:
+        VITE_API_BASE_URL: /api/v1
+    image: aird-platform-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${WEB_HOST_PORT:-13002}:80'
+    networks: [aird-net]
+
+networks:
+  # 所有服务的私有网络；未显式 ports 映射的中间件无法从宿主机访问。
+  aird-net:
+    driver: bridge
+
+volumes:
+  # 下列命名卷保存所有状态数据。执行 `docker compose down` 会保留它们；
+  # `docker compose down -v` 才会删除，生产环境请谨慎使用。
+  postgres_data:
+  redis_data:
+  minio_data:
+  etcd_data:
+  milvus_data:
+  backups_data:
+  official_data:
+  structured_data:

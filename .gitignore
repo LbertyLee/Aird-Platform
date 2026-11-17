@@ -1,0 +1,54 @@
+# Dependencies & package managers
+node_modules/
+.pnpm-store/
+.npm-cache/
+
+# Build / cache
+.turbo/
+dist/
+coverage/
+*.tsbuildinfo
+apps/web/.vite/
+apps/admin/dist/
+apps/api/dist/
+
+# Environment & secrets
+apps/api/config/alipay/
+apps/api/config/wechat/
+.env
+.env.*
+!.env.example
+
+# Logs & OS
+*.log
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.idea/
+.vscode/*
+!.vscode/settings.json
+*.swp
+*.swo
+
+# Local tooling / agent runtimes (do not commit)
+.codex-runtime/
+.cursor/
+.claude/
+.agents/
+
+# Local temp / scratch scripts
+_tmp_*
+.tmp/
+.tmp-*/
+.tmp-stash-ref/
+.runlogs/
+*.tmp
+*.temp
+
+# App local debug dumps (LLM extraction traces, etc.)
+apps/api/.tmp/
+
+# App local data
+apps/api/prisma/*.db
+storage/

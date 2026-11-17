@@ -1,0 +1,8 @@
+[
+  {"term":"国内生产总值","category":"economic_indicator","code":"GDP","aliases":["gdp"]},
+  {"term":"居民消费价格指数","category":"economic_indicator","code":"CPI","aliases":["cpi","居民消费价格"]},
+  {"term":"工业生产者出厂价格指数","category":"economic_indicator","code":"PPI","aliases":["ppi"]},
+  {"term":"采购经理指数","category":"economic_indicator","code":"PMI","aliases":["pmi"]},
+  {"term":"外商直接投资","category":"economic_indicator","code":"FDI","aliases":["fdi"]},
+  {"term":"人工智能","category":"industry","code":"AI","aliases":["ai"]}
+]
