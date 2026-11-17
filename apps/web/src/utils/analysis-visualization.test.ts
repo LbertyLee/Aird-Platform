@@ -40,6 +40,18 @@ const dataset: AnalysisVisualDataset = {
   ],
 };
 describe('shared visualization model', () => {
+  it('defaults the marked year to the latest available year no later than today', () => {
+    const periods = Array.from({ length: 151 }, (_, index) => String(1950 + index));
+    const forecastDataset = { ...dataset, periods };
+    const presentation = defaultPresentation(forecastDataset);
+    const latestAvailableYear = periods
+      .filter((period) => Number(period) <= new Date().getFullYear())
+      .at(-1);
+
+    expect(presentation.currentPeriod).toBe(latestAvailableYear);
+    expect(presentation.endPeriod).toBe('2100');
+  });
+
   it('uses the same selected rows for all views and never treats zero as missing', () => {
     const selection = { ...defaultPresentation(dataset), entities: ['China'] };
     expect(selectVisualData(dataset, selection).rows[0].values).toEqual([

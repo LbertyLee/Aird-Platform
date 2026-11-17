@@ -27,12 +27,22 @@ export const formatVisualValue = (value: number | null | undefined) =>
 export function defaultPresentation(
   dataset: AnalysisVisualDataset,
 ): AnalysisPresentation {
+  const currentYear = new Date().getFullYear();
+  const currentPeriod =
+    dataset.periods
+      .filter((period) => {
+        const year = Number(period.match(/\d{4}/)?.[0]);
+        return Number.isFinite(year) && year <= currentYear;
+      })
+      .at(-1) ??
+    dataset.periods[0] ??
+    '';
   return {
     datasetId: dataset.id,
     entities: [...dataset.entities],
     startPeriod: dataset.periods[0] ?? '',
     endPeriod: dataset.periods.at(-1) ?? '',
-    currentPeriod: dataset.periods.at(-1) ?? '',
+    currentPeriod,
     view: 'line',
     reportViews: ['line'],
   };
