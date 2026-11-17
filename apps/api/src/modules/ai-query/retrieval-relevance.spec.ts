@@ -2,9 +2,13 @@ import {
   buildRelevanceMatcher,
   scoreDocumentRelevance,
   shouldKeepDocument,
+  textMatchesPlanEntities,
   textFocusesOnPlanRegions,
 } from './retrieval-relevance';
-import { buildResearchQueryPlan, buildResearchQueryPlanLite } from '../search/research-query-plan';
+import {
+  buildResearchQueryPlan,
+  buildResearchQueryPlanLite,
+} from '../search/research-query-plan';
 import type { SemanticResolution } from '../semantic/semantic.types';
 
 const resolution: SemanticResolution = {
@@ -20,23 +24,48 @@ const resolution: SemanticResolution = {
 describe('retrieval relevance', () => {
   it.each([
     ['消费者价格指数', 'consumer_price_index', 'China Consumer Price Index'],
-    ['劳动力参与率', 'labor_participation', 'China Labor force participation rate'],
+    [
+      '劳动力参与率',
+      'labor_participation',
+      'China Labor force participation rate',
+    ],
     ['商品出口额', 'goods_export_value', 'China Merchandise exports'],
     ['电力生产量', 'electricity_output', 'China Electricity generation'],
-  ])('shares %s aliases across hard matching and scoring without model translations', (name, code, text) => {
-    const current = { ...resolution, metrics: [{ name, code, indicatorId: code }] };
-    expect(buildRelevanceMatcher(current)(text)).toBe(true);
-    const plan = buildResearchQueryPlan({
-      originalQuery: `中国${name}`, optimizedQuery: `中国${name}`, resolution: current,
-      filters: { countries: [], regions: [], entities: [], indicators: [], timeRanges: [], sources: [] },
-    });
-    expect(scoreDocumentRelevance(text, plan).matchedMetrics).toContain(name);
-  });
+  ])(
+    'shares %s aliases across hard matching and scoring without model translations',
+    (name, code, text) => {
+      const current = {
+        ...resolution,
+        metrics: [{ name, code, indicatorId: code }],
+      };
+      expect(buildRelevanceMatcher(current)(text)).toBe(true);
+      const plan = buildResearchQueryPlan({
+        originalQuery: `中国${name}`,
+        optimizedQuery: `中国${name}`,
+        resolution: current,
+        filters: {
+          countries: [],
+          regions: [],
+          entities: [],
+          indicators: [],
+          timeRanges: [],
+          sources: [],
+        },
+      });
+      expect(scoreDocumentRelevance(text, plan).matchedMetrics).toContain(name);
+    },
+  );
 
   it('does not broaden per-capita GDP codes to total GDP', () => {
     const current = {
       ...resolution,
-      metrics: [{ name: '人均国内生产总值', code: 'gdp_per_capita', indicatorId: 'per-capita' }],
+      metrics: [
+        {
+          name: '人均国内生产总值',
+          code: 'gdp_per_capita',
+          indicatorId: 'per-capita',
+        },
+      ],
     };
     const matches = buildRelevanceMatcher(current);
     expect(matches('China GDP per capita annual series')).toBe(true);
@@ -46,10 +75,19 @@ describe('retrieval relevance', () => {
   it('matches translated population indicators with harmless wording differences', () => {
     const population: SemanticResolution = {
       ...resolution,
-      metrics: [{ code: 'population_total', name: '国家人口总量', indicatorId: 'population' }],
+      metrics: [
+        {
+          code: 'population_total',
+          name: '国家人口总量',
+          indicatorId: 'population',
+        },
+      ],
       sourcePlan: {
-        status: 'ready', intentSummary: '查询人口总量', dataNeeds: ['人口总量'],
-        allowDiscovery: false, sources: [],
+        status: 'ready',
+        intentSummary: '查询人口总量',
+        dataNeeds: ['人口总量'],
+        allowDiscovery: false,
+        sources: [],
         translations: [{ zh: '人口总量', en: 'Total Population' }],
       },
     };
@@ -58,19 +96,80 @@ describe('retrieval relevance', () => {
     expect(matches('China population growth rate')).toBe(false);
     expect(matches('Japan Total Population annual estimates')).toBe(false);
     const plan = buildResearchQueryPlan({
-      originalQuery: '中国人口总量', optimizedQuery: '中国人口总量', resolution: population,
-      filters: { countries: [], regions: [], entities: [], indicators: [], timeRanges: [], sources: [] },
+      originalQuery: '中国人口总量',
+      optimizedQuery: '中国人口总量',
+      resolution: population,
+      filters: {
+        countries: [],
+        regions: [],
+        entities: [],
+        indicators: [],
+        timeRanges: [],
+        sources: [],
+      },
     });
-    const relevance = scoreDocumentRelevance('China Total Population annual estimates', plan);
+    const relevance = scoreDocumentRelevance(
+      'China Total Population annual estimates',
+      plan,
+    );
     expect(relevance.matchedEntities).toContain('中国');
     expect(relevance.matchedMetrics).toContain('Total Population');
     expect(relevance.score).toBeGreaterThanOrEqual(0.42);
   });
+
+  it('recovers compact country comparisons when the semantic catalog has no entities', () => {
+    const query = '比较2020-2025年中美GDP增长率';
+    const fallbackPlan = buildResearchQueryPlan({
+      originalQuery: query,
+      optimizedQuery: query,
+      resolution: {
+        ...resolution,
+        metrics: [],
+        entities: [],
+        dimensions: [],
+        discovery: undefined,
+      },
+      filters: {
+        countries: [],
+        regions: [],
+        entities: [],
+        indicators: [],
+        timeRanges: [],
+        sources: [],
+      },
+    });
+
+    expect(fallbackPlan.entities).toEqual(
+      expect.arrayContaining(['中国', '美国']),
+    );
+    expect(textMatchesPlanEntities('China GDP data', fallbackPlan)).toBe(true);
+    expect(
+      textMatchesPlanEntities('France and Germany GDP data', fallbackPlan),
+    ).toBe(false);
+  });
   it('requires locality focus in generic titles while allowing local data hosted elsewhere', () => {
     const plan = buildResearchQueryPlanLite('泉州近10年来经济报告');
-    expect(textFocusesOnPlanRegions('经济运行报告', '泉州市地区生产总值增长6.5%，泉州产业结构持续优化。', plan)).toBe(true);
-    expect(textFocusesOnPlanRegions('各地GDP成绩单', '北京、上海、泉州、广州2024年经济数据。', plan)).toBe(false);
-    expect(textFocusesOnPlanRegions('泉州经济报告', '来源：北京，泉州GDP增长6.5%。', plan)).toBe(true);
+    expect(
+      textFocusesOnPlanRegions(
+        '经济运行报告',
+        '泉州市地区生产总值增长6.5%，泉州产业结构持续优化。',
+        plan,
+      ),
+    ).toBe(true);
+    expect(
+      textFocusesOnPlanRegions(
+        '各地GDP成绩单',
+        '北京、上海、泉州、广州2024年经济数据。',
+        plan,
+      ),
+    ).toBe(false);
+    expect(
+      textFocusesOnPlanRegions(
+        '泉州经济报告',
+        '来源：北京，泉州GDP增长6.5%。',
+        plan,
+      ),
+    ).toBe(true);
   });
   it('never lets country/year relevance override a mismatched indicator', () => {
     const plan = buildResearchQueryPlanLite('中国2023年和2024年GDP', {

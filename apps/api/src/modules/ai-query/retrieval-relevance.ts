@@ -7,6 +7,7 @@ import type { SemanticResolution } from '../semantic/semantic.types';
 import { inferQueryRegions } from '../../common/utils/query-regions';
 import { bilingualResearchTerms } from '../search/research-bilingual-terms';
 import { metricAliases } from '../search/research-metric-aliases';
+import { countrySearchAliases } from '../../common/utils/query-countries';
 
 export type DocumentRelevanceScore = {
   score: number;
@@ -22,7 +23,9 @@ export function scoreDocumentRelevance(
 ): DocumentRelevanceScore {
   const matchedEntities = matchingEntityTerms(text, plan.entities);
   const matchedMetrics = plan.metrics.filter((metric) =>
-    expandSearchTerms([metric], 'metric').some((term) => containsSearchTerm(text, term)),
+    expandSearchTerms([metric], 'metric').some((term) =>
+      containsSearchTerm(text, term),
+    ),
   );
   const matchedPeriods = termHits(text, plan.periods);
   const hasEntityConstraint = plan.entities.length > 0;
@@ -33,7 +36,9 @@ export function scoreDocumentRelevance(
   if (hasEntityConstraint) {
     // A city report need not repeat its parent province and country names.
     const entityTerms = plan.regions?.length ? plan.regions : plan.entities;
-    score += (matchingEntityTerms(text, entityTerms).length / entityTerms.length) * 0.35;
+    score +=
+      (matchingEntityTerms(text, entityTerms).length / entityTerms.length) *
+      0.35;
   } else {
     score += 0.12;
   }
@@ -70,9 +75,11 @@ const ENTITY_SEARCH_ALIASES: Record<string, string[]> = {
 /** Use the same country aliases for hard matching, ranking and saved metadata. */
 function matchingEntityTerms(text: string, entities: string[]): string[] {
   return entities.filter((entity) =>
-    [entity, ...(ENTITY_SEARCH_ALIASES[entity] ?? [])].some((term) =>
-      containsSearchTerm(text, term),
-    ),
+    [
+      entity,
+      ...(ENTITY_SEARCH_ALIASES[entity] ?? []),
+      ...countrySearchAliases(entity),
+    ].some((term) => containsSearchTerm(text, term)),
   );
 }
 
@@ -80,7 +87,10 @@ export function textMatchesPlanEntities(
   text: string,
   plan: ResearchQueryPlan,
 ): boolean {
-  if (plan.regions?.length && !plan.regions.some((region) => containsSearchTerm(text, region))) {
+  if (
+    plan.regions?.length &&
+    !plan.regions.some((region) => containsSearchTerm(text, region))
+  ) {
     return false;
   }
   if (!plan.entities.length) return true;
@@ -98,15 +108,24 @@ export function textFocusesOnPlanRegions(
   if (regions.some((region) => containsSearchTerm(title, region))) return true;
   // A broad multi-city roundup must not become city-specific evidence just
   // because the city appears once in a list of national economic results.
-  if (!regions.some((region) => containsSearchTerm(content.slice(0, 300), region))) {
+  if (
+    !regions.some((region) => containsSearchTerm(content.slice(0, 300), region))
+  ) {
     return false;
   }
   const occurrences = (region: string) => content.split(region).length - 1;
-  const requestedMentions = regions.reduce((sum, region) => sum + occurrences(region), 0);
+  const requestedMentions = regions.reduce(
+    (sum, region) => sum + occurrences(region),
+    0,
+  );
   const otherMentions = inferQueryRegions(content)
-    .filter((region) => !regions.some((requested) =>
-      region.includes(requested) || requested.includes(region),
-    ))
+    .filter(
+      (region) =>
+        !regions.some(
+          (requested) =>
+            region.includes(requested) || requested.includes(region),
+        ),
+    )
     .reduce((sum, region) => sum + occurrences(region), 0);
   return requestedMentions > otherMentions;
 }
@@ -134,7 +153,10 @@ export function attachRelevanceMetadata(
 }
 
 /** Share metric aliases between the hard matcher and relevance scoring. */
-function expandSearchTerms(terms: string[], kind: 'entity' | 'metric' = 'entity'): string[] {
+function expandSearchTerms(
+  terms: string[],
+  kind: 'entity' | 'metric' = 'entity',
+): string[] {
   const aliases = dictionaryAliases();
   const builtins: Record<string, string[]> = {
     gdp: ['国内生产总值', '地区生产总值', 'gross domestic product'],
@@ -170,17 +192,23 @@ export function buildRelevanceMatcher(
   filters?: Partial<ResearchFilters>,
 ): (text: string) => boolean {
   const expand = (terms: string[], kind: 'entity' | 'metric' = 'entity') =>
-    expandSearchTerms(bilingualResearchTerms(terms, resolution.sourcePlan, kind), kind);
+    expandSearchTerms(
+      bilingualResearchTerms(terms, resolution.sourcePlan, kind),
+      kind,
+    );
   const groups = [
-    expand([
-      ...(resolution.discovery?.metrics ?? []),
-      ...resolution.metrics.flatMap((item) => [
-        item.name,
-        item.code,
-        ...(item.aliases ?? []),
-      ]),
-      ...(filters?.indicators ?? []),
-    ], 'metric'),
+    expand(
+      [
+        ...(resolution.discovery?.metrics ?? []),
+        ...resolution.metrics.flatMap((item) => [
+          item.name,
+          item.code,
+          ...(item.aliases ?? []),
+        ]),
+        ...(filters?.indicators ?? []),
+      ],
+      'metric',
+    ),
     expand([
       ...(resolution.discovery?.entities ?? []),
       ...resolution.entities.flatMap((item) => [

@@ -2,8 +2,12 @@ import type { ResearchFilters } from '@agent/contracts';
 import { containsSearchTerm } from '../../research/research-filtering';
 import { inferQueryDimensionHints } from '../analysis/indicator-query-rank';
 import type { SemanticResolution } from '../semantic/semantic.types';
-import { explicitYearRangePeriods, periodsFromRecentYearPhrase } from '../../common/utils/recent-years';
+import {
+  explicitYearRangePeriods,
+  periodsFromRecentYearPhrase,
+} from '../../common/utils/recent-years';
 import { inferQueryRegions } from '../../common/utils/query-regions';
+import { inferQueryCountries } from '../../common/utils/query-countries';
 import { bilingualResearchTerms } from './research-bilingual-terms';
 
 /** Shared constraints for retrieval ranking and LLM extraction. */
@@ -29,32 +33,51 @@ export function buildResearchQueryPlan(input: {
   resolution: SemanticResolution;
 }): ResearchQueryPlan {
   const hints = inferQueryDimensionHints(input.originalQuery);
-  const regions = uniqueStrings(bilingualResearchTerms([
-    ...inferQueryRegions(input.originalQuery),
-    ...input.resolution.dimensions
-      .filter((item) => /^(region|province|city|area)$/.test(item.type))
-      .map((item) => item.name),
-    ...input.filters.regions,
-  ], input.resolution.sourcePlan));
-  const entities = uniqueStrings(bilingualResearchTerms([
-    ...(input.resolution.discovery?.entities ?? []),
-    ...regions,
-    ...hints.entities,
-    ...input.resolution.entities.map((item) => item.name),
-    ...input.resolution.dimensions
-      .filter((item) => item.type === 'country_region')
-      .map((item) => item.name),
-    ...input.filters.entities,
-    ...input.filters.countries,
-    ...input.filters.regions,
-  ], input.resolution.sourcePlan));
-  const metrics = uniqueStrings(bilingualResearchTerms([
-    ...(input.resolution.discovery?.metrics ?? []),
-    ...input.resolution.metrics.map((item) => item.name),
-    ...(input.resolution.metrics.flatMap((item) => item.aliases ?? [])),
-    ...input.filters.indicators,
-  ], input.resolution.sourcePlan, 'metric'));
-  const recentPeriods = periodsFromRecentYearPhrase(input.originalQuery) ?? explicitYearRangePeriods(input.originalQuery);
+  const regions = uniqueStrings(
+    bilingualResearchTerms(
+      [
+        ...inferQueryRegions(input.originalQuery),
+        ...input.resolution.dimensions
+          .filter((item) => /^(region|province|city|area)$/.test(item.type))
+          .map((item) => item.name),
+        ...input.filters.regions,
+      ],
+      input.resolution.sourcePlan,
+    ),
+  );
+  const entities = uniqueStrings(
+    bilingualResearchTerms(
+      [
+        ...(input.resolution.discovery?.entities ?? []),
+        ...inferQueryCountries(input.originalQuery),
+        ...regions,
+        ...hints.entities,
+        ...input.resolution.entities.map((item) => item.name),
+        ...input.resolution.dimensions
+          .filter((item) => item.type === 'country_region')
+          .map((item) => item.name),
+        ...input.filters.entities,
+        ...input.filters.countries,
+        ...input.filters.regions,
+      ],
+      input.resolution.sourcePlan,
+    ),
+  );
+  const metrics = uniqueStrings(
+    bilingualResearchTerms(
+      [
+        ...(input.resolution.discovery?.metrics ?? []),
+        ...input.resolution.metrics.map((item) => item.name),
+        ...input.resolution.metrics.flatMap((item) => item.aliases ?? []),
+        ...input.filters.indicators,
+      ],
+      input.resolution.sourcePlan,
+      'metric',
+    ),
+  );
+  const recentPeriods =
+    periodsFromRecentYearPhrase(input.originalQuery) ??
+    explicitYearRangePeriods(input.originalQuery);
   const periods = recentPeriods
     ? uniqueStrings(recentPeriods)
     : uniqueStrings([
@@ -72,8 +95,11 @@ export function buildResearchQueryPlan(input: {
     ...periods.slice(-3),
   ]);
   const searchQuery = composeSearchQuery(
-    uniqueStrings([input.originalQuery, input.optimizedQuery,
-      ...(input.resolution.discovery?.dataNeeds ?? [])]).join(' '),
+    uniqueStrings([
+      input.originalQuery,
+      input.optimizedQuery,
+      ...(input.resolution.discovery?.dataNeeds ?? []),
+    ]).join(' '),
     entities,
     metrics,
     periods,
@@ -119,15 +145,23 @@ export function buildResearchQueryPlanLite(
     ...normalizedFilters.regions,
   ]);
   const metrics = uniqueStrings([...normalizedFilters.indicators]);
-  const recentPeriods = periodsFromRecentYearPhrase(originalQuery) ?? explicitYearRangePeriods(originalQuery);
+  const recentPeriods =
+    periodsFromRecentYearPhrase(originalQuery) ??
+    explicitYearRangePeriods(originalQuery);
   const periods = recentPeriods
     ? uniqueStrings(recentPeriods)
     : uniqueStrings([
         ...hints.periods,
         ...yearsFromText(originalQuery),
-        ...normalizedFilters.timeRanges.flatMap((range) => yearsFromText(range)),
+        ...normalizedFilters.timeRanges.flatMap((range) =>
+          yearsFromText(range),
+        ),
       ]);
-  const mustTerms = uniqueStrings([...entities, ...metrics, ...periods.slice(-3)]);
+  const mustTerms = uniqueStrings([
+    ...entities,
+    ...metrics,
+    ...periods.slice(-3),
+  ]);
   return {
     originalQuery: originalQuery.trim(),
     searchQuery: composeSearchQuery(
@@ -148,8 +182,15 @@ export function buildResearchQueryPlanLite(
   };
 }
 
-export function entityMatchesPlan(entity: string | undefined, plan: ResearchQueryPlan): boolean {
-  if (plan.regions?.length && !plan.regions.some((region) => entity?.includes(region))) return false;
+export function entityMatchesPlan(
+  entity: string | undefined,
+  plan: ResearchQueryPlan,
+): boolean {
+  if (
+    plan.regions?.length &&
+    !plan.regions.some((region) => entity?.includes(region))
+  )
+    return false;
   if (!plan.entities.length) return true;
   if (!entity?.trim()) return false;
   const normalized = entity.trim().toLowerCase();
@@ -159,7 +200,10 @@ export function entityMatchesPlan(entity: string | undefined, plan: ResearchQuer
   });
 }
 
-export function periodMatchesPlan(period: string | undefined, plan: ResearchQueryPlan): boolean {
+export function periodMatchesPlan(
+  period: string | undefined,
+  plan: ResearchQueryPlan,
+): boolean {
   if (!plan.periods.length) return true;
   const year = period?.match(/[12]\d{3}/)?.[0];
   if (!year) return false;
@@ -182,18 +226,14 @@ function composeSearchQuery(
   const periodHint =
     periods.length >= 2
       ? `${periods[0]}-${periods[periods.length - 1]}`
-      : periods[0] ?? '';
-  return [...new Set(
-    [
-      optimizedQuery.trim(),
-      intentTerms,
-      ...entities,
-      ...metrics,
-      periodHint,
-    ]
-      .map((value) => value.trim())
-      .filter(Boolean),
-  )]
+      : (periods[0] ?? '');
+  return [
+    ...new Set(
+      [optimizedQuery.trim(), intentTerms, ...entities, ...metrics, periodHint]
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ]
     .join(' ')
     .slice(0, 500);
 }
@@ -202,7 +242,11 @@ function periodsFromResolution(resolution: SemanticResolution): string[] {
   if (resolution.time.type === 'YEAR' && resolution.time.value != null) {
     return [String(resolution.time.value)];
   }
-  if (resolution.time.type === 'RANGE' && resolution.time.start && resolution.time.end) {
+  if (
+    resolution.time.type === 'RANGE' &&
+    resolution.time.start &&
+    resolution.time.end
+  ) {
     const start = Number(resolution.time.start);
     const end = Number(resolution.time.end);
     if (Number.isFinite(start) && Number.isFinite(end) && end >= start) {

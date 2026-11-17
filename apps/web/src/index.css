@@ -17,10 +17,19 @@
   border: 0;
   border-radius: 6px;
   padding: 12px 16px;
-  background: #176f68;
+  background: #2563eb;
   color: #fff;
-  box-shadow: 0 3px 12px #0003;
+  box-shadow: 0 3px 12px rgb(37 99 235 / 24%);
   cursor: pointer;
+}
+
+.current-research-task:hover {
+  background: #1d4ed8;
+}
+
+.current-research-task:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 28%);
+  outline-offset: 3px;
 }
 
 * {
