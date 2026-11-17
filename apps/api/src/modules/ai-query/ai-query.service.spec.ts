@@ -127,6 +127,26 @@ describe('AiQueryService external relevance', () => {
     });
   });
 
+  it('does not query World Bank when the source planner selected another website', async () => {
+    const service = setup();
+    const bank = new WorldBankDataService();
+    const fetch = jest.spyOn(bank, 'fetch').mockResolvedValue([]);
+    Object.assign(service, {
+      worldBank: bank,
+      prisma: { dataset: { findMany: async () => [] } },
+      exa: { configured: false, searchSources: jest.fn() },
+    });
+    await service['collectExternalSearchEvidence']({
+      aiQueryId: 'planned-source',
+      resolution,
+      normalized: '中国GDP',
+      optimizedQuery: '中国GDP',
+      normalizedFilters: filters,
+      plan,
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('returns scored candidates without a hard cutoff', async () => {
     const candidate = result('中国 GDP', 'https://www.stats.gov.cn/gdp');
     const service = setup();

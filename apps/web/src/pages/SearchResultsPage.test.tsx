@@ -205,6 +205,33 @@ it('实时检索阶段更新到第二步，失败后停在中断位置', async (
   expect(screen.getByLabelText('数据标准化与清洗：等待中')).toBeTruthy();
 });
 
+it('实时检索时在正文展示本次搜索的问题', async () => {
+  vi.mocked(searchDataAnalysisAsync).mockImplementation(
+    () => new Promise(() => undefined),
+  );
+  render(
+    page('run-1', {
+      query: '中国 CPI / PPI 月度走势分析（2023-2025）',
+      mode: 'mixed',
+      filters: {
+        indicators: [],
+        timeRanges: [],
+        countries: [],
+        regions: [],
+        entities: [],
+        sources: [],
+      },
+      startedAt: Date.now(),
+    }),
+  );
+  expect(
+    screen.getByRole('heading', {
+      name: '中国 CPI / PPI 月度走势分析（2023-2025）',
+    }),
+  ).toBeTruthy();
+  expect(document.querySelector('.results-center')?.classList.contains('is-search-running')).toBe(true);
+});
+
 function analysis(runId = 'run-1', id = 'saved'): AnalysisSession {
   return {
     id,

@@ -20,7 +20,10 @@ import {
   type ExaSourceSearchSummary,
 } from '../../research/exa-search.service';
 import { SemanticResolutionService } from '../semantic/semantic-resolution.service';
-import type { SemanticResolution } from '../semantic/semantic.types';
+import type {
+  ResearchEvaluation,
+  SemanticResolution,
+} from '../semantic/semantic.types';
 import { EvidenceService } from './evidence.service';
 import { QueryRouterService } from './query-router.service';
 import { RagQueryService } from './rag-query.service';
@@ -49,7 +52,9 @@ import { ResearchPlanningGraphService } from '../search/research-planning-graph.
 import { runResearchRetrievalGraph } from '../search/research-retrieval-graph';
 import { recentYearRangeForQueries } from '../../common/utils/recent-years';
 import { WorldBankDataService } from '../../research/world-bank-data.service';
+import { InternationalDataApiService } from '../../research/international-data-api.service';
 import { OfficialResearchCoverage } from '../search/official-research-coverage';
+import { reportResearchProgress } from '../search/research-progress';
 
 export type AiQueryOptions = {
   userId?: string;
@@ -98,6 +103,9 @@ export class AiQueryService {
     config: ConfigService,
     private readonly planning: ResearchPlanningGraphService,
     private readonly worldBank: WorldBankDataService = new WorldBankDataService(),
+    private readonly internationalData: InternationalDataApiService = new InternationalDataApiService(
+      config,
+    ),
   ) {
     const rounds = Number(config.get('RESEARCH_MAX_ROUNDS') ?? 3);
     this.researchMaxRounds = Number.isFinite(rounds)
@@ -174,7 +182,9 @@ export class AiQueryService {
       indicators: filters?.indicators ?? [],
       timeRanges: filters?.timeRanges ?? [],
       sources: filters?.sources ?? [],
-      ...(filters?.libraryIds?.length ? { libraryIds: filters.libraryIds } : {}),
+      ...(filters?.libraryIds?.length
+        ? { libraryIds: filters.libraryIds }
+        : {}),
     };
     const prepared = options?.resolution
       ? undefined
@@ -457,22 +467,23 @@ export class AiQueryService {
     let evidenceCount = 0;
 
     const provider = input.provider ?? 'exa';
-    const webConfigured = provider === 'deepseek'
+    const webConfigured =
+      provider === 'deepseek'
         ? this.exa.isConfigured(provider)
         : this.exa.configured;
     // Explicit source restrictions also apply to official API access.
-    const officialAllowed = !normalizedFilters.sources.length || normalizedFilters.sources.some((source) => /world\s*bank|worldbank|世界银行/i.test(source));
-    const official = new OfficialResearchCoverage(this.worldBank, normalized, normalizedFilters, plan, officialAllowed);
-    if (!webConfigured && !official.enabled) {
-      stages.push({
-        key: 'exa',
-        label: '外部搜索补充',
-        status: 'skipped',
-        detail: `未配置 ${provider === 'deepseek' ? 'DEEPSEEK_SEARCH_API_KEY' : 'EXA_API_KEY'}，外部来源检索未执行。`,
-      });
-      return { stages, evidenceBlocks, evidenceCount };
-    }
-
+    const officialAllowed =
+      !normalizedFilters.sources.length ||
+      normalizedFilters.sources.some((source) =>
+        /world\s*bank|worldbank|世界银行/i.test(source),
+      );
+    const official = new OfficialResearchCoverage(
+      this.worldBank,
+      normalized,
+      normalizedFilters,
+      plan,
+      officialAllowed,
+    );
     try {
       const selectedSourceNames = [
         ...new Set(
@@ -508,14 +519,50 @@ export class AiQueryService {
       this.logger.log(
         `Exa branch query=${JSON.stringify(externalQuery)} planEntities=${JSON.stringify(plan.entities)} planMetrics=${JSON.stringify(plan.metrics.slice(0, 4))} configuredSources=${configuredSources.length}`,
       );
-      const sourcePlan = resolution.sourcePlan?.status === 'ready'
-        ? resolution.sourcePlan : official.gapPlan();
+      const sourcePlan =
+        resolution.sourcePlan?.status === 'ready'
+          ? resolution.sourcePlan
+          : official.gapPlan();
       if (!sourcePlan || sourcePlan.status !== 'ready') {
         throw new Error(
           '研究来源规划暂不可用，请稍后重试；本次未扫描全部来源。',
         );
       }
-      if (!sourcePlan.sources.length && !sourcePlan.allowDiscovery && !official.enabled) {
+      const selectedWorldBank = selectedSourceNames.some((source) =>
+        /world\s*bank|worldbank|世界银行/i.test(source),
+      );
+      const plannedWorldBank = sourcePlan.sources.some((source) => {
+        const { domain } = externalSearchDomain(source.websiteUrl);
+        return domain === 'worldbank.org' || domain?.endsWith('.worldbank.org');
+      });
+      const officialRequested =
+        official.enabled && (selectedWorldBank || plannedWorldBank);
+      const plannedApiSources = sourcePlan.sources.filter((source) =>
+        /imf\.org|oecd\.org|europa\.eu|comtrade\.un\.org|unstats\.un\.org|who\.int|ghoapi\.azureedge\.net/i.test(
+          source.websiteUrl,
+        ),
+      );
+      const selectedApiSource = selectedSourceNames.some((source) =>
+        /\bimf\b|oecd|eurostat|comtrade|sdg|\bwho\b|世界卫生组织|联合国可持续发展/i.test(
+          source,
+        ),
+      );
+      const internationalApiRequested =
+        plannedApiSources.length > 0 || selectedApiSource;
+      if (!webConfigured && !officialRequested && !internationalApiRequested) {
+        stages.push({
+          key: 'exa',
+          label: '外部搜索补充',
+          status: 'skipped',
+          detail: `规划来源无法通过当前配置的搜索服务访问，且无需查询世界银行官方 API。`,
+        });
+        return { stages, evidenceBlocks, evidenceCount };
+      }
+      if (
+        !sourcePlan.sources.length &&
+        !sourcePlan.allowDiscovery &&
+        !officialRequested
+      ) {
         stages.push({
           key: 'exa',
           label: '外部搜索补充',
@@ -541,22 +588,29 @@ export class AiQueryService {
         }),
       );
       const retrieval = await runResearchRetrievalGraph({
-        initialPlan: !sourcePlan.sources.length && official.enabled ? official.gapPlan()! : sourcePlan,
+        initialPlan:
+          !sourcePlan.sources.length && officialRequested
+            ? official.gapPlan()!
+            : sourcePlan,
         maxRounds: this.researchMaxRounds,
         replan: async (evaluation, previousQueries) => {
           let next: SemanticResolution['sourcePlan'] | null = null;
-          try { next = await this.chat.planResearchSources(
-            normalized,
-            resolution,
-            configuredSources,
-            selectedSourceNames,
-            {
-              gaps: evaluation.gaps,
-              reason: evaluation.reason,
-              previousQueries,
-            },
-          ); } catch { /* The deterministic gap plan remains usable if the model is unavailable. */ }
-          const gapPlan = official.gapPlan();
+          try {
+            next = await this.chat.planResearchSources(
+              normalized,
+              resolution,
+              configuredSources,
+              selectedSourceNames,
+              {
+                gaps: evaluation.gaps,
+                reason: evaluation.reason,
+                previousQueries,
+              },
+            );
+          } catch {
+            /* The deterministic gap plan remains usable if the model is unavailable. */
+          }
+          const gapPlan = officialRequested ? official.gapPlan() : null;
           if (!next) return gapPlan;
           const seen = new Set<string>();
           return {
@@ -578,7 +632,11 @@ export class AiQueryService {
                 if (
                   (selectedSourceNames.length || !sourcePlan.allowDiscovery) &&
                   !allowedDomains.has(domain) &&
-                  !(official.enabled && (domain === 'worldbank.org' || domain.endsWith('.worldbank.org')))
+                  !(
+                    officialRequested &&
+                    (domain === 'worldbank.org' ||
+                      domain.endsWith('.worldbank.org'))
+                  )
                 )
                   return [];
                 seen.add(`${domain}\n${source.query}`);
@@ -588,26 +646,97 @@ export class AiQueryService {
           };
         },
         retrieve: async (currentPlan) => {
-          const officialResults = await official.retrieve();
-          const covered = official.evaluate(null)?.sufficient;
-          const settled = await Promise.allSettled(
-            (webConfigured && !covered ? currentPlan.sources : []).map((source) =>
-              source.websiteUrl
-                ? this.exa.searchSources(
-                    source.query,
-                    [{ id: '', name: '', websiteUrl: source.websiteUrl }],
-                    provider,
-                  )
-                : this.exa.discoverSources(source.query, [], provider),
-            ),
+          await reportResearchProgress({
+            stage: 'searching',
+            message: officialRequested
+              ? '正在并行查询官方数据与规划来源'
+              : '正在查询规划指定的来源',
+          });
+          const officialStartedAt = Date.now();
+          const webStartedAt = Date.now();
+          const webTasks = webConfigured
+            ? currentPlan.sources.map((source) =>
+                source.websiteUrl
+                  ? this.exa.searchSources(
+                      source.query,
+                      [{ id: '', name: '', websiteUrl: source.websiteUrl }],
+                      provider,
+                    )
+                  : this.exa.discoverSources(source.query, [], provider),
+              )
+            : [];
+          const internationalStartedAt = Date.now();
+          const internationalTask = this.internationalData
+            .retrieve(currentPlan.sources, normalized, plan)
+            .catch((error: unknown) => {
+              this.logger.warn(
+                `International API retrieval failed: ${error instanceof Error ? error.message : String(error)}`,
+              );
+              return [];
+            });
+          const [officialResults, settled, internationalResults] =
+            await Promise.all([
+              officialRequested
+                ? official
+                    .retrieve()
+                    .catch((error: unknown) => {
+                      this.logger.warn(
+                        `Research official retrieval failed: ${error instanceof Error ? error.message : String(error)}`,
+                      );
+                      return [];
+                    })
+                    .finally(() =>
+                      this.logger.log(
+                        `Research official retrieval durationMs=${Date.now() - officialStartedAt}`,
+                      ),
+                    )
+                : Promise.resolve([]),
+              Promise.allSettled(webTasks).finally(() =>
+                this.logger.log(
+                  `Research web retrieval durationMs=${Date.now() - webStartedAt} sourceCount=${webTasks.length}`,
+                ),
+              ),
+              internationalTask,
+            ]);
+          this.logger.log(
+            `International API retrieval durationMs=${Date.now() - internationalStartedAt} results=${internationalResults.length}`,
           );
           const summary: ExaSourceSearchSummary = {
-            results: officialResults.length ? [{ sourceId: '', sourceName: '世界银行官方 API', results: officialResults }] : [],
-            attempted: officialResults.length ? 1 : 0,
-            succeeded: officialResults.length ? 1 : 0,
+            results: [
+              ...(officialResults.length
+                ? [
+                    {
+                      sourceId: '',
+                      sourceName: '世界银行官方 API',
+                      results: officialResults,
+                    },
+                  ]
+                : []),
+            ],
+            attempted:
+              (officialResults.length ? 1 : 0) +
+              (internationalApiRequested ? plannedApiSources.length || 1 : 0),
+            succeeded:
+              (officialResults.length ? 1 : 0) +
+              (internationalResults.length ? 1 : 0),
             failed: 0,
             skipped: 0,
           };
+          for (const providerName of new Set(
+            internationalResults.map(
+              (item) => item.officialProvider ?? 'international-api',
+            ),
+          )) {
+            const providerResults = internationalResults.filter(
+              (item) =>
+                (item.officialProvider ?? 'international-api') === providerName,
+            );
+            summary.results.push({
+              sourceId: '',
+              sourceName: `${providerName} 官方 API`,
+              results: providerResults,
+            });
+          }
           for (const item of settled) {
             if (item.status === 'rejected') {
               summary.attempted++;
@@ -639,10 +768,12 @@ export class AiQueryService {
               ]),
             ).values(),
           ];
-          const officialEvaluation = official.evaluate(null);
+          const officialEvaluation = officialRequested
+            ? official.evaluate(null)
+            : null;
           if (officialEvaluation?.sufficient) return officialEvaluation;
-          if (!unique.length)
-            return official.evaluate({
+          if (!unique.length) {
+            const noEvidence: ResearchEvaluation = {
               sufficient: false,
               reason: '尚未检索到符合问题维度的证据',
               gaps: sourcePlan.dataNeeds.length
@@ -650,20 +781,28 @@ export class AiQueryService {
                 : [normalized],
               coveredNeeds: [],
               evidenceUrls: [],
-            });
+            };
+            return officialRequested
+              ? official.evaluate(noEvidence)!
+              : noEvidence;
+          }
           let model = null;
-          try { model = await this.chat.evaluateResearchEvidence(
-            normalized,
-            sourcePlan.dataNeeds,
-            unique.slice(0, 20).map((item) => ({
-              url: item.url,
-              title: item.title,
-              content: [item.description, ...item.extraSnippets]
-                .join('\n')
-                .slice(0, 2500),
-            })),
-          ); } catch { /* Official coverage can still identify gaps without an LLM. */ }
-          return official.evaluate(model);
+          try {
+            model = await this.chat.evaluateResearchEvidence(
+              normalized,
+              sourcePlan.dataNeeds,
+              unique.slice(0, 20).map((item) => ({
+                url: item.url,
+                title: item.title,
+                content: [item.description, ...item.extraSnippets]
+                  .join('\n')
+                  .slice(0, 2500),
+              })),
+            );
+          } catch {
+            /* Official coverage can still identify gaps without an LLM. */
+          }
+          return officialRequested ? official.evaluate(model) : model;
         },
       });
       const configuredSearch = retrieval.summary;
@@ -707,11 +846,24 @@ export class AiQueryService {
       const bestByUrl = new Map<string, (typeof exaResults)[number]>();
       for (const result of exaResults) {
         const key = this.normalizeExternalUrl(result.url);
-        const browsableUrl = result.officialData?.length ? result.url : alignExternalResultUrl(result.url, preferredHosts);
+        const browsableUrl = result.officialData?.length
+          ? result.url
+          : alignExternalResultUrl(result.url, preferredHosts);
         const current = bestByUrl.get(key);
         if (current?.officialData?.length && result.officialData?.length) {
-          const rows = [...new Map([...current.officialData, ...result.officialData].map((row) => [`${row.countryCode}/${row.year}/${row.indicatorCode}`, row])).values()];
-          bestByUrl.set(key, { ...result, officialData: rows, description: `${current.description}\n${result.description}` });
+          const rows = [
+            ...new Map(
+              [...current.officialData, ...result.officialData].map((row) => [
+                `${row.countryCode}/${row.year}/${row.indicatorCode}`,
+                row,
+              ]),
+            ).values(),
+          ];
+          bestByUrl.set(key, {
+            ...result,
+            officialData: rows,
+            description: `${current.description}\n${result.description}`,
+          });
           continue;
         }
         if (!current || (result.score ?? 0) > (current.score ?? 0)) {
@@ -741,7 +893,10 @@ export class AiQueryService {
             `${item.title}\n${item.description}\n${item.extraSnippets.join('\n')}`,
           ) && this.isStrongExternalMatch(item, plan),
       );
-      const uniqueExaResults = [...afterUrlDedupe.filter((item) => item.officialData?.length), ...relevantExaResults];
+      const uniqueExaResults = [
+        ...afterUrlDedupe.filter((item) => item.officialData?.length),
+        ...relevantExaResults,
+      ];
       this.logger.log(
         `Exa pipeline configuredSources=${configuredSources.length} ` +
           `rawHits=${exaResults.length} uniqueUrl=${afterUrlDedupe.length} ` +
@@ -761,7 +916,9 @@ export class AiQueryService {
         );
       }
       if (uniqueExaResults.length) {
-        const titleTranslations = await this.chat.translateDisplayNames(uniqueExaResults.map((result) => result.title));
+        const titleTranslations = await this.chat.translateDisplayNames(
+          uniqueExaResults.map((result) => result.title),
+        );
         await this.evidence.saveExternalEvidence(
           aiQueryId,
           uniqueExaResults.map((r) => {
@@ -782,7 +939,14 @@ export class AiQueryService {
                   provider: `${provider}-search`,
                   originalTitle: r.title,
                   displayTitle: titleTranslations[r.title] ?? r.title,
-                  ...(r.officialData?.length ? { provider: 'world-bank-api', analysisProvider: 'world-bank-api', structuredData: r.officialData, contentMode: 'structured' } : {}),
+                  ...(r.officialData?.length
+                    ? {
+                        provider: r.officialProvider ?? 'official-api',
+                        analysisProvider: r.officialProvider ?? 'official-api',
+                        structuredData: r.officialData,
+                        contentMode: 'structured',
+                      }
+                    : {}),
                   researchSourcePlan: sourcePlan,
                   researchLoop,
                   ...(discovery ? { researchDiscovery: discovery } : {}),
@@ -806,7 +970,15 @@ export class AiQueryService {
         );
         answerEvidence.forEach((r) => {
           const description = r.officialData?.length
-            ? JSON.stringify(r.officialData.map((row) => ({ country: row.country, year: row.year, indicator: row.indicatorCode, value: row.value, unit: row.unit }))).slice(0, 12000)
+            ? JSON.stringify(
+                r.officialData.map((row) => ({
+                  country: row.country,
+                  year: row.year,
+                  indicator: row.indicatorCode,
+                  value: row.value,
+                  unit: row.unit,
+                })),
+              ).slice(0, 12000)
             : r.description.slice(0, 600);
           evidenceBlocks.push(
             `[E${evidenceBlocks.length + 1}] 外部搜索\n${r.title}\n${description}`,

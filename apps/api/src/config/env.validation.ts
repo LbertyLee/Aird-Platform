@@ -32,8 +32,23 @@ const environmentSchema = z.object({
     .transform((value) => value === 'true')
     .default('false'),
   EXA_API_KEY: z.string().optional(),
+  /** Timeout shared by the selected international statistical APIs. */
+  INTERNATIONAL_API_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(2000)
+    .max(60000)
+    .default(12000),
+  UN_COMTRADE_API_KEY: z.string().optional().default(''),
+  /** JSON map from metric keywords to OECD SDMX CSV dataflow URL templates. */
+  OECD_SDMX_QUERY_TEMPLATES_JSON: z.string().optional().default(''),
   DEEPSEEK_SEARCH_API_KEY: z.string().optional().default(''),
-  DEEPSEEK_SEARCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(30000),
+  DEEPSEEK_SEARCH_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .max(120000)
+    .default(30000),
   EXA_SEARCH_COUNT: z.coerce.number().int().min(1).max(50).default(40),
   EXA_SOURCE_DOMAIN_BATCH_SIZE: z.coerce
     .number()
@@ -99,7 +114,12 @@ const environmentSchema = z.object({
   TENCENT_SMS_SIGN_NAME: z.string().optional().default(''),
   TENCENT_SMS_TEMPLATE_ID: z.string().optional().default(''),
   TENCENT_SMS_REGION: z.string().optional().default('ap-guangzhou'),
-  TENCENT_SMS_CODE_TTL_SEC: z.coerce.number().int().min(60).max(1800).default(300),
+  TENCENT_SMS_CODE_TTL_SEC: z.coerce
+    .number()
+    .int()
+    .min(60)
+    .max(1800)
+    .default(300),
   TENCENT_SMS_SEND_INTERVAL_SEC: z.coerce
     .number()
     .int()
@@ -112,7 +132,10 @@ const environmentSchema = z.object({
   ALIPAY_ENABLED: z.enum(['true', 'false']).optional().default('false'),
   ALIPAY_SELLER_ID: z.string().optional().default(''),
   ALIPAY_APP_ID: z.string().optional().default(''),
-  ALIPAY_GATEWAY: z.string().optional().default('https://openapi.alipaydev.com/gateway.do'),
+  ALIPAY_GATEWAY: z
+    .string()
+    .optional()
+    .default('https://openapi.alipaydev.com/gateway.do'),
   ALIPAY_PRIVATE_KEY: z.string().optional().default(''),
   ALIPAY_PRIVATE_KEY_PATH: z.string().optional().default(''),
   ALIPAY_PUBLIC_KEY: z.string().optional().default(''),

@@ -5,14 +5,14 @@ import type {
 } from '@agent/contracts';
 
 export const visualPalette = [
-  '#4c6b78',
-  '#bd4937',
-  '#df991b',
-  '#438878',
-  '#806486',
-  '#32859c',
-  '#967443',
-  '#627bba',
+  '#2563eb',
+  '#0891b2',
+  '#4f46e5',
+  '#0f766e',
+  '#7c3aed',
+  '#0284c7',
+  '#64748b',
+  '#14b8a6',
 ];
 export const visualViews = [
   { value: 'table', label: '表格' },

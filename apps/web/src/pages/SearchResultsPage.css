@@ -95,6 +95,7 @@
 .results-history{padding:18px 12px;background:#fff}
 .results-center{padding:20px 24px 40px}
 .result-query-card{display:none}
+.results-center.is-search-running .result-query-card{display:block;margin-top:0;margin-bottom:16px}
 .exec-progress{margin:0 0 16px;padding:14px 16px;border-radius:12px;box-shadow:none}
 .exec-progress-title{font-size:13px}
 .semantic-parse-panel{margin-top:10px;padding-top:10px}

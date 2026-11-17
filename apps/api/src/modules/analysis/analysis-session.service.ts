@@ -686,6 +686,8 @@ export class AnalysisSessionService {
       const structuredRows = structuredValues(source.structuredData);
       const isOfficial =
         source.metadata?.analysisProvider === 'world-bank-api' ||
+        (typeof source.metadata?.analysisProvider === 'string' &&
+          source.metadata.analysisProvider.endsWith('-api')) ||
         source.metadata?.analysisProvider === 'un-wpp-2024';
       const remainingCatalog = isOfficial
         ? extractionCatalog.filter(
@@ -1190,14 +1192,19 @@ export class AnalysisSessionService {
           message:
             source.metadata?.analysisProvider === 'un-wpp-2024'
               ? `已读取联合国 WPP 2024 官方年度数据（中方案），载入 ${Math.min(values.length, rowLimit)} 条记录，关联 ${mappedNames.length} 个指标；数据文件链接、原始字段和单位保留在数据行中。`
-              : source.metadata?.analysisProvider === 'world-bank-api'
-                ? `已通过 World Bank 官方 API 补充 ${values.length} 条结构化记录，已关联 ${mappedNames.length} 个指标；原始 API 地址保留在数据行中。`
+              : typeof source.metadata?.analysisProvider === 'string' &&
+                  source.metadata.analysisProvider.endsWith('-api')
+                ? `已通过 ${source.metadata.analysisProvider.replace(/-api$/, '')} 官方 API 载入 ${values.length} 条结构化记录，已关联 ${mappedNames.length} 个指标；原始 API 地址保留在数据行中。`
                 : mappedNames.length
                   ? `已按 ${mappedNames.length} 个指标载入 ${values.length} 条结构化记录。`
                   : `已载入 ${values.length} 条结构化记录，尚未关联后台指标。`,
         });
         if (
-          source.metadata?.analysisProvider !== 'world-bank-api' ||
+          (source.metadata?.analysisProvider !== 'world-bank-api' &&
+            !(
+              typeof source.metadata?.analysisProvider === 'string' &&
+              source.metadata.analysisProvider.endsWith('-api')
+            )) ||
           !extractionBySource.get(source.id)?.items.length
         )
           continue;

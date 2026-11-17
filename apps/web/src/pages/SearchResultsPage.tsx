@@ -544,7 +544,7 @@ export default function SearchResultsPage({
           </div>
         </aside>
 
-        <section className="results-center">
+        <section className={`results-center${running ? ' is-search-running' : ''}`}>
           <div className="result-query-card">
             <h1>{displayQuery}</h1>
             <p>

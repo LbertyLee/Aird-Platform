@@ -11,12 +11,14 @@ import { ExaSearchService } from '../../research/exa-search.service';
 import { RerankerService } from './reranker.service';
 import { ResearchPlanningGraphService } from '../search/research-planning-graph.service';
 import { WorldBankDataService } from '../../research/world-bank-data.service';
+import { InternationalDataApiService } from '../../research/international-data-api.service';
 
 @Module({
   imports: [SemanticModule, KnowledgeModule],
   providers: [
     AiQueryService,
     WorldBankDataService,
+    InternationalDataApiService,
     ResearchPlanningGraphService,
     QueryRouterService,
     TextToSqlService,

@@ -9,6 +9,7 @@ import type { SemanticResolution } from '../semantic/semantic.types';
 import { externalSourceDatasetWhere } from '../dataset/dataset-scope';
 import { buildResearchQueryPlan, type ResearchQueryPlan } from './research-query-plan';
 import { recentYearRangeForQueries } from '../../common/utils/recent-years';
+import { reportResearchProgress } from './research-progress';
 
 const PlanningState = Annotation.Root({
   query: Annotation<string>,
@@ -29,6 +30,7 @@ export class ResearchPlanningGraphService {
   async prepare(query: string, filters: ResearchFilters) {
     const graph = new StateGraph(PlanningState)
       .addNode('understand_intent', async () => {
+        await reportResearchProgress({ stage: 'planning', message: '正在并行解析问题与查询条件' });
         const [optimizedQuery, parsed] = await Promise.all([
           this.chat.optimizeResearchQuery(query, filters),
           this.semantic.resolve([query, ...Object.values(filters).flat()].join('；')),
@@ -40,6 +42,7 @@ export class ResearchPlanningGraphService {
         return { optimizedQuery, resolution };
       })
       .addNode('select_websites', async (state) => {
+        await reportResearchProgress({ stage: 'planning', message: '意图解析完成，正在规划检索来源' });
         const sources = await this.prisma.dataset.findMany({
           where: {
             deletedAt: null, status: 'active', publishStatus: 'published',

@@ -22,6 +22,8 @@ export interface CreateSourceInput {
 export interface ExaResult {
   /** Verified official API rows; persisted without model re-extraction. */
   officialData?: Array<Record<string, unknown>>;
+  /** Provider identifier for structured official API results. */
+  officialProvider?: string;
   title: string;
   url: string;
   description: string;
