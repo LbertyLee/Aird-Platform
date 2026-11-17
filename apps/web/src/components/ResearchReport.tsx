@@ -25,7 +25,9 @@ export default function ResearchReport({
   const conflicts = summary.filter((x) => x.conflict);
   const local = result.sources.filter((x) => x.origin !== 'exa');
   const dataset = analysis?.visualDatasets?.[0];
-  const answer = analysis?.llmSummary || result.answer;
+  const candidateAnswer = analysis?.llmSummary || result.answer;
+  const answer = isStructuredDump(candidateAnswer) ? '' : candidateAnswer;
+  const observedSummary = summary.filter((item) => item.value != null);
   return (
     <article className="research-report" aria-label="研究报告">
       <header>
@@ -57,6 +59,17 @@ export default function ResearchReport({
         </h2>
         {answer ? (
           <div className="research-report-copy">{renderMarkdown(answer)}</div>
+        ) : observedSummary.length ? (
+          <ul>
+            {observedSummary.slice(0, 6).map((item) => (
+              <li key={item.key}>
+                {item.entity || '研究对象'} {item.period || ''}{' '}
+                {item.indicatorName}：{item.value!.toLocaleString('zh-CN')}{' '}
+                {item.unit}（{item.sourceCount} 个来源，{item.observationCount}{' '}
+                条观测）
+              </li>
+            ))}
+          </ul>
         ) : (
           <p>
             {busy
@@ -162,7 +175,7 @@ export default function ResearchReport({
           <h3>数据标准化与清洗</h3>
           <p>
             {analysis
-              ? `已转换单位 ${observations.filter((x) => x.normalizationStatus === 'converted').length} 条，待核验单位 ${observations.filter((x) => x.normalizationStatus === 'unknown').length} 条。`
+              ? `已检查 ${observations.length} 条观测：自动换算 ${observations.filter((x) => x.normalizationStatus === 'converted').length} 条，单位一致 ${observations.filter((x) => x.normalizationStatus === 'same').length} 条，待核验 ${observations.filter((x) => x.normalizationStatus === 'unknown').length} 条。`
               : '等待数据处理结果。'}
           </p>
         </section>
@@ -170,11 +183,23 @@ export default function ResearchReport({
           <h3>智能分析与交叉验证</h3>
           <p>
             {analysis
-              ? `多来源观测组 ${summary.filter((x) => x.sourceCount > 1).length} 组，标记冲突 ${conflicts.length} 组。`
+              ? `已对照 ${summary.filter((x) => x.sourceCount > 1).length} 组多来源观测，发现 ${conflicts.length} 组数值差异；${summary.filter((x) => x.sourceCount === 1).length} 组只有单一来源，不能视为已交叉验证。`
               : '等待数据处理结果。'}
           </p>
         </section>
       </div>
     </article>
   );
+}
+
+function isStructuredDump(value?: string) {
+  const text = value?.trim() ?? '';
+  if (!text) return false;
+  const jsonLike =
+    /\{\s*"(?:country|countryCode|indicatorCode|catalogIndicatorCode|worldBankIndicatorCode|year|value)"\s*:/.test(
+      text,
+    );
+  const containsManyRows =
+    (text.match(/"indicatorCode"\s*:/g)?.length ?? 0) > 1;
+  return jsonLike || containsManyRows;
 }

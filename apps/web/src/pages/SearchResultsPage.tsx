@@ -544,7 +544,9 @@ export default function SearchResultsPage({
           </div>
         </aside>
 
-        <section className={`results-center${running ? ' is-search-running' : ''}`}>
+        <section
+          className={`results-center${running ? ' is-search-running' : ''}`}
+        >
           <div className="result-query-card">
             <h1>{displayQuery}</h1>
             <p>
@@ -608,7 +610,7 @@ export default function SearchResultsPage({
                   stage.state === 'active'
                     ? '进行中'
                     : stage.state === 'interrupted'
-                      ? '已中断'
+                      ? '存在缺项'
                       : stage.state === 'pending'
                         ? '等待中'
                         : '已完成';

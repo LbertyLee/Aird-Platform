@@ -4,6 +4,7 @@ import { DeepSeekChatService } from '../../infrastructure/ai/deepseek-chat.servi
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { inferQueryRegions } from '../../common/utils/query-regions';
 import { externalSourceDatasetWhere } from '../dataset/dataset-scope';
+import { rankIndicatorsForQuery } from '../analysis/indicator-query-rank';
 import type {
   LlmSemanticParseResult,
   ResolvedConcept,
@@ -127,6 +128,7 @@ export class SemanticResolutionService {
         entities,
         concepts,
         dictionaries,
+        text,
       );
       let resolution = grounded;
       // LLM 常把「近5年」漏成 UNKNOWN，或臆造过时的 2019-2023 等区间
@@ -239,6 +241,7 @@ export class SemanticResolutionService {
     entities: EntityRow[],
     concepts: ConceptRow[],
     dictionaries: DictRow[],
+    query: string,
   ): SemanticResolution {
     const metricByCode = new Map(indicators.map((i) => [i.code, i]));
     const entityByCode = new Map(entities.map((e) => [e.code, e]));
@@ -261,6 +264,54 @@ export class SemanticResolutionService {
           indicatorId: hit.id,
           aliases: hit.aliases.map((a) => a.alias),
         });
+      }
+    }
+
+    // A broad alias such as "GDP" must not override an explicit growth-rate
+    // request, even when the model returned the nominal-level catalog code.
+    if (
+      /\bgdp\b|国内生产总值|生产总值/i.test(query) &&
+      /增速|增长率|同比|growth/i.test(query)
+    ) {
+      const ranked = rankIndicatorsForQuery(
+        query,
+        indicators.map((indicator) => ({
+          ...indicator,
+          unit: '',
+          definition: '',
+          aliases: indicator.aliases.map((alias) => alias.alias),
+        })),
+      );
+      const growth = ranked.find(
+        (indicator) =>
+          /growth|增速|增长率|同比/i.test(
+            `${indicator.code} ${indicator.name} ${indicator.aliases.join(' ')}`,
+          ) &&
+          /gdp|国内生产总值|生产总值/i.test(
+            `${indicator.code} ${indicator.name} ${indicator.aliases.join(' ')}`,
+          ),
+      );
+      if (growth) {
+        const catalogIndicator = indicators.find(
+          (indicator) => indicator.id === growth.id,
+        );
+        if (catalogIndicator) {
+          for (let index = metrics.length - 1; index >= 0; index -= 1) {
+            if (
+              /gdp|国内生产总值|生产总值/i.test(
+                `${metrics[index].code} ${metrics[index].name}`,
+              )
+            ) {
+              metrics.splice(index, 1);
+            }
+          }
+          metrics.push({
+            code: catalogIndicator.code,
+            name: catalogIndicator.name,
+            indicatorId: catalogIndicator.id,
+            aliases: catalogIndicator.aliases.map((alias) => alias.alias),
+          });
+        }
       }
     }
 

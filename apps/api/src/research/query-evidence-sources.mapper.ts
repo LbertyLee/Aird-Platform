@@ -81,6 +81,28 @@ export function toResearchSourceResponse(
       : undefined;
   const libraryName =
     typeof metadata.libraryName === 'string' ? metadata.libraryName : undefined;
+  const officialRows =
+    Array.isArray(source.structuredData) &&
+    (typeof metadata.analysisProvider === 'string' ||
+      metadata.provider === 'official-api')
+      ? source.structuredData
+          .slice(0, 5)
+          .filter(
+            (row): row is Record<string, unknown> =>
+              Boolean(row) && typeof row === 'object' && !Array.isArray(row),
+          )
+          .map((row) => {
+            const entity = String(row.country ?? row.entity ?? '');
+            const year = String(row.year ?? row.period ?? '');
+            const metric = String(
+              row.indicator ?? row.indicatorName ?? row.indicatorCode ?? '数据',
+            );
+            const value = String(row.value ?? '');
+            const unit = String(row.unit ?? '');
+            return `${entity}${year ? ` ${year}年` : ''} ${metric}：${value}${unit ? ` ${unit}` : ''}`.trim();
+          })
+          .join('；')
+      : '';
 
   return {
     id: source.id,
@@ -89,7 +111,7 @@ export function toResearchSourceResponse(
     storageType: source.storageType,
     sourceUrl: source.sourceUrl,
     mimeType: source.mimeType,
-    excerpt: source.excerpt,
+    excerpt: officialRows || source.excerpt,
     recordCount: source.recordCount,
     structuredData: source.structuredData,
     score: source.score,
@@ -149,8 +171,10 @@ export async function mapQueryEvidenceToSources(
       const metadata = (item.metadataJson ?? {}) as Record<string, unknown>;
       const isExternal = item.evidenceType === 'external';
       const isSql = item.evidenceType === 'sql';
-      const officialRows = isExternal && Array.isArray(metadata.structuredData)
-        ? metadata.structuredData : undefined;
+      const officialRows =
+        isExternal && Array.isArray(metadata.structuredData)
+          ? metadata.structuredData
+          : undefined;
       const isKnowledgeVector =
         item.evidenceType === 'vector' && item.sourceType === 'knowledge';
 
@@ -161,8 +185,11 @@ export async function mapQueryEvidenceToSources(
       if (isSql) {
         title = 'PostgreSQL 结构化查询结果';
       } else if (isExternal) {
-        title = typeof metadata.displayTitle === 'string' && metadata.displayTitle.trim()
-          ? metadata.displayTitle : externalEvidenceTitle(item.content, index);
+        title =
+          typeof metadata.displayTitle === 'string' &&
+          metadata.displayTitle.trim()
+            ? metadata.displayTitle
+            : externalEvidenceTitle(item.content, index);
       } else if (isKnowledgeVector && item.sourceId) {
         const doc = catalog.get(item.sourceId);
         knowledgeScope = doc
@@ -188,7 +215,8 @@ export async function mapQueryEvidenceToSources(
         textContent: item.content ?? item.sql ?? '',
         searchText: `${title}\n${item.content ?? item.sql ?? ''}`,
         structuredData:
-          officialRows ?? (isSql && item.content
+          officialRows ??
+          (isSql && item.content
             ? (JSON.parse(item.content) as unknown)
             : undefined),
         metadata: {
@@ -203,8 +231,9 @@ export async function mapQueryEvidenceToSources(
           ...(knowledgeScope ? { knowledgeScope } : {}),
           ...(libraryName ? { libraryName } : {}),
         },
-        recordCount:
-          officialRows ? officialRows.length : isSql && item.content
+        recordCount: officialRows
+          ? officialRows.length
+          : isSql && item.content
             ? (JSON.parse(item.content) as unknown[]).length
             : isKnowledgeVector
               ? 1

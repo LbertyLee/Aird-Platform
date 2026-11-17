@@ -314,6 +314,7 @@ describe('World Bank selected source hydration', () => {
   it.each([
     ['人均GDP', ['NY.GDP.PCAP.CD']],
     ['GDP实际增速', ['NY.GDP.MKTP.KD.ZG']],
+    ['比较2020-2025年中美GDP增长率', ['NY.GDP.MKTP.KD.ZG']],
     ['GDP不变价', []],
     ['人口自然增长率', []],
     ['人口增长率', ['SP.POP.GROW']],

@@ -100,7 +100,11 @@ const INDICATORS = [
 @Injectable()
 export class WorldBankDataService {
   private readonly logger = new Logger(WorldBankDataService.name);
-  private readonly observationCache = new OfficialObservationCache(undefined, undefined, (message) => this.logger.warn(message));
+  private readonly observationCache = new OfficialObservationCache(
+    undefined,
+    undefined,
+    (message) => this.logger.warn(message),
+  );
 
   /** Enrich the selected pages in the session snapshot; keep their IDs and access scope. */
   async hydrateSources(
@@ -239,7 +243,9 @@ export class WorldBankDataService {
           url.searchParams.set('format', 'json');
           url.searchParams.set('date', `${start}:${end}`);
           url.searchParams.set('per_page', '20000');
-          const observations = await this.observationCache.get(url, (request) => this.requestObservations(request));
+          const observations = await this.observationCache.get(url, (request) =>
+            this.requestObservations(request),
+          );
           const rows: Array<Record<string, unknown>> = observations
             .filter(
               (item) =>
@@ -318,30 +324,49 @@ export class WorldBankDataService {
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
         if (!response.ok) {
-          retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+          retryable =
+            response.status === 408 ||
+            response.status === 429 ||
+            response.status >= 500;
           const retryAfter = Number(response.headers.get('retry-after'));
           if (Number.isFinite(retryAfter) && retryAfter > 0)
-            retryDelay = Math.min(2_000, Math.max(retryDelay, retryAfter * 1_000));
+            retryDelay = Math.min(
+              2_000,
+              Math.max(retryDelay, retryAfter * 1_000),
+            );
           // Release the connection before retrying; error bodies are not data.
           await response.body?.cancel();
           throw new Error(`World Bank API returned ${response.status}`);
         }
         // Body timeouts/truncated JSON must retry too, not escape the retry loop.
         const payload: unknown = await response.json();
-        if (Array.isArray(payload) && payload.length === 2 && payload[1] === null &&
-          payload[0]?.total === 0) return [];
+        if (
+          Array.isArray(payload) &&
+          payload.length === 2 &&
+          payload[1] === null &&
+          payload[0]?.total === 0
+        )
+          return [];
         if (
           !Array.isArray(payload) ||
           payload.length !== 2 ||
           !Array.isArray(payload[1]) ||
-          payload[1].some((row) => !row || typeof row !== 'object' || Array.isArray(row))
+          payload[1].some(
+            (row) => !row || typeof row !== 'object' || Array.isArray(row),
+          )
         )
-          throw new Error('World Bank API returned an invalid observation payload');
+          throw new Error(
+            'World Bank API returned an invalid observation payload',
+          );
         if (attempt > 1)
-          this.logger.log(`World Bank API recovered on attempt ${attempt}/${REQUEST_ATTEMPTS} after ${Date.now() - started}ms: ${url.pathname}`);
+          this.logger.log(
+            `World Bank API recovered on attempt ${attempt}/${REQUEST_ATTEMPTS} after ${Date.now() - started}ms: ${url.pathname}`,
+          );
         return payload[1] as WorldBankObservation[];
       } catch (error) {
-        this.logger.warn(`World Bank API attempt ${attempt}/${REQUEST_ATTEMPTS} failed after ${Date.now() - started}ms: ${url.pathname}: ${error instanceof Error ? error.message : 'unknown error'}`);
+        this.logger.warn(
+          `World Bank API attempt ${attempt}/${REQUEST_ATTEMPTS} failed after ${Date.now() - started}ms: ${url.pathname}: ${error instanceof Error ? error.message : 'unknown error'}`,
+        );
         if (!retryable || attempt === REQUEST_ATTEMPTS) throw error;
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
       }
@@ -372,7 +397,13 @@ export class WorldBankDataService {
   }
 
   private resolveIndicators(plan: ResearchQueryPlan, query: string) {
-    const texts = plan.indicators.length ? plan.indicators : [query];
+    // Keep the original question in scope: a planner can return a broad alias
+    // such as "GDP" even when the user explicitly asked for growth.
+    const texts = [...plan.indicators, query];
+    const asksForGrowth = /增速|增长率|同比|growth|real\s+gdp/i.test(query);
+    const asksForLevel = /总量|现价|名义|金额|current\s+us\$|gdp\s+level/i.test(
+      query,
+    );
     const codes = new Set(
       texts.flatMap((text) => {
         const matches = INDICATORS.filter((indicator) =>
@@ -381,9 +412,14 @@ export class WorldBankDataService {
         return matches
           .filter((indicator) => {
             if (indicator.code === 'NY.GDP.MKTP.CD')
-              return !/人均|per\s*capita|增长|增速|growth|不变价|constant|实际|real/i.test(
-                text,
+              return (
+                (!asksForGrowth || asksForLevel) &&
+                !/人均|per\s*capita|增长|增速|growth|不变价|constant|实际|real/i.test(
+                  text,
+                )
               );
+            if (indicator.code === 'NY.GDP.MKTP.KD.ZG')
+              return asksForGrowth || !asksForLevel;
             if (indicator.code === 'SP.POP.TOTL')
               return !/增长|出生|自然|growth|birth/i.test(text);
             return true;

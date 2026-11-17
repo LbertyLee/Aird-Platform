@@ -56,6 +56,24 @@ import { InternationalDataApiService } from '../../research/international-data-a
 import { OfficialResearchCoverage } from '../search/official-research-coverage';
 import { reportResearchProgress } from '../search/research-progress';
 
+function formatOfficialRows(rows: Array<Record<string, unknown>>): string {
+  return rows
+    .map((row) => {
+      const country = String(row.country ?? row.entity ?? '未注明实体');
+      const year = String(row.year ?? row.period ?? '');
+      const indicator = String(
+        row.indicator ?? row.indicatorName ?? row.indicatorCode ?? '指标',
+      );
+      const value =
+        typeof row.value === 'number'
+          ? row.value.toLocaleString('en-US', { maximumFractionDigits: 4 })
+          : String(row.value ?? '');
+      const unit = String(row.unit ?? '');
+      return `${country}${year ? `，${year}年` : ''}，${indicator}：${value}${unit ? ` ${unit}` : ''}`;
+    })
+    .join('\n');
+}
+
 export type AiQueryOptions = {
   userId?: string;
   /** 用户端数据分析：不调用外部搜索 */
@@ -922,9 +940,11 @@ export class AiQueryService {
         await this.evidence.saveExternalEvidence(
           aiQueryId,
           uniqueExaResults.map((r) => {
-            const body = [r.description, ...r.extraSnippets]
-              .filter(Boolean)
-              .join('\n');
+            const body = r.officialData?.length
+              ? formatOfficialRows(r.officialData)
+              : [r.description, ...r.extraSnippets]
+                  .filter(Boolean)
+                  .join('\n');
             const relevance = scoreDocumentRelevance(
               `${r.title}\n${body}`,
               plan,
@@ -970,15 +990,7 @@ export class AiQueryService {
         );
         answerEvidence.forEach((r) => {
           const description = r.officialData?.length
-            ? JSON.stringify(
-                r.officialData.map((row) => ({
-                  country: row.country,
-                  year: row.year,
-                  indicator: row.indicatorCode,
-                  value: row.value,
-                  unit: row.unit,
-                })),
-              ).slice(0, 12000)
+            ? formatOfficialRows(r.officialData).slice(0, 12000)
             : r.description.slice(0, 600);
           evidenceBlocks.push(
             `[E${evidenceBlocks.length + 1}] 外部搜索\n${r.title}\n${description}`,
