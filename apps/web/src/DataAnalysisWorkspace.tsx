@@ -1266,7 +1266,7 @@ export default function DataAnalysisWorkspace({
               result={savedSessionUnavailable ? null : result}
               sources={selectedSources}
               mode={activeTab}
-              autoGenerateReport={searchParams.get('saved') !== '1'}
+              autoGenerateReport
               onSession={(next, view) => {
                 setAnalysisSession(next);
                 const params = new URLSearchParams(searchParams);
