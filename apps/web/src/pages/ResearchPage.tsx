@@ -88,7 +88,11 @@ export default function ResearchPage({
       if (active) setCatalog(data);
     }).catch(() => { if (active) setCatalogError(true); });
     void getSearchModelOptions().then((data) => {
-      if (active) { setModelOptions(data); setModel((current) => current || data[0]?.value || ''); }
+      if (active) {
+        const options = data.map((option) => ({ ...option, label: option.value }));
+        setModelOptions(options);
+        setModel((current) => current || options[0]?.value || '');
+      }
     }).catch(() => undefined);
     return () => { active = false; };
   }, []);

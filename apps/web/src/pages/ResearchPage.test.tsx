@@ -53,7 +53,11 @@ describe('首页搜索筛选', () => {
   it('默认不限制知识库和数据源，并显示模型配置名称', async () => {
     const start = vi.fn();
     render(<MemoryRouter><ResearchPage session={{ accessToken: 'test' } as LoginResponse} onStartSearch={start} onHistorySelect={vi.fn()} /></MemoryRouter>);
-    expect(await screen.findByRole('option', { name: '复杂推理模型' })).toBeTruthy();
+    expect(await screen.findByRole('option', { name: 'qwen3.7-plus-2026-05-26' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'qwen3.8-max' })).toBeTruthy();
+    expect(screen.queryByRole('option', { name: '标准模型' })).toBeNull();
+    expect(screen.queryByRole('option', { name: '复杂推理模型' })).toBeNull();
+    expect(screen.queryByLabelText('检索模式')).toBeNull();
     fireEvent.change(screen.getByLabelText('研究问题'), { target: { value: '默认全量检索测试' } });
     fireEvent.click(screen.getByRole('button', { name: '搜索' }));
     await waitFor(() => expect(start).toHaveBeenCalledWith(expect.objectContaining({ mode: 'mixed', filters: expect.objectContaining({ libraryIds: [], sources: [] }) })));
