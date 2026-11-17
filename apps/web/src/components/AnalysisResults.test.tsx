@@ -19,6 +19,21 @@ it('查看历史会话时展示已保存的图表与文章，不重新生成', a
   expect(saveAnalysisPresentation).not.toHaveBeenCalled();
 });
 
+it('按当前勾选即时显示报告图表，包含尚未保存的视图', () => {
+  const savedPresentation = { datasetId: 'd', entities: ['中国'], startPeriod: '2024', endPeriod: '2024', currentPeriod: '2024', view: 'line', reportViews: ['line'] };
+  const currentPresentation = { ...savedPresentation, reportViews: ['line', 'map', 'table'] };
+  const session = {
+    id: 'saved',
+    visualDatasets: [{ id: 'd', name: '人口', unit: '人', definition: '', entities: ['中国'], periods: ['2024'], points: [{ entity: '中国', period: '2024', value: 10, sourceIds: ['s'] }], sources: [{ id: 's', title: '来源' }] }],
+    presentation: currentPresentation,
+    visualReport: { title: '已保存文章', createdAt: '2026-11-16T00:00:00Z', presentation: savedPresentation, metrics: [], sections: [] },
+  };
+  render(<AnalysisResults session={session as never} result={null} sources={[]} mode="report" autoGenerateReport={false} onSession={vi.fn()} onNavigate={vi.fn()} />);
+  expect(document.querySelector('[data-visual-view="line"]')).toBeTruthy();
+  expect(document.querySelector('[data-visual-view="map"]')).toBeTruthy();
+  expect(document.querySelector('[data-visual-view="table"]')).toBeTruthy();
+});
+
 it('打开缺少报告的历史会话时自动保存分析结果', async () => {
   const presentation = { datasetId: 'd', entities: ['中国'], startPeriod: '2024', endPeriod: '2024', currentPeriod: '2024', view: 'line', reportViews: ['line'] };
   const session = { id: 'saved', presentation, visualDatasets: [{ id: 'd', name: '人口', unit: '人', definition: '', entities: ['中国'], periods: ['2024'], points: [{ entity: '中国', period: '2024', value: 10, sourceIds: ['s'] }], sources: [{ id: 's', title: '来源' }] }] };

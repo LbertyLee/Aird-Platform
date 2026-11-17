@@ -476,7 +476,7 @@ export default function AnalysisResults({
               {JSON.stringify(report.presentation) !==
                 JSON.stringify(presentation) && (
                 <p className="visual-message">
-                  筛选或导出图表选择已变更，更新分析结果后生效。
+                  图表选择已变更，更新分析结果后同步到已保存报告。
                 </p>
               )}
               <div className="visual-report-stats">
@@ -513,7 +513,7 @@ export default function AnalysisResults({
                   {report.presentation.endPeriod} · 当前年份：
                   {report.presentation.currentPeriod}
                 </div>
-                {report.presentation.reportViews.map((view) => (
+                {presentation.reportViews.map((view) => (
                   <figure
                     className="visual-report-figure"
                     data-visual-view={view}
@@ -524,7 +524,7 @@ export default function AnalysisResults({
                     </figcaption>
                     <AnalysisVisual
                       dataset={reportDataset}
-                      presentation={{ ...report.presentation, view }}
+                      presentation={{ ...presentation, view }}
                     />
                   </figure>
                 ))}
