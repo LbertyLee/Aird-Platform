@@ -37,6 +37,8 @@ export type ResolvedTime = {
 export type ResearchDiscovery = {
   metrics: string[];
   entities: string[];
+  /** AI-identified analytical dimensions that are not present in the catalog. */
+  dimensions?: string[];
   dataNeeds: string[];
   websites: string[];
 };

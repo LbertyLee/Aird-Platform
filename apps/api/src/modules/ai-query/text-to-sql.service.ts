@@ -187,6 +187,7 @@ export class TextToSqlService {
     }
 
     const entityNames = [
+      ...(resolution.discovery?.entities ?? []),
       ...resolution.entities.map((e) => e.name),
       ...resolution.dimensions
         .filter((d) =>

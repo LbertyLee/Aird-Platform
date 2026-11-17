@@ -1396,6 +1396,12 @@ export class AiQueryService {
       resolution.discovery?.metrics.length
         ? `补充指标：${resolution.discovery.metrics.join('、')}`
         : '',
+      resolution.discovery?.entities.length
+        ? `补充实体：${resolution.discovery.entities.join('、')}`
+        : '',
+      resolution.discovery?.dimensions?.length
+        ? `补充维度：${resolution.discovery.dimensions.join('、')}`
+        : '',
       resolution.discovery?.dataNeeds.length
         ? `待查询数据：${resolution.discovery.dataNeeds.join('、')}`
         : '',

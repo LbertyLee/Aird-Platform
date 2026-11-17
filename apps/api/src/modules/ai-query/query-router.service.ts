@@ -7,13 +7,17 @@ export type QueryRoute = 'structured' | 'semantic' | 'hybrid';
 export class QueryRouterService {
   route(resolution: SemanticResolution, query: string): QueryRoute {
     const hasMetric = resolution.metrics.length > 0;
+    const hasDiscoveredMetric =
+      (resolution.discovery?.metrics.length ?? 0) > 0;
     const hasAnalysis =
       resolution.intent === 'analysis' ||
       /为什么|原因|影响|解读/.test(query);
     const hasRegionalStructuredHint =
       resolution.dimensions.some((item) => item.type === 'region') &&
       /统计|数量|人口|销量|产量|数据/.test(query);
-    if (hasMetric && hasAnalysis) return 'hybrid';
+    // Catalog metrics can use SQL mappings; AI-discovered metrics need the
+    // semantic path, so mixed requests must run both retrieval paths.
+    if (hasMetric && (hasAnalysis || hasDiscoveredMetric)) return 'hybrid';
     if (hasMetric && (resolution.intent === 'metric_query' || resolution.intent === 'lookup')) {
       return 'structured';
     }

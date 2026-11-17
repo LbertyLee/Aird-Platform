@@ -73,6 +73,18 @@ const environmentSchema = z.object({
   AI_API_KEY: z.string().optional().default(''),
   OPENAI_BASE_URL: optionalUrl,
   OPENAI_MODEL: z.string().default('qwen3.7-plus-2026-05-26'),
+  OPENAI_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .max(120000)
+    .default(60000),
+  RESEARCH_PLANNING_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(3000)
+    .max(30000)
+    .default(12000),
   /** 证据评估、研究结论、跨来源分析和报告生成使用的复杂推理模型。 */
   OPENAI_REASONING_MODEL: z.string().trim().min(1).default('qwen3.8-max'),
   /** 模型计费单价：{ model: { inputYuanPerMillionTokens, outputYuanPerMillionTokens } } */

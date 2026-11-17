@@ -72,6 +72,14 @@ const ENTITY_SEARCH_ALIASES: Record<string, string[]> = {
   英国: ['英国', 'united kingdom', 'uk'],
 };
 
+const DIMENSION_SEARCH_ALIASES: Record<string, string[]> = {
+  行业: ['industry', 'sector'],
+  新能源: ['renewable energy', 'clean energy', 'new energy'],
+  地区: ['region', 'area'],
+  城市: ['city'],
+  省份: ['province'],
+};
+
 /** Use the same country aliases for hard matching, ranking and saved metadata. */
 function matchingEntityTerms(text: string, entities: string[]): string[] {
   return entities.filter((entity) =>
@@ -239,6 +247,15 @@ export function buildRelevanceMatcher(
         ]),
       ...(filters?.regions ?? []),
     ]),
+    expand(
+      (resolution.discovery?.dimensions ?? []).flatMap((dimension) =>
+        dimension
+          .split(/[=：:，,；;（）()]/)
+          .map((term) => term.trim())
+          .flatMap((term) => [term, ...(DIMENSION_SEARCH_ALIASES[term] ?? [])])
+          .filter(Boolean),
+      ),
+    ),
   ].filter((group) => group.length > 0);
 
   // Years remain ranking signals: a multi-year table may omit the requested

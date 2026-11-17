@@ -9,6 +9,7 @@ import {
 import { inferQueryRegions } from '../../common/utils/query-regions';
 import { inferQueryCountries } from '../../common/utils/query-countries';
 import { bilingualResearchTerms } from './research-bilingual-terms';
+import { metricTranslationKey } from './research-metric-aliases';
 
 /** Shared constraints for retrieval ranking and LLM extraction. */
 export type ResearchQueryPlan = {
@@ -19,6 +20,7 @@ export type ResearchQueryPlan = {
   /** Explicit localities must match even if a broader country also matches. */
   regions?: string[];
   metrics: string[];
+  dimensions?: string[];
   periods: string[];
   mustTerms: string[];
   preferredIndicatorCodes: string[];
@@ -33,6 +35,37 @@ export function buildResearchQueryPlan(input: {
   resolution: SemanticResolution;
 }): ResearchQueryPlan {
   const hints = inferQueryDimensionHints(input.originalQuery);
+  const catalogMetricKeys = new Set(
+    input.resolution.metrics.flatMap((metric) =>
+      [metric.code, metric.name, ...(metric.aliases ?? [])].map(
+        metricTranslationKey,
+      ),
+    ),
+  );
+  const discoveryMetrics = (input.resolution.discovery?.metrics ?? []).filter(
+    (metric) => !catalogMetricKeys.has(metricTranslationKey(metric)),
+  );
+  const catalogEntityKeys = new Set(
+    input.resolution.entities.flatMap((entity) =>
+      [entity.name, entity.code, ...(entity.aliases ?? [])].map(normalizeTerm),
+    ),
+  );
+  const discoveryEntities = (input.resolution.discovery?.entities ?? []).filter(
+    (entity) => !catalogEntityKeys.has(normalizeTerm(entity)),
+  );
+  const catalogDimensionKeys = new Set(
+    input.resolution.dimensions.flatMap((dimension) =>
+      [
+        dimension.name,
+        dimension.code,
+        dimension.value ?? '',
+        ...(dimension.aliases ?? []),
+      ].map(normalizeTerm),
+    ),
+  );
+  const discoveryDimensions = (
+    input.resolution.discovery?.dimensions ?? []
+  ).filter((dimension) => !catalogDimensionKeys.has(normalizeTerm(dimension)));
   const regions = uniqueStrings(
     bilingualResearchTerms(
       [
@@ -48,7 +81,7 @@ export function buildResearchQueryPlan(input: {
   const entities = uniqueStrings(
     bilingualResearchTerms(
       [
-        ...(input.resolution.discovery?.entities ?? []),
+        ...discoveryEntities,
         ...inferQueryCountries(input.originalQuery),
         ...regions,
         ...hints.entities,
@@ -66,15 +99,18 @@ export function buildResearchQueryPlan(input: {
   const metrics = uniqueStrings(
     bilingualResearchTerms(
       [
-        ...(input.resolution.discovery?.metrics ?? []),
+        ...discoveryMetrics,
         ...input.resolution.metrics.map((item) => item.name),
-        ...input.resolution.metrics.flatMap((item) => item.aliases ?? []),
         ...input.filters.indicators,
       ],
       input.resolution.sourcePlan,
       'metric',
     ),
   );
+  const dimensions = uniqueStrings([
+    ...input.resolution.dimensions.map((item) => item.name),
+    ...discoveryDimensions,
+  ]);
   const recentPeriods =
     periodsFromRecentYearPhrase(input.originalQuery) ??
     explicitYearRangePeriods(input.originalQuery);
@@ -92,6 +128,7 @@ export function buildResearchQueryPlan(input: {
   const mustTerms = uniqueStrings([
     ...entities,
     ...metrics,
+    ...dimensions,
     ...periods.slice(-3),
   ]);
   const searchQuery = composeSearchQuery(
@@ -102,6 +139,7 @@ export function buildResearchQueryPlan(input: {
     ]).join(' '),
     entities,
     metrics,
+    dimensions,
     periods,
     input.resolution.intent,
   );
@@ -112,6 +150,7 @@ export function buildResearchQueryPlan(input: {
     entities,
     regions,
     metrics,
+    dimensions,
     periods,
     mustTerms,
     preferredIndicatorCodes,
@@ -145,6 +184,7 @@ export function buildResearchQueryPlanLite(
     ...normalizedFilters.regions,
   ]);
   const metrics = uniqueStrings([...normalizedFilters.indicators]);
+  const dimensions: string[] = [];
   const recentPeriods =
     periodsFromRecentYearPhrase(originalQuery) ??
     explicitYearRangePeriods(originalQuery);
@@ -168,12 +208,14 @@ export function buildResearchQueryPlanLite(
       originalQuery,
       entities,
       metrics,
+      dimensions,
       periods,
       'analysis',
     ),
     entities,
     regions,
     metrics,
+    dimensions,
     periods,
     mustTerms,
     preferredIndicatorCodes: [],
@@ -214,6 +256,7 @@ function composeSearchQuery(
   optimizedQuery: string,
   entities: string[],
   metrics: string[],
+  dimensions: string[],
   periods: string[],
   intent: SemanticResolution['intent'],
 ): string {
@@ -229,7 +272,14 @@ function composeSearchQuery(
       : (periods[0] ?? '');
   return [
     ...new Set(
-      [optimizedQuery.trim(), intentTerms, ...entities, ...metrics, periodHint]
+      [
+        optimizedQuery.trim(),
+        intentTerms,
+        ...entities,
+        ...metrics,
+        ...dimensions,
+        periodHint,
+      ]
         .map((value) => value.trim())
         .filter(Boolean),
     ),
@@ -266,6 +316,10 @@ function yearsFromText(text: string): string[] {
 
 function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function normalizeTerm(value: string): string {
+  return value.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 export function termHits(text: string, terms: string[]): string[] {

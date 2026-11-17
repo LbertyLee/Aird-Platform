@@ -64,34 +64,40 @@ export class SemanticResolutionService {
 
   async resolve(query: string): Promise<SemanticResolution> {
     const text = query.trim();
-    const [indicators, entities, concepts, dictionaries, sources] = await Promise.all([
-      this.prisma.indicator.findMany({
-        where: { status: CommonStatus.active, deletedAt: null },
-        include: { aliases: true },
-      }),
-      this.prisma.semanticEntity.findMany({
-        where: { status: CommonStatus.active },
-        include: { aliases: true },
-      }),
-      this.prisma.semanticConcept.findMany({
-        where: { status: CommonStatus.active },
-        include: { aliases: true },
-      }),
-      this.prisma.dictionaryItem.findMany({
-        where: { status: CommonStatus.active, deletedAt: null },
-      }),
-      this.prisma.dataset.findMany({
-        where: {
-          status: CommonStatus.active,
-          publishStatus: 'published',
-          deletedAt: null,
-          ...externalSourceDatasetWhere(),
-        },
-        select: { name: true, websiteUrl: true },
-      }),
-    ]);
+    const [indicators, entities, concepts, dictionaries, sources] =
+      await Promise.all([
+        this.prisma.indicator.findMany({
+          where: { status: CommonStatus.active, deletedAt: null },
+          include: { aliases: true },
+        }),
+        this.prisma.semanticEntity.findMany({
+          where: { status: CommonStatus.active },
+          include: { aliases: true },
+        }),
+        this.prisma.semanticConcept.findMany({
+          where: { status: CommonStatus.active },
+          include: { aliases: true },
+        }),
+        this.prisma.dictionaryItem.findMany({
+          where: { status: CommonStatus.active, deletedAt: null },
+        }),
+        this.prisma.dataset.findMany({
+          where: {
+            status: CommonStatus.active,
+            publishStatus: 'published',
+            deletedAt: null,
+            ...externalSourceDatasetWhere(),
+          },
+          select: { name: true, websiteUrl: true },
+        }),
+      ]);
 
-    const catalog = this.buildCatalog(indicators, entities, concepts, dictionaries);
+    const catalog = this.buildCatalog(
+      indicators,
+      entities,
+      concepts,
+      dictionaries,
+    );
     catalog.sources = sources;
 
     if (!this.chat.isReady()) {
@@ -102,14 +108,26 @@ export class SemanticResolutionService {
         text,
         this.enrichRegionalResolution(
           text,
-          this.fallbackResolve(text, indicators, entities, concepts, dictionaries),
+          this.fallbackResolve(
+            text,
+            indicators,
+            entities,
+            concepts,
+            dictionaries,
+          ),
         ),
       );
     }
 
     const parsed = await this.chat.parseSemanticQuery(text, catalog);
     if (parsed) {
-      const grounded = this.ground(parsed, indicators, entities, concepts, dictionaries);
+      const grounded = this.ground(
+        parsed,
+        indicators,
+        entities,
+        concepts,
+        dictionaries,
+      );
       let resolution = grounded;
       // LLM 常把「近5年」漏成 UNKNOWN，或臆造过时的 2019-2023 等区间
       if (grounded.time.type === 'UNKNOWN') {
@@ -124,14 +142,18 @@ export class SemanticResolutionService {
       );
     }
 
-    this.logger.warn(
-      '大模型语义解析失败，回退到目录兜底匹配',
-    );
+    this.logger.warn('大模型语义解析失败，回退到目录兜底匹配');
     return this.applyRecentYearOverride(
       text,
       this.enrichRegionalResolution(
         text,
-        this.fallbackResolve(text, indicators, entities, concepts, dictionaries),
+        this.fallbackResolve(
+          text,
+          indicators,
+          entities,
+          concepts,
+          dictionaries,
+        ),
       ),
     );
   }
@@ -166,7 +188,12 @@ export class SemanticResolutionService {
       (item) => !/^(region|province|city|area|country_region)$/.test(item.type),
     );
     for (const region of regions) {
-      dimensions.push({ type: 'region', code: region, name: region, value: region });
+      dimensions.push({
+        type: 'region',
+        code: region,
+        name: region,
+        value: region,
+      });
     }
     // A specific province is more selective than a generic country entity.
     const entities = resolution.entities.filter(
@@ -284,7 +311,10 @@ export class SemanticResolutionService {
           d.name,
           ...(d.aliases ?? []),
         ]);
-      if (hit && !dimensions.some((d) => d.code === hit.code && d.type === hit.type)) {
+      if (
+        hit &&
+        !dimensions.some((d) => d.code === hit.code && d.type === hit.type)
+      ) {
         dimensions.push({
           type: hit.type,
           code: hit.code,
@@ -297,7 +327,10 @@ export class SemanticResolutionService {
 
     const time = this.normalizeTime(parsed.time);
     let intent = parsed.intent;
-    if (intent === 'general' && metrics.length > 0) {
+    if (
+      intent === 'general' &&
+      (metrics.length > 0 || parsed.discovery?.metrics.length)
+    ) {
       intent = 'metric_query';
     }
 
@@ -306,6 +339,9 @@ export class SemanticResolutionService {
       resolvedEntities.length +
       resolvedConcepts.length +
       dimensions.length +
+      (parsed.discovery?.metrics.length ?? 0) +
+      (parsed.discovery?.entities.length ?? 0) +
+      (parsed.discovery?.dimensions?.length ?? 0) +
       (time.type !== 'UNKNOWN' ? 1 : 0);
     const confidence = Math.min(
       0.98,
@@ -374,9 +410,12 @@ export class SemanticResolutionService {
 
     const resolvedEntities = entities
       .filter((e) =>
-        [e.name, e.canonicalName, e.code, ...e.aliases.map((a) => a.alias)].some(
-          (c) => this.containsTerm(lower, this.normalizeQueryText(c)),
-        ),
+        [
+          e.name,
+          e.canonicalName,
+          e.code,
+          ...e.aliases.map((a) => a.alias),
+        ].some((c) => this.containsTerm(lower, this.normalizeQueryText(c))),
       )
       .map((e) => ({
         code: e.code,

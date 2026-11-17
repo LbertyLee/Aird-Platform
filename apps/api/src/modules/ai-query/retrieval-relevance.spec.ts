@@ -147,6 +147,77 @@ describe('retrieval relevance', () => {
       textMatchesPlanEntities('France and Germany GDP data', fallbackPlan),
     ).toBe(false);
   });
+
+  it('matches official English GDP growth series to the Chinese actual-growth indicator', () => {
+    const current: SemanticResolution = {
+      ...resolution,
+      entities: [],
+      dimensions: [],
+      metrics: [
+        {
+          code: 'gdp_real_growth',
+          name: 'GDP实际增速',
+          indicatorId: 'gdp-real-growth',
+        },
+      ],
+      sourcePlan: {
+        status: 'ready',
+        intentSummary: '比较中美 GDP 实际增速',
+        dataNeeds: ['中国和美国 GDP 实际增速'],
+        sources: [],
+        allowDiscovery: true,
+        translations: [{ zh: 'GDP实际增速', en: 'Real GDP growth rate' }],
+      },
+    };
+    const matches = buildRelevanceMatcher(current);
+    expect(matches('China GDP growth (annual %)')).toBe(true);
+    expect(matches('United States real GDP growth rate')).toBe(true);
+    expect(matches('China inflation (consumer prices)')).toBe(false);
+  });
+
+  it('uses AI-discovered dimensions and metrics when the catalog has no match', () => {
+    const current: SemanticResolution = {
+      ...resolution,
+      metrics: [
+        {
+          code: 'gdp_real_growth',
+          name: 'GDP实际增速',
+          indicatorId: 'catalog-growth',
+        },
+      ],
+      entities: [{ code: 'CHN', name: '中国', entityId: 'catalog-china' }],
+      dimensions: [{ type: 'industry', code: 'industry', name: '行业' }],
+      discovery: {
+        metrics: ['Real GDP growth rate', '绿色技术专利数量'],
+        entities: ['中国', '美国'],
+        dimensions: ['行业=新能源'],
+        dataNeeds: ['中美新能源行业GDP实际增速'],
+        websites: [],
+      },
+    };
+    const plan = buildResearchQueryPlan({
+      originalQuery: '比较中美新能源行业GDP实际增速',
+      optimizedQuery: '比较中美新能源行业GDP实际增速',
+      resolution: current,
+      filters: {
+        countries: [],
+        regions: [],
+        entities: [],
+        indicators: [],
+        timeRanges: [],
+        sources: [],
+      },
+    });
+
+    expect(plan.metrics).toEqual(['绿色技术专利数量', 'GDP实际增速']);
+    expect(plan.entities).toEqual(expect.arrayContaining(['中国', '美国']));
+    expect(plan.dimensions).toEqual(['行业', '行业=新能源']);
+    expect(
+      buildRelevanceMatcher(current)(
+        'China and United States renewable energy industry GDP growth rate',
+      ),
+    ).toBe(true);
+  });
   it('requires locality focus in generic titles while allowing local data hosted elsewhere', () => {
     const plan = buildResearchQueryPlanLite('泉州近10年来经济报告');
     expect(
