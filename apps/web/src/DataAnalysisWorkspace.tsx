@@ -1266,7 +1266,10 @@ export default function DataAnalysisWorkspace({
               result={savedSessionUnavailable ? null : result}
               sources={selectedSources}
               mode={activeTab}
-              autoGenerateReport
+              // The prototype keeps report generation as the final explicit
+              // user action after extraction, cleaning, validation and chart
+              // preparation have completed.
+              autoGenerateReport={false}
               onSession={(next, view) => {
                 setAnalysisSession(next);
                 const params = new URLSearchParams(searchParams);

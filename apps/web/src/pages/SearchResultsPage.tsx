@@ -41,7 +41,10 @@ import {
 } from '../api/data-analysis';
 import { apiErrorMessage } from '../api/research';
 import { isMembershipRequiredError } from '../api/membership';
-import { type PendingSearchJob } from '../search-progress';
+import {
+  buildSearchWorkflowSteps,
+  type PendingSearchJob,
+} from '../search-progress';
 import { renderMarkdown } from '../utils/markdown';
 import { browsableExternalUrl } from '../utils/browsable-external-url';
 import {
@@ -121,6 +124,7 @@ export default function SearchResultsPage({
   const [searchAttempt, setSearchAttempt] = useState(0);
   const searchAbortRef = useRef<AbortController | null>(null);
   const analysisAbortRef = useRef<AbortController | null>(null);
+  const autoAnalysisRunIdRef = useRef<string | null>(null);
   /** Auto-open first Exa preview once per completed run (user may close manually). */
   const autoPreviewRunIdRef = useRef<string | null>(null);
 
@@ -137,7 +141,9 @@ export default function SearchResultsPage({
     void getRecentAnalysisSessions([result.runId], controller.signal)
       .then((sessions) => {
         if (!controller.signal.aborted)
-          setSavedAnalysis(sessions.find((item) => item.runId === result.runId));
+          setSavedAnalysis(
+            sessions.find((item) => item.runId === result.runId),
+          );
       })
       .catch(() => {
         if (!controller.signal.aborted) setSavedAnalysisError(true);
@@ -146,7 +152,12 @@ export default function SearchResultsPage({
         if (!controller.signal.aborted) setSavedAnalysisLoading(false);
       });
     return () => controller.abort();
-  }, [result?.runId, session?.accessToken, pendingSearch, savedAnalysisAttempt]);
+  }, [
+    result?.runId,
+    session?.accessToken,
+    pendingSearch,
+    savedAnalysisAttempt,
+  ]);
   useEffect(() => {
     if (!pendingSearch) {
       setProgressStatus('done');
@@ -295,6 +306,29 @@ export default function SearchResultsPage({
   const localCount = allSources.length - exaCount;
   const running = progressStatus === 'running';
 
+  // The prototype processes every retrieved document as one pipeline. Source
+  // checkboxes remain useful for inspection/deposit, but they no longer gate
+  // extraction, normalization, validation, or analysis.
+  useEffect(() => {
+    if (
+      running ||
+      !result ||
+      !allSources.length ||
+      creatingAnalysis ||
+      savedAnalysis ||
+      autoAnalysisRunIdRef.current === result.runId
+    ) {
+      return;
+    }
+    autoAnalysisRunIdRef.current = result.runId;
+    const allIds = allSources.map((source) => source.id);
+    onSelectionChange(allIds);
+    void enterAnalysis(allIds);
+    // The run id is the intended trigger; source list contents are immutable
+    // for a completed search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result?.runId, running, allSources.length]);
+
   useEffect(() => {
     if (running || !result) return;
     if (autoPreviewRunIdRef.current === result.runId) return;
@@ -312,81 +346,18 @@ export default function SearchResultsPage({
     return () => window.clearInterval(timer);
   }, [running, jobStartedAt]);
 
-  const progressStages = useMemo(() => {
-    if (progressStatus === 'error') {
-      if (searchFailureKind === 'client_timeout') {
-        return [
-          { label: '语义解析', state: 'done' as const },
-          { label: '知识库检索', state: 'interrupted' as const },
-          { label: '外部来源检索', state: 'interrupted' as const },
-        ];
-      }
-      if (searchFailureKind === 'cancelled') {
-        return [
-          { label: '语义解析', state: 'active' as const },
-          { label: '知识库检索', state: 'pending' as const },
-          { label: '外部来源检索', state: 'pending' as const },
-        ];
-      }
-      return [
-        { label: '语义解析', state: 'done' as const },
-        { label: '知识库检索', state: 'interrupted' as const },
-        { label: '外部来源检索', state: 'interrupted' as const },
-      ];
-    }
-    if (!running && result) {
-      const byKey = new Map(result.stages.map((stage) => [stage.key, stage]));
-      const knowledgeStage =
-        byKey.get('vector')?.status === 'completed'
-          ? byKey.get('vector')
-          : byKey.get('database')?.status === 'completed'
-            ? byKey.get('database')
-            : (byKey.get('vector') ?? byKey.get('database'));
-      const exaStage = byKey.get('exa');
-      const toUi = (
-        status: string | undefined,
-      ): 'done' | 'failed' | 'skipped' =>
-        status === 'completed'
-          ? 'done'
-          : status === 'failed'
-            ? 'failed'
-            : 'skipped';
-      return [
-        {
-          label: '语义解析',
-          state: 'done' as const,
-          detail: byKey.get('plan')?.detail,
-        },
-        {
-          label: '知识库检索',
-          state: toUi(knowledgeStage?.status),
-          detail: knowledgeStage?.detail,
-        },
-        {
-          label: '外部来源检索',
-          state: toUi(exaStage?.status),
-          detail: exaStage?.detail,
-        },
-      ];
-    }
-    const semanticDone = liveStage !== 'planning' && liveStage !== 'replanning';
-    const retrievalActive =
-      liveStage === 'searching' ||
-      liveStage === 'discovering' ||
-      liveStage === 'evaluating' ||
-      liveStage === 'writing';
-    return [
-      { label: '语义解析', state: semanticDone ? 'done' : 'active' },
-      {
-        label: '知识库检索',
-        state: retrievalActive ? 'active' : 'pending',
-      },
-      {
-        label: liveStage === 'discovering' ? '站内数据发现' : '外部来源检索',
-        state: retrievalActive ? 'active' : 'pending',
-      },
-    ];
-  }, [liveStage, progressStatus, result, running, searchFailureKind]);
+  const currentAnalysis =
+    !running && savedAnalysis?.runId === result?.runId
+      ? savedAnalysis
+      : undefined;
+  const progressStages = buildSearchWorkflowSteps({
+    status: progressStatus,
+    stage: liveStage,
+    hasResult: Boolean(result),
+    creatingAnalysis,
+    analysisStatus: currentAnalysis?.status,
+    hasReport: Boolean(currentAnalysis?.visualReport),
+  });
 
   const semanticSummary = useMemo(
     () => buildSemanticParseSummary(result),
@@ -416,8 +387,8 @@ export default function SearchResultsPage({
     setDepositOpen(true);
   }
 
-  async function enterAnalysis() {
-    if (!selectedIds.length || creatingAnalysis || !result || running) return;
+  async function enterAnalysis(sourceIds = allSources.map((source) => source.id)) {
+    if (!sourceIds.length || creatingAnalysis || !result || running) return;
     analysisAbortRef.current?.abort();
     const controller = new AbortController();
     analysisAbortRef.current = controller;
@@ -429,7 +400,7 @@ export default function SearchResultsPage({
         {
           runId: result.runId,
           query: result.query,
-          sourceIds: selectedIds,
+          sourceIds,
         },
         controller.signal,
       );
@@ -443,7 +414,7 @@ export default function SearchResultsPage({
         setActionError('服务响应超时，正在确认分析结果是否已保存...');
         const recovered = await recoverAnalysisSession(
           result.runId,
-          selectedIds,
+          sourceIds,
           controller,
         );
         if (analysisAbortRef.current !== controller) return;
@@ -587,39 +558,57 @@ export default function SearchResultsPage({
                 </div>
               ) : null}
             </div>
-            <ol className="exec-progress-steps search-progress-steps">
+            <ol
+              className="exec-progress-steps search-progress-steps"
+              aria-label="搜索与分析流程"
+            >
               {progressStages.map((stage, index) => {
                 const stateLabel =
                   stage.state === 'active'
                     ? '进行中'
                     : stage.state === 'interrupted'
                       ? '已中断'
-                      : stage.state === 'failed'
-                        ? '失败'
-                        : stage.state === 'skipped'
-                          ? '未执行'
-                          : stage.state === 'pending'
-                            ? '等待中'
-                            : '已完成';
-                const detail =
-                  'detail' in stage &&
-                  stage.detail &&
-                  (stage.state === 'skipped' || stage.state === 'failed')
-                    ? stage.detail
-                    : undefined;
+                      : stage.state === 'pending'
+                        ? '等待中'
+                        : '已完成';
                 return (
-                  <li key={stage.label} className={stage.state} title={detail}>
+                  <li
+                    key={stage.key}
+                    className={stage.state}
+                    title={`${stage.label}：${stateLabel}`}
+                    aria-label={`${stage.label}：${stateLabel}`}
+                    aria-current={stage.state === 'active' ? 'step' : undefined}
+                  >
                     <i aria-hidden />
-                    <em>
-                      {stage.label}（{stateLabel}）
-                    </em>
+                    <em>{stage.label}</em>
                     {index < progressStages.length - 1 ? (
-                      <span className="exec-progress-connector" aria-hidden />
+                      <span className="exec-progress-arrow" aria-hidden>
+                        ›
+                      </span>
                     ) : null}
                   </li>
                 );
               })}
             </ol>
+            <p className="exec-progress-meta">
+              {running
+                ? liveProgress
+                : progressStatus === 'error'
+                  ? searchError
+                  : creatingAnalysis
+                    ? '正在提取并标准化所选来源的数据，完成后进入分析工作台。'
+                    : currentAnalysis?.status === 'partial'
+                      ? '数据提取尚不完整，请进入分析工作台查看缺失项与提示。'
+                      : currentAnalysis?.status === 'ready'
+                        ? currentAnalysis.visualReport
+                          ? '分析与报告已生成，可进入工作台查看。'
+                          : '数据分析已完成，可进入工作台生成报告与可视化。'
+                        : savedAnalysisLoading
+                          ? '检索已完成，正在确认后续分析进度…'
+                          : savedAnalysisError
+                            ? '检索已完成，历史分析进度查找失败，请重试。'
+                    : '检索已完成，已自动对全部来源进行数据提取、标准化与交叉验证。请进入数据分析工作台查看处理结果。'}
+            </p>
 
             {semanticSummary ? (
               <div className="semantic-parse-panel" aria-label="语义解析结果">
@@ -719,17 +708,21 @@ export default function SearchResultsPage({
           {!running && result ? (
             <footer className="results-actions">
               <div>
-                <strong>已选择 {selectedIds.length} 个来源</strong>
+                <strong>已处理全部 {allSources.length} 个来源</strong>
                 <span>
                   {actionError ||
-                    (savedAnalysisLoading ? '正在查找已保存的分析…' : savedAnalysisError ? '历史分析查找失败，请重试' : '生成后直接进入数据分析工作台，可切换指标、查看图表或分析结果')}
+                    (savedAnalysisLoading
+                      ? '正在查找已保存的分析…'
+                      : savedAnalysisError
+                        ? '历史分析查找失败，请重试'
+                        : '数据提取、标准化清洗和交叉验证已在后台完成，可进入工作台继续生成图表和最终分析结果')}
                 </span>
               </div>
               <div>
                 <button
                   type="button"
                   className="reserve-action"
-                  disabled={!selectedIds.length}
+                  disabled={!allSources.length}
                   onClick={openDeposit}
                 >
                   <Upload size={14} /> 存入知识库
@@ -738,20 +731,30 @@ export default function SearchResultsPage({
                   <button
                     type="button"
                     className="reserve-action"
-                    onClick={() => navigate(`/analysis?sessionId=${encodeURIComponent(savedAnalysis.id)}&view=matrix&saved=1`)}
+                    onClick={() =>
+                      navigate(
+                        `/analysis?sessionId=${encodeURIComponent(savedAnalysis.id)}&view=matrix&saved=1`,
+                      )
+                    }
                   >
                     <Eye size={14} /> 查看已生成的分析表
                   </button>
                 )}
                 {savedAnalysisError && (
-                  <button type="button" className="reserve-action" onClick={() => setSavedAnalysisAttempt((value) => value + 1)}>
+                  <button
+                    type="button"
+                    className="reserve-action"
+                    onClick={() =>
+                      setSavedAnalysisAttempt((value) => value + 1)
+                    }
+                  >
                     重试查找历史分析
                   </button>
                 )}
                 <button
                   type="button"
                   className="generate-analysis-action"
-                  disabled={!selectedIds.length || creatingAnalysis}
+                  disabled={!allSources.length || creatingAnalysis}
                   onClick={() => void enterAnalysis()}
                 >
                   {creatingAnalysis ? (
@@ -761,7 +764,7 @@ export default function SearchResultsPage({
                   )}
                   {creatingAnalysis
                     ? '正在生成数据分析表...'
-                    : '生成数据分析表'}
+                    : '查看数据分析工作台'}
                 </button>
                 {creatingAnalysis && (
                   <button
@@ -779,7 +782,7 @@ export default function SearchResultsPage({
 
         <aside className="results-sources">
           <div className="source-heading">
-            <strong>全部来源</strong>
+            <strong>全部检索来源</strong>
             <span>{allSources.length}</span>
             <button
               type="button"
@@ -792,7 +795,7 @@ export default function SearchResultsPage({
                 )
               }
             >
-              {selectedIds.length === allSources.length ? '清空' : '全选'}
+              {selectedIds.length === allSources.length ? '取消入库选择' : '全选入库'}
             </button>
           </div>
           <div className="source-tabs">
