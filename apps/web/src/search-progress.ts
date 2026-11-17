@@ -51,6 +51,12 @@ export function buildSearchWorkflowSteps(input: {
       if (index === 2 && input.creatingAnalysis) state = 'active';
       if (
         !input.creatingAnalysis &&
+        input.analysisStatus === 'partial' &&
+        (index === 2 || index === 3)
+      )
+        state = 'interrupted';
+      if (
+        !input.creatingAnalysis &&
         index <= 3 &&
         input.analysisStatus === 'ready'
       )
@@ -58,7 +64,7 @@ export function buildSearchWorkflowSteps(input: {
       if (
         !input.creatingAnalysis &&
         index === 4 &&
-        input.analysisStatus === 'ready' &&
+        Boolean(input.analysisStatus) &&
         input.hasReport
       )
         state = 'done';

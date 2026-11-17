@@ -79,7 +79,12 @@ export class AnalysisSessionController {
     @Body() dto: ExportAnalysisSessionDto,
     @CurrentUser() user: AuthUserContext,
   ): Promise<StreamableFile> {
-    const file = await this.service.exportXlsx(user.userId, id, dto.columns);
+    const file = await this.service.exportXlsx(
+      user.userId,
+      id,
+      dto.columns,
+      dto.presentation,
+    );
     return new StreamableFile(file.buffer, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       disposition: `attachment; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,

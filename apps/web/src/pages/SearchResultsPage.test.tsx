@@ -11,6 +11,10 @@ import {
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { LoginResponse, ResearchSearchResponse } from '@agent/contracts';
 import SearchResultsPage from './SearchResultsPage';
+import type { AnalysisSession } from '../api/data-analysis';
+vi.mock('../components/AnalysisVisual', () => ({
+  default: () => <div>研究可视化</div>,
+}));
 import {
   createAnalysisSession,
   getRecentAnalysisSessions,
@@ -45,11 +49,15 @@ function Location() {
   const location = useLocation();
   return <div>{location.pathname + location.search}</div>;
 }
-function page(runId = 'run-1', pendingSearch: PendingSearchJob | null = null) {
+function page(
+  runId = 'run-1',
+  pendingSearch: PendingSearchJob | null = null,
+  sources: ResearchSearchResponse['sources'] = [],
+) {
   const result = {
     runId,
     query: '历史搜索',
-    sources: [],
+    sources,
     stages: [],
     mode: 'mixed',
   } as unknown as ResearchSearchResponse;
@@ -84,14 +92,15 @@ function page(runId = 'run-1', pendingSearch: PendingSearchJob | null = null) {
 
 it('打开历史分析会话，无需重新勾选或生成', async () => {
   vi.mocked(getRecentAnalysisSessions).mockResolvedValue([
-    { id: 'saved / 1', runId: 'run-1', selectedSourceIds: ['source-1'] },
+    analysis('run-1', 'saved / 1'),
   ] as never);
   render(page());
+  await screen.findByText(/研究报告与数据处理已完成/);
   fireEvent.click(
-    await screen.findByRole('button', { name: '查看已生成的分析表' }),
+    await screen.findByRole('button', { name: '查看数据分析工作台' }),
   );
   expect(
-    screen.getByText('/analysis?sessionId=saved%20%2F%201&view=matrix&saved=1'),
+    screen.getByText('/analysis?sessionId=saved%20%2F%201&view=matrix'),
   ).toBeTruthy();
   expect(createAnalysisSession).not.toHaveBeenCalled();
 });
@@ -99,30 +108,32 @@ it('打开历史分析会话，无需重新勾选或生成', async () => {
 it('没有历史会话时保留生成入口，不显示查看入口', async () => {
   vi.mocked(getRecentAnalysisSessions).mockResolvedValue([]);
   render(page());
-  await screen.findByText(/生成后直接进入/);
+  await screen.findByText(/全部来源将自动处理/);
   expect(
     screen.queryByRole('button', { name: '查看已生成的分析表' }),
   ).toBeNull();
-  expect(screen.getByRole('button', { name: '生成数据分析表' })).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: '查看数据分析工作台' }),
+  ).toBeTruthy();
 });
 
 it('查找失败时提供重试，并恢复查看入口', async () => {
   vi.mocked(getRecentAnalysisSessions)
     .mockRejectedValueOnce(new Error('failed'))
-    .mockResolvedValueOnce([{ id: 'saved', runId: 'run-1' }] as never);
+    .mockResolvedValueOnce([analysis('run-1')] as never);
   render(page());
   fireEvent.click(
     await screen.findByRole('button', { name: '重试查找历史分析' }),
   );
   expect(
-    await screen.findByRole('button', { name: '查看已生成的分析表' }),
+    await screen.findByRole('button', { name: '查看数据分析工作台' }),
   ).toBeTruthy();
 });
 
 it('检索完成后展示五步，但未执行的分析和报告保持等待', async () => {
   vi.mocked(getRecentAnalysisSessions).mockResolvedValue([]);
   render(page());
-  await screen.findByText(/请勾选右侧来源并生成数据分析表/);
+  await screen.findByText(/全部来源将自动处理/);
   const steps = within(
     screen.getByRole('list', { name: '搜索与分析流程' }),
   ).getAllByRole('listitem');
@@ -137,12 +148,14 @@ it('检索完成后展示五步，但未执行的分析和报告保持等待', a
   expect(steps[0].textContent).toContain('解析问题意图');
 });
 
-it('历史分析已完成但没有报告时，第五步仍等待', async () => {
+it('初步研究报告完成后五步完成，但不自动生成最终分析结果', async () => {
   vi.mocked(getRecentAnalysisSessions).mockResolvedValue([
-    { id: 'saved', runId: 'run-1', status: 'ready' },
+    analysis('run-1'),
   ] as never);
   render(page());
-  await screen.findByText('数据分析已完成，可进入工作台生成报告与可视化。');
+  await screen.findByText(
+    '研究报告与数据处理已完成，可进入工作台调整数据与图表，再生成最终分析结果。',
+  );
   const steps = within(
     screen.getByRole('list', { name: '搜索与分析流程' }),
   ).getAllByRole('listitem');
@@ -151,7 +164,7 @@ it('历史分析已完成但没有报告时，第五步仍等待', async () => {
     'done',
     'done',
     'done',
-    'pending',
+    'done',
   ]);
 });
 
@@ -190,4 +203,99 @@ it('实时检索阶段更新到第二步，失败后停在中断位置', async (
   await act(async () => rejectSearch(new Error('failed')));
   expect(screen.getByLabelText('多源并行检索：已中断')).toBeTruthy();
   expect(screen.getByLabelText('数据标准化与清洗：等待中')).toBeTruthy();
+});
+
+function analysis(runId = 'run-1', id = 'saved'): AnalysisSession {
+  return {
+    id,
+    runId,
+    query: '历史搜索',
+    createdAt: '2026-11-17T00:00:00Z',
+    status: 'ready',
+    selectedSourceIds: ['s1', 's2'],
+    sources: [],
+    rows: [],
+    observations: [],
+    summary: [],
+    availableIndicators: [],
+    warnings: [],
+  };
+}
+const documents = ['s1', 's2'].map((id) => ({
+  id,
+  title: `文档 ${id}`,
+  origin: 'exa',
+  storageType: 'knowledge',
+  createdAt: '2026-11-17T00:00:00Z',
+  sourceUrl: 'https://example.com',
+  mimeType: 'text/plain',
+  excerpt: '文档内容',
+  recordCount: 1,
+})) as ResearchSearchResponse['sources'];
+
+it('不依赖勾选，自动提取全部来源；完成后保留研究报告，由用户进入工作台', async () => {
+  vi.mocked(getRecentAnalysisSessions).mockResolvedValue([]);
+  vi.mocked(createAnalysisSession).mockResolvedValue(analysis());
+  render(page('run-1', null, documents));
+  await screen.findByText(/研究报告与数据处理已完成/);
+  expect(createAnalysisSession).toHaveBeenCalledTimes(1);
+  expect(createAnalysisSession).toHaveBeenCalledWith(
+    { runId: 'run-1', query: '历史搜索', sourceIds: ['s1', 's2'] },
+    expect.any(AbortSignal),
+  );
+  expect(screen.getByRole('article', { name: '研究报告' })).toBeTruthy();
+  expect(screen.queryByRole('dialog')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '查看数据分析工作台' }));
+  expect(
+    screen.getByText('/analysis?sessionId=saved&view=matrix'),
+  ).toBeTruthy();
+});
+
+it('旧会话只处理部分来源时重新对全部文档提取', async () => {
+  vi.mocked(getRecentAnalysisSessions).mockResolvedValue([
+    { ...analysis(), selectedSourceIds: ['s1'] },
+  ]);
+  vi.mocked(createAnalysisSession).mockResolvedValue(analysis());
+  render(page('run-1', null, documents));
+  await screen.findByText(/研究报告与数据处理已完成/);
+  expect(createAnalysisSession).toHaveBeenCalledWith(
+    expect.objectContaining({ sourceIds: ['s1', 's2'] }),
+    expect.any(AbortSignal),
+  );
+});
+
+it('提取失败不显示已完成，提供重试入口', async () => {
+  vi.mocked(getRecentAnalysisSessions).mockResolvedValue([]);
+  vi.mocked(createAnalysisSession).mockRejectedValue(new Error('failed'));
+  render(page('run-1', null, documents));
+  await screen.findByText('请求失败');
+  expect(screen.queryByText(/已处理 2/)).toBeNull();
+  expect(screen.getByLabelText('数据标准化与清洗：等待中')).toBeTruthy();
+  expect(
+    screen
+      .getByRole('button', { name: '查看数据分析工作台' })
+      .hasAttribute('disabled'),
+  ).toBe(false);
+});
+
+it('切换检索后丢弃旧任务的迟到结果，并启动新任务', async () => {
+  let completeOld!: (session: AnalysisSession) => void;
+  vi.mocked(getRecentAnalysisSessions).mockResolvedValue([]);
+  vi.mocked(createAnalysisSession)
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          completeOld = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(analysis('run-2', 'new-session'));
+  const view = render(page('run-1', null, documents));
+  await screen.findByText('正在处理全部检索来源');
+  view.rerender(page('run-2', null, documents));
+  await screen.findByText(/研究报告与数据处理已完成/);
+  await act(async () => completeOld(analysis('run-1', 'old-session')));
+  fireEvent.click(screen.getByRole('button', { name: '查看数据分析工作台' }));
+  expect(
+    screen.getByText('/analysis?sessionId=new-session&view=matrix'),
+  ).toBeTruthy();
 });

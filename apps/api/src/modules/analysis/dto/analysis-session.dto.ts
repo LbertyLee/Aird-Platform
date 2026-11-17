@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
@@ -9,6 +10,7 @@ import {
   IsString,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import type { AnalysisVisualView } from '@agent/contracts';
 
@@ -35,14 +37,6 @@ export class CreateAnalysisSessionDto {
   query!: string;
 }
 
-export class ExportAnalysisSessionDto {
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(50)
-  @IsString({ each: true })
-  columns?: string[];
-}
-
 export class RecentAnalysisSessionsDto {
   @IsArray()
   @ArrayMaxSize(4)
@@ -53,6 +47,18 @@ export class RecentAnalysisSessionsDto {
 }
 
 export class AnalysisPresentationDto {
+  @ApiPropertyOptional({
+    type: [String],
+    description: '工作台筛选来源，省略时使用全部已提取来源',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  sourceIds?: string[];
+
   @IsString()
   @MaxLength(500)
   datasetId!: string;
@@ -63,6 +69,15 @@ export class AnalysisPresentationDto {
   @IsString({ each: true })
   @MaxLength(300, { each: true })
   entities!: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(500)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  periods?: string[];
 
   @IsString()
   @MaxLength(100)
@@ -85,4 +100,21 @@ export class AnalysisPresentationDto {
   @ArrayUnique()
   @IsIn(['line', 'map', 'table'], { each: true })
   reportViews!: AnalysisVisualView[];
+}
+
+export class ExportAnalysisSessionDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  columns?: string[];
+
+  @ApiPropertyOptional({
+    type: AnalysisPresentationDto,
+    description: '导出当前工作台矩阵，省略时导出原始结构化记录',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AnalysisPresentationDto)
+  presentation?: AnalysisPresentationDto;
 }

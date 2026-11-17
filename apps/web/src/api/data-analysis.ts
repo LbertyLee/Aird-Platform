@@ -248,7 +248,8 @@ export async function searchDataAnalysisAsync(
 ): Promise<ResearchSearchResponse> {
   return resumeTask(
     { kind: 'search', query, filters, mode, searchIdentity, model },
-    (requestId) => createSearchJob(query, filters, mode, signal, requestId, model),
+    (requestId) =>
+      createSearchJob(query, filters, mode, signal, requestId, model),
     (jobId) => waitForSearchJob(jobId, { signal, maxWaitMs, onSnapshot }),
     signal,
   );
@@ -458,10 +459,11 @@ export async function exportAnalysisSession(
   id: string,
   columns?: string[],
   signal?: AbortSignal,
+  presentation?: AnalysisPresentation,
 ): Promise<Blob> {
   const response = await http.post<Blob>(
     `/analysis/sessions/${encodeURIComponent(id)}/export.xlsx`,
-    { columns },
+    { columns, ...(presentation ? { presentation } : {}) },
     { responseType: 'blob', signal },
   );
   return response.data;

@@ -5,166 +5,7 @@ import type {
   AnalysisVisualReport,
 } from '@agent/contracts';
 
-interface VisualObservation {
-  indicatorId: string;
-  indicatorName: string;
-  unit: string;
-  entity?: string;
-  period?: string;
-  sourceId: string;
-  source: string;
-  value: number | null;
-  normalizedValue?: number | null;
-  normalizationStatus?: 'same' | 'converted' | 'unknown';
-}
-
-interface VisualInput {
-  availableIndicators?: Array<{
-    id: string;
-    name: string;
-    unit: string;
-    definition: string;
-  }>;
-  sources?: Array<{ id: string; title: string }>;
-  observations?: VisualObservation[];
-}
-
-type GroupedPoint = AnalysisVisualDataset['points'][number] & {
-  /** Higher wins when merging multi-source cells. */
-  quality: number;
-  /** Same-quality candidate values used to resolve mild multi-source noise. */
-  candidates: number[];
-};
-
-function observationQuality(
-  status: VisualObservation['normalizationStatus'],
-): number {
-  if (status === 'converted' || status === 'same') return 2;
-  if (status === 'unknown') return 0;
-  return 1;
-}
-
-/** Relative tolerance for near-duplicate GDP figures from different sources. */
-function valuesApproximatelyEqual(left: number, right: number): boolean {
-  const scale = Math.max(Math.abs(left), Math.abs(right), 1e-9);
-  return Math.abs(left - right) / scale <= 0.02;
-}
-
-/** Pick the value that appears most often; ties keep the earliest candidate. */
-function mostFrequent(values: number[]): number {
-  const counts = new Map<number, number>();
-  for (const value of values) {
-    counts.set(value, (counts.get(value) ?? 0) + 1);
-  }
-  let best = values[0]!;
-  let bestCount = 0;
-  for (const value of values) {
-    const count = counts.get(value) ?? 0;
-    if (count > bestCount) {
-      best = value;
-      bestCount = count;
-    }
-  }
-  return best;
-}
-
-function mergePointValue(
-  existing: GroupedPoint,
-  nextValue: number | null,
-  nextQuality: number,
-): void {
-  if (nextValue == null) return;
-  if (nextQuality > existing.quality) {
-    existing.value = nextValue;
-    existing.quality = nextQuality;
-    existing.candidates = [nextValue];
-    existing.conflict = false;
-    return;
-  }
-  if (nextQuality < existing.quality) {
-    // Keep the better-normalized value (e.g. drop raw 億元 that failed FX).
-    return;
-  }
-  existing.candidates.push(nextValue);
-  if (existing.candidates.every((value) => valuesApproximatelyEqual(value, existing.candidates[0]!))) {
-    existing.value = existing.candidates[0]!;
-    existing.conflict = false;
-    return;
-  }
-  // Real multi-source disagreement: keep the most frequent value for charting
-  // while flagging conflict for quality warnings.
-  existing.conflict = true;
-  existing.value = mostFrequent(existing.candidates);
-}
-
-export function buildVisualDatasets(
-  input: VisualInput,
-): AnalysisVisualDataset[] {
-  const datasets = new Map<string, AnalysisVisualDataset>();
-  const grouped = new Map<string, Map<string, GroupedPoint>>();
-  for (const item of input.observations ?? []) {
-    const id = JSON.stringify([item.indicatorId, item.unit]);
-    if (!datasets.has(id)) {
-      const indicator = input.availableIndicators?.find(
-        (entry) => entry.id === item.indicatorId,
-      );
-      datasets.set(id, {
-        id,
-        name: item.indicatorName,
-        unit: item.unit,
-        definition: indicator?.definition ?? '',
-        periods: [],
-        entities: [],
-        sources: [],
-        points: [],
-      });
-      grouped.set(id, new Map());
-    }
-    const dataset = datasets.get(id)!;
-    const entity = item.entity || item.source || '未标注实体';
-    const period = item.period || '未标注时间';
-    const key = JSON.stringify([entity, period]);
-    const value = item.normalizationStatus === 'unknown' ? null : item.normalizedValue ?? item.value;
-    const valid =
-      typeof value === 'number' && Number.isFinite(value) ? value : null;
-    const quality = observationQuality(item.normalizationStatus);
-    const existing = grouped.get(id)!.get(key);
-    if (existing) {
-      if (!existing.sourceIds.includes(item.sourceId))
-        existing.sourceIds.push(item.sourceId);
-      mergePointValue(existing, valid, quality);
-    } else {
-      grouped.get(id)!.set(key, {
-        entity,
-        period,
-        value: valid,
-        conflict: false,
-        sourceIds: [item.sourceId],
-        quality,
-        candidates: valid == null ? [] : [valid],
-      });
-    }
-    if (!dataset.sources.some((source) => source.id === item.sourceId))
-      dataset.sources.push({
-        id: item.sourceId,
-        title:
-          input.sources?.find((source) => source.id === item.sourceId)?.title ??
-          item.source,
-      });
-  }
-  for (const dataset of datasets.values()) {
-    dataset.points = [...grouped.get(dataset.id)!.values()].map(
-      ({ quality: _quality, candidates: _candidates, ...point }) => point,
-    );
-    dataset.periods = [
-      ...new Set(dataset.points.map((point) => point.period)),
-    ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    dataset.entities = [
-      ...new Set(dataset.points.map((point) => point.entity)),
-    ].sort((a, b) => a.localeCompare(b, 'zh-CN'));
-  }
-  return [...datasets.values()];
-}
+export { buildVisualDatasets } from '@agent/contracts';
 
 export function validatePresentation(
   datasets: AnalysisVisualDataset[],
@@ -179,6 +20,16 @@ export function validatePresentation(
   const current = dataset.periods.indexOf(input.currentPeriod);
   if (start < 0 || end < start || current < start || current > end)
     throw new BadRequestException('时间范围或当前年份无效。');
+  if (
+    input.periods &&
+    (!input.periods.length ||
+      input.periods.some((period) => {
+        const index = dataset.periods.indexOf(period);
+        return index < start || index > end;
+      }) ||
+      !input.periods.includes(input.currentPeriod))
+  )
+    throw new BadRequestException('所选时期无效。');
   return dataset;
 }
 
@@ -190,10 +41,12 @@ export function buildVisualReport(
   presentation: AnalysisPresentation,
   warnings: string[] = [],
 ): AnalysisVisualReport {
-  const periods = dataset.periods.slice(
-    dataset.periods.indexOf(presentation.startPeriod),
-    dataset.periods.indexOf(presentation.endPeriod) + 1,
-  );
+  const periods =
+    presentation.periods ??
+    dataset.periods.slice(
+      dataset.periods.indexOf(presentation.startPeriod),
+      dataset.periods.indexOf(presentation.endPeriod) + 1,
+    );
   const points = dataset.points.filter(
     (point) =>
       presentation.entities.includes(point.entity) &&
@@ -223,7 +76,13 @@ export function buildVisualReport(
       (point) =>
         point.entity === entity && point.period === periods[periods.length - 1],
     );
-    if (first?.value == null || last?.value == null || periods.length < 2)
+    if (
+      first?.value == null ||
+      last?.value == null ||
+      first.conflict ||
+      last.conflict ||
+      periods.length < 2
+    )
       return [];
     return [
       `${entity}：${periods[0]} 年 ${number(first.value)}${unit}，${periods[periods.length - 1]} 年 ${number(last.value)}${unit}，变化 ${number(last.value - first.value)}${dataset.unit === '%' ? ' 个百分点' : unit}。`,
@@ -248,29 +107,68 @@ export function buildVisualReport(
     ],
     sections: [
       {
-        title: '结果概述',
+        title: '报告摘要',
         paragraphs: [
           `本次分析覆盖 ${presentation.entities.length} 个国家/地区、${periods.length} 个时期，包含 ${values.length} 个有效观测值。样本均值为 ${number(average)}${unit}，为有效观测的算术平均值，未按人口或经济规模加权。`,
           dataset.definition,
         ].filter(Boolean),
       },
       {
-        title: '当前排名',
+        title: '分析背景',
+        paragraphs: [
+          `按当前工作台确认的指标、国家/地区、时期与来源进行比较。研究对象为 ${dataset.name}，单位为 ${dataset.unit || '未注明'}；仅使用实际提取且通过数值校验的观测。`,
+        ],
+      },
+      {
+        title: '核心结论',
+        paragraphs: [
+          ranked.length
+            ? `${presentation.currentPeriod} 年有效样本中，${ranked[0].entity} 数值最高（${number(ranked[0].value)}${unit}）；共 ${ranked.length} 个国家/地区可比。`
+            : '当前年份没有可比较的有效数据。',
+          `当前时间窗口有效样本范围为 ${number(min)} 至 ${number(max)}${unit}。`,
+        ],
+      },
+      {
+        title: '数据解读（Top 8）',
         paragraphs: ranked.length
-          ? ranked.map(
-              (point, index) =>
-                `${index + 1}. ${point.entity}：${number(point.value)}${unit}（${presentation.currentPeriod}）。`,
-            )
+          ? ranked
+              .slice(0, 8)
+              .map(
+                (point, index) =>
+                  `${index + 1}. ${point.entity}：${number(point.value)}${unit}（${presentation.currentPeriod}）。`,
+              )
           : [`${presentation.currentPeriod} 暂无有效观测值。`],
       },
       {
-        title: '趋势与变化',
+        title: '逐经济体解读',
         paragraphs: changes.length
           ? changes
           : ['当前时间窗口不足两个时期，或起止时期数值缺失，无法计算变化。'],
       },
       {
-        title: '分布与差异',
+        title: '分年度趋势解读',
+        paragraphs: periods.map((period) => {
+          const sample = values.filter((point) => point.period === period);
+          return sample.length
+            ? `${period}：${sample.length} 个有效观测，算术均值 ${number(sample.reduce((sum, point) => sum + point.value, 0) / sample.length)}${unit}。各年样本覆盖可能不同，均值变化需结合样本构成判断。`
+            : `${period}：暂无有效观测。`;
+        }),
+      },
+      {
+        title: '经济体分组对比',
+        paragraphs: [
+          '当前文档未提供经过核验的经济体分组定义，暂不生成分组统计。可先在工作台选定国家/地区进行对比。',
+        ],
+      },
+      {
+        title: '指标口径说明',
+        paragraphs: [
+          dataset.definition ||
+            `${dataset.name}，单位：${dataset.unit || '未注明'}。请结合原始来源确认统计口径。`,
+        ],
+      },
+      {
+        title: '趋势与差异分析',
         paragraphs: [
           `有效样本的最大值与最小值相差 ${number(max - min)}${dataset.unit === '%' ? ' 个百分点' : unit}。`,
           ranked.length > 1
@@ -279,9 +177,9 @@ export function buildVisualReport(
         ],
       },
       {
-        title: '数据质量与口径',
+        title: '方法与数据质量说明',
         paragraphs: [
-          `完整度 ${number((values.length / total) * 100)}%；缺失或冲突 ${total - values.length} 个观测，其中 ${conflictCount} 个存在来源数值冲突（图表可显示中位数示意，排名与统计仍排除冲突值）。缺失值不插值。`,
+          `完整度 ${number((values.length / total) * 100)}%；缺失或冲突 ${total - values.length} 个观测，其中 ${conflictCount} 个存在来源数值冲突（图表、排名与统计均排除冲突值）。缺失值不插值。`,
           ...warnings,
         ],
       },
@@ -292,7 +190,7 @@ export function buildVisualReport(
           .map((source) => source.title),
       },
       {
-        title: '结论与研究边界',
+        title: '风险与展望',
         paragraphs: [
           '以上结论来自当前筛选的数据，反映样本间的数值差异与时间变化，不构成因果解释。跨地区比较需核对指标定义、单位及统计口径；缺失或冲突数据需回查原始来源。',
         ],

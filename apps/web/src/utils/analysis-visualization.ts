@@ -15,9 +15,9 @@ export const visualPalette = [
   '#627bba',
 ];
 export const visualViews = [
-  { value: 'line', label: '线路' },
-  { value: 'map', label: '地图' },
   { value: 'table', label: '表格' },
+  { value: 'map', label: '地图' },
+  { value: 'line', label: '线路' },
 ] as const;
 export const formatVisualValue = (value: number | null | undefined) =>
   value == null
@@ -52,26 +52,31 @@ export function selectVisualData(
   dataset: AnalysisVisualDataset,
   presentation: AnalysisPresentation,
 ) {
-  const periods = dataset.periods.slice(
-    dataset.periods.indexOf(presentation.startPeriod),
-    dataset.periods.indexOf(presentation.endPeriod) + 1,
-  );
+  const periods =
+    presentation.periods ??
+    dataset.periods.slice(
+      dataset.periods.indexOf(presentation.startPeriod),
+      dataset.periods.indexOf(presentation.endPeriod) + 1,
+    );
   const points = dataset.points.filter(
     (point) =>
       presentation.entities.includes(point.entity) &&
       periods.includes(point.period),
+  );
+  const usablePoints = points.map((point) =>
+    point.conflict ? { ...point, value: null } : point,
   );
   const rows = presentation.entities
     .map((entity) => ({
       entity,
       values: periods.map(
         (period) =>
-          points.find(
+          usablePoints.find(
             (point) => point.entity === entity && point.period === period,
           )?.value ?? null,
       ),
       current:
-        points.find(
+        usablePoints.find(
           (point) =>
             point.entity === entity &&
             point.period === presentation.currentPeriod,
@@ -82,7 +87,7 @@ export function selectVisualData(
         (b.current ?? -Infinity) - (a.current ?? -Infinity) ||
         a.entity.localeCompare(b.entity, 'zh-CN'),
     );
-  return { periods, points, rows };
+  return { periods, points: usablePoints, rows };
 }
 
 function numeric(value: unknown): number | null {

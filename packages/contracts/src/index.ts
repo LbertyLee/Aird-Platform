@@ -44,7 +44,12 @@ export const researchFiltersSchema = z.object({
   libraryIds: z.array(z.string()).optional(),
 });
 
-export const researchSearchModeSchema = z.enum(['mixed', 'exa', 'knowledge', 'ai-search']);
+export const researchSearchModeSchema = z.enum([
+  'mixed',
+  'exa',
+  'knowledge',
+  'ai-search',
+]);
 export const researchModelSchema = z.string().trim().min(1).max(100);
 export type ResearchModel = z.infer<typeof researchModelSchema>;
 
@@ -157,11 +162,20 @@ export const researchSearchJobCreateResponseSchema = z.object({
 });
 
 export const researchSearchProgressSchema = z.object({
-  stage: z.enum(['planning', 'searching', 'discovering', 'evaluating', 'replanning', 'writing']),
+  stage: z.enum([
+    'planning',
+    'searching',
+    'discovering',
+    'evaluating',
+    'replanning',
+    'writing',
+  ]),
   round: z.number().int().min(1).max(5).optional(),
   message: z.string(),
 });
-export type ResearchSearchProgress = z.infer<typeof researchSearchProgressSchema>;
+export type ResearchSearchProgress = z.infer<
+  typeof researchSearchProgressSchema
+>;
 
 export const researchSearchJobSnapshotSchema = z.object({
   jobId: z.string(),
@@ -186,8 +200,12 @@ export type ResearchSearchJobSnapshot = z.infer<
 
 export type AnalysisVisualView = 'line' | 'map' | 'table';
 export interface AnalysisPresentation {
+  /** Optional workbench source filter; omitted means all extracted sources. */
+  sourceIds?: string[];
   datasetId: string;
   entities: string[];
+  /** Exact selected periods; omitted for a continuous range. */
+  periods?: string[];
   startPeriod: string;
   endPeriod: string;
   currentPeriod: string;
@@ -202,7 +220,13 @@ export interface AnalysisVisualDataset {
   periods: string[];
   entities: string[];
   sources: Array<{ id: string; title: string }>;
-  points: Array<{ entity: string; period: string; value: number | null; conflict: boolean; sourceIds: string[] }>;
+  points: Array<{
+    entity: string;
+    period: string;
+    value: number | null;
+    conflict: boolean;
+    sourceIds: string[];
+  }>;
 }
 export interface AnalysisVisualReport {
   title: string;
@@ -211,3 +235,5 @@ export interface AnalysisVisualReport {
   metrics: Array<{ label: string; value: string }>;
   sections: Array<{ title: string; paragraphs: string[] }>;
 }
+
+export { buildVisualDatasets } from './analysis-datasets.js';

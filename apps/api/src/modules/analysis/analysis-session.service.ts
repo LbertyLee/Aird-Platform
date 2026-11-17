@@ -1,4 +1,7 @@
-import { UnWppDataService, isWppSource } from '../../research/un-wpp-data.service';
+import {
+  UnWppDataService,
+  isWppSource,
+} from '../../research/un-wpp-data.service';
 import {
   BadRequestException,
   ForbiddenException,
@@ -8,7 +11,10 @@ import {
 } from '@nestjs/common';
 import ExcelJS from 'exceljs';
 import { StructuredDataStore } from '../../research/structured-data-store';
-import { collectDisplayNames, localizeDisplayNames } from './display-name-localization';
+import {
+  collectDisplayNames,
+  localizeDisplayNames,
+} from './display-name-localization';
 import { inferQueryCountries } from '../../common/utils/query-countries';
 import {
   AnalysisSessionStatus,
@@ -153,7 +159,11 @@ type AnalysisResult = {
 @Injectable()
 export class AnalysisSessionService {
   private readonly logger = new Logger(AnalysisSessionService.name);
-  private readonly structuredStore = new StructuredDataStore(undefined, undefined, (message) => this.logger.warn(message));
+  private readonly structuredStore = new StructuredDataStore(
+    undefined,
+    undefined,
+    (message) => this.logger.warn(message),
+  );
 
   constructor(
     private readonly prisma: PrismaService,
@@ -224,7 +234,10 @@ export class AnalysisSessionService {
 
     const hydrateStartedAt = Date.now();
     const hydratedSources = await this.exaContent.ensureFullText(sources);
-    logStage('ensureFullText', `stageMs=${Date.now() - hydrateStartedAt} sources=${sources.length}`);
+    logStage(
+      'ensureFullText',
+      `stageMs=${Date.now() - hydrateStartedAt} sources=${sources.length}`,
+    );
     const prepareStartedAt = Date.now();
     const result = await this.prepare(
       run.query,
@@ -232,7 +245,10 @@ export class AnalysisSessionService {
       dto.indicatorIds,
       searchContext(run.filters, run.resultJson),
     );
-    logStage('prepare', `stageMs=${Date.now() - prepareStartedAt} status=${result.status}`);
+    logStage(
+      'prepare',
+      `stageMs=${Date.now() - prepareStartedAt} status=${result.status}`,
+    );
     const persistStartedAt = Date.now();
     result.runId = dto.runId;
     const session = await this.prisma.analysisSession.create({
@@ -249,8 +265,14 @@ export class AnalysisSessionService {
         resultJson: result as unknown as Prisma.InputJsonValue,
       },
     });
-    logStage('persist', `stageMs=${Date.now() - persistStartedAt} sessionId=${session.id}`);
-    logStage('complete', `totalMs=${Date.now() - startedAt} sessionId=${session.id}`);
+    logStage(
+      'persist',
+      `stageMs=${Date.now() - persistStartedAt} sessionId=${session.id}`,
+    );
+    logStage(
+      'complete',
+      `totalMs=${Date.now() - startedAt} sessionId=${session.id}`,
+    );
     return {
       id: session.id,
       createdAt: session.createdAt.toISOString(),
@@ -307,19 +329,25 @@ export class AnalysisSessionService {
     generateReport = false,
   ) {
     const session = await this.get(userId, id);
-    const dataset = validatePresentation(session.visualDatasets, presentation);
-    let visualReport: AnalysisVisualReport | undefined;
-    if (generateReport || session.visualReport) {
-      try {
-        visualReport = buildVisualReport(
-          dataset,
-          presentation,
-          session.warnings,
-        );
-      } catch (error) {
-        if (generateReport || !(error instanceof BadRequestException))
-          throw error;
-      }
+    if (
+      presentation.sourceIds?.some(
+        (sourceId) => !session.selectedSourceIds?.includes(sourceId),
+      )
+    ) {
+      throw new BadRequestException('筛选来源不属于当前分析会话。');
+    }
+    const scopedDatasets = presentation.sourceIds
+      ? buildVisualDatasets({
+          ...session,
+          observations: session.observations.filter((item) =>
+            presentation.sourceIds!.includes(item.sourceId),
+          ),
+        })
+      : session.visualDatasets;
+    const dataset = validatePresentation(scopedDatasets, presentation);
+    let visualReport: AnalysisVisualReport | undefined = session.visualReport;
+    if (generateReport) {
+      visualReport = buildVisualReport(dataset, presentation, session.warnings);
     }
     const {
       id: _id,
@@ -342,9 +370,60 @@ export class AnalysisSessionService {
     return { ...session, ...next, visualReport };
   }
 
-  async exportXlsx(userId: string, id: string, requestedColumns?: string[]) {
+  async exportXlsx(
+    userId: string,
+    id: string,
+    requestedColumns?: string[],
+    presentation?: AnalysisPresentation,
+  ) {
     const session = await this.get(userId, id);
-    const rows = Array.isArray(session.rows) ? session.rows : [];
+    let rows: Array<Record<string, unknown>> = Array.isArray(session.rows)
+      ? session.rows
+      : [];
+    if (presentation) {
+      if (
+        presentation.sourceIds?.some(
+          (sourceId) => !session.selectedSourceIds?.includes(sourceId),
+        )
+      ) {
+        throw new BadRequestException('筛选来源不属于当前分析会话。');
+      }
+      const datasets = presentation.sourceIds
+        ? buildVisualDatasets({
+            ...session,
+            observations: session.observations.filter((item) =>
+              presentation.sourceIds!.includes(item.sourceId),
+            ),
+          })
+        : session.visualDatasets;
+      const dataset = validatePresentation(datasets, presentation);
+      const periods =
+        presentation.periods ??
+        dataset.periods.slice(
+          dataset.periods.indexOf(presentation.startPeriod),
+          dataset.periods.indexOf(presentation.endPeriod) + 1,
+        );
+      rows = presentation.entities.map((entity) => {
+        const points = dataset.points.filter(
+          (point) => point.entity === entity && periods.includes(point.period),
+        );
+        const sourceIds = new Set(points.flatMap((point) => point.sourceIds));
+        return {
+          __source: (session.sources ?? [])
+            .filter((source) => sourceIds.has(source.id))
+            .map((source) => source.title)
+            .join('、'),
+          entity,
+          ...Object.fromEntries(
+            periods.map((period) => {
+              const point = points.find((item) => item.period === period);
+              return [period, point?.conflict ? null : (point?.value ?? null)];
+            }),
+          ),
+        };
+      });
+      requestedColumns = ['entity', ...periods];
+    }
     if (!rows.length) {
       throw new BadRequestException('当前分析会话没有可导出的结构化记录。');
     }
@@ -524,7 +603,8 @@ export class AnalysisSessionService {
     ]);
     if (contextEntities.length)
       dimensionHints.entities = contextEntities.map(normalizeDisplayEntity);
-    const recentPeriods = periodsFromRecentYearPhrase(query) ?? explicitYearRangePeriods(query);
+    const recentPeriods =
+      periodsFromRecentYearPhrase(query) ?? explicitYearRangePeriods(query);
     if (recentPeriods) {
       dimensionHints.periods = recentPeriods;
     } else {
@@ -571,19 +651,32 @@ export class AnalysisSessionService {
         sources: [],
         intent: 'lookup',
         confidence: 1,
-        explanation: 'Selected World Bank sources use official structured observations.',
+        explanation:
+          'Selected World Bank sources use official structured observations.',
       },
       query,
       configuredIndicators.map((indicator) => indicator.code),
     );
-    logPrepareStage('worldBank', `stageMs=${Date.now() - worldBankStartedAt} sources=${sources.length}`);
+    logPrepareStage(
+      'worldBank',
+      `stageMs=${Date.now() - worldBankStartedAt} sources=${sources.length}`,
+    );
     const wppStartedAt = Date.now();
-    sources = await this.unWpp.hydrateSources(sources, query, dimensionHints.entities, dimensionHints.periods, extractionCatalog.map((indicator) => indicator.code));
-    logPrepareStage('unWpp', `stageMs=${Date.now() - wppStartedAt} sources=${sources.length}`);
-    const wppRows = sources.filter((source) => source.metadata?.analysisProvider === 'un-wpp-2024')
+    sources = await this.unWpp.hydrateSources(
+      sources,
+      query,
+      dimensionHints.entities,
+      dimensionHints.periods,
+      extractionCatalog.map((indicator) => indicator.code),
+    );
+    logPrepareStage(
+      'unWpp',
+      `stageMs=${Date.now() - wppStartedAt} sources=${sources.length}`,
+    );
+    const wppRows = sources
+      .filter((source) => source.metadata?.analysisProvider === 'un-wpp-2024')
       .flatMap((source) => structuredValues(source.structuredData));
     const wppCodes = new Set(wppRows.map((row) => row.indicatorCode));
-
 
     // Each textual source is independent, but an unbounded Promise.all can trigger
     // provider rate limits when a search returns dozens of Exa/knowledge documents.
@@ -591,17 +684,30 @@ export class AnalysisSessionService {
     const extractSourceIndicators = async (source: SourceEntity) => {
       const content = source.textContent?.trim() ?? '';
       const structuredRows = structuredValues(source.structuredData);
-      const isOfficial = source.metadata?.analysisProvider === 'world-bank-api' || source.metadata?.analysisProvider === 'un-wpp-2024';
+      const isOfficial =
+        source.metadata?.analysisProvider === 'world-bank-api' ||
+        source.metadata?.analysisProvider === 'un-wpp-2024';
       const remainingCatalog = isOfficial
         ? extractionCatalog.filter(
             (indicator) =>
-              !structuredRows.some((row) => row.indicatorCode === indicator.code),
+              !structuredRows.some(
+                (row) => row.indicatorCode === indicator.code,
+              ),
           )
         : isWppSource(source) && wppRows.length
-          ? extractionCatalog.filter((indicator) => !wppCodes.has(indicator.code))
+          ? extractionCatalog.filter(
+              (indicator) => !wppCodes.has(indicator.code),
+            )
           : extractionCatalog;
       if (isWppSource(source) && wppRows.length && !remainingCatalog.length) {
-        return { sourceId: source.id, attempted: false, items: [], failed: false, unavailable: false, officialReference: true };
+        return {
+          sourceId: source.id,
+          attempted: false,
+          items: [],
+          failed: false,
+          unavailable: false,
+          officialReference: true,
+        };
       }
       if (
         (structuredRows.length && (!isOfficial || !remainingCatalog.length)) ||
@@ -667,33 +773,49 @@ export class AnalysisSessionService {
             };
       }
       const extractionKey = this.structuredStore.fingerprint({
-        version: 1, sourceId: source.id, title: source.title, origin: source.origin,
-        sourceUrl: source.sourceUrl, content, indicators: extractionIndicators,
-        query, preferredCodes, dimensionHints: dimensionHints.promptBlock, plan: queryPlan,
-        model: process.env.OPENAI_MODEL, endpoint: process.env.OPENAI_BASE_URL,
+        version: 1,
+        sourceId: source.id,
+        title: source.title,
+        origin: source.origin,
+        sourceUrl: source.sourceUrl,
+        content,
+        indicators: extractionIndicators,
+        query,
+        preferredCodes,
+        dimensionHints: dimensionHints.promptBlock,
+        plan: queryPlan,
+        model: process.env.OPENAI_MODEL,
+        endpoint: process.env.OPENAI_BASE_URL,
       });
       // Access to the selected source was checked before prepare(); source IDs isolate private evidence.
-      const runExtraction = () => this.structuredStore.getOrLoad(
-        'extractions', extractionKey, 7 * 86400_000, () =>
-        this.chat.extractIndicators(
-          {
-            title: source.title,
-            origin: source.origin,
-            sourceUrl: source.sourceUrl
-              ? browsableExternalUrl(source.sourceUrl)
-              : undefined,
-            content,
-          },
-          extractionIndicators,
-          {
-            query,
-            preferredCodes,
-            dimensionHints: dimensionHints.promptBlock,
-            plan: queryPlan,
-          },
-        ),
-        (result) => Array.isArray(result.items) && result.items.length > 0 && !result.trace?.error,
-      );
+      const runExtraction = () =>
+        this.structuredStore.getOrLoad(
+          'extractions',
+          extractionKey,
+          7 * 86400_000,
+          () =>
+            this.chat.extractIndicators(
+              {
+                title: source.title,
+                origin: source.origin,
+                sourceUrl: source.sourceUrl
+                  ? browsableExternalUrl(source.sourceUrl)
+                  : undefined,
+                content,
+              },
+              extractionIndicators,
+              {
+                query,
+                preferredCodes,
+                dimensionHints: dimensionHints.promptBlock,
+                plan: queryPlan,
+              },
+            ),
+          (result) =>
+            Array.isArray(result.items) &&
+            result.items.length > 0 &&
+            !result.trace?.error,
+        );
       let extraction = await runExtraction();
       let attemptCount = 1;
       if (
@@ -770,7 +892,10 @@ export class AnalysisSessionService {
       }
     });
     await Promise.all(workers);
-    logPrepareStage('extract', `sources=${sources.length} completed=${extractionResults.length}`);
+    logPrepareStage(
+      'extract',
+      `sources=${sources.length} completed=${extractionResults.length}`,
+    );
     const llmExtractionTraces: LlmExtractionTrace[] = extractionResults.flatMap(
       (result) => (result.trace ? [result.trace] : []),
     );
@@ -891,7 +1016,8 @@ export class AnalysisSessionService {
           ? (mappingByVersion.get(versionId) ?? [])
           : [];
       if (values.length) {
-        const rowLimit = source.metadata?.analysisProvider === 'un-wpp-2024' ? 20_000 : 1_000;
+        const rowLimit =
+          source.metadata?.analysisProvider === 'un-wpp-2024' ? 20_000 : 1_000;
         if (values.length > rowLimit) truncatedSources += 1;
         values.slice(0, rowLimit).forEach((value, rowIndex) => {
           const rowMappings =
@@ -1065,10 +1191,10 @@ export class AnalysisSessionService {
             source.metadata?.analysisProvider === 'un-wpp-2024'
               ? `已读取联合国 WPP 2024 官方年度数据（中方案），载入 ${Math.min(values.length, rowLimit)} 条记录，关联 ${mappedNames.length} 个指标；数据文件链接、原始字段和单位保留在数据行中。`
               : source.metadata?.analysisProvider === 'world-bank-api'
-              ? `已通过 World Bank 官方 API 补充 ${values.length} 条结构化记录，已关联 ${mappedNames.length} 个指标；原始 API 地址保留在数据行中。`
-              : mappedNames.length
-                ? `已按 ${mappedNames.length} 个指标载入 ${values.length} 条结构化记录。`
-                : `已载入 ${values.length} 条结构化记录，尚未关联后台指标。`,
+                ? `已通过 World Bank 官方 API 补充 ${values.length} 条结构化记录，已关联 ${mappedNames.length} 个指标；原始 API 地址保留在数据行中。`
+                : mappedNames.length
+                  ? `已按 ${mappedNames.length} 个指标载入 ${values.length} 条结构化记录。`
+                  : `已载入 ${values.length} 条结构化记录，尚未关联后台指标。`,
         });
         if (
           source.metadata?.analysisProvider !== 'world-bank-api' ||
@@ -1083,15 +1209,17 @@ export class AnalysisSessionService {
       const extractedNames: string[] = [];
       extractedItems.forEach((item, itemIndex) => {
         const configured = configuredByCode.get(item.indicatorCode);
-        const indicator = configured ?? (configuredIndicators.length === 0
-          ? {
-              id: `dynamic:${item.indicatorCode}`,
-              code: item.indicatorCode,
-              name: item.indicatorName?.trim() || item.indicatorCode,
-              unit: item.unit?.trim() || '原文单位',
-              definition: '由模型根据用户问题和来源证据识别的指标',
-            }
-          : undefined);
+        const indicator =
+          configured ??
+          (configuredIndicators.length === 0
+            ? {
+                id: `dynamic:${item.indicatorCode}`,
+                code: item.indicatorCode,
+                name: item.indicatorName?.trim() || item.indicatorCode,
+                unit: item.unit?.trim() || '原文单位',
+                definition: '由模型根据用户问题和来源证据识别的指标',
+              }
+            : undefined);
         if (!indicator) return;
         if (!extractedNames.includes(indicator.name))
           extractedNames.push(indicator.name);
@@ -1139,31 +1267,34 @@ export class AnalysisSessionService {
       });
       const extractionMessage = source.metadata?.officialDataUnavailable
         ? '联合国官方年度数据下载失败，当前仅保留文档抽取结果，请重试。'
-        : extraction && 'officialReference' in extraction && extraction.officialReference
+        : extraction &&
+            'officialReference' in extraction &&
+            extraction.officialReference
           ? '年度观测已由所选联合国来源关联的官方数据文件提供，本文保留为参考资料。'
           : !extraction?.attempted
-        ? extraction?.unavailable
-            ? '未配置大模型，未执行指标抽取；当前仅保留来源正文。'
-            : extraction?.titleOnly
-              ? '未能拉取网页正文（当前仅有标题），无法抽取数值；请重试分析或换用来源。'
-              : '该文档没有可供模型抽取的正文内容。'
-        : extraction?.failed
-          ? '大模型指标抽取失败，已保留来源，可重试分析。'
-          : extraction?.trace?.error && extractedNames.length
-            ? `已提取 ${extractedItems.length} 条观测，但部分正文抽取失败，结果可能不完整；请重试分析。`
-            : extractedNames.length
-              ? configuredIndicators.length
-                ? `已按 ${extractedNames.length} 个后台指标完成逐篇抽取，共 ${extractedItems.length} 条观测。`
-                : `已由模型识别 ${extractedNames.length} 个指标并完成逐篇抽取，共 ${extractedItems.length} 条观测。`
-              : extraction?.trace?.rejectedItemCount
-                ? `模型返回的 ${extraction.trace.rejectedItemCount} 条候选未通过原文、数值或统计口径校验，未计入分析。`
-                : '已完成逐篇指标抽取，但正文中未发现后台指标目录内的明确数值。';
+            ? extraction?.unavailable
+              ? '未配置大模型，未执行指标抽取；当前仅保留来源正文。'
+              : extraction?.titleOnly
+                ? '未能拉取网页正文（当前仅有标题），无法抽取数值；请重试分析或换用来源。'
+                : '该文档没有可供模型抽取的正文内容。'
+            : extraction?.failed
+              ? '大模型指标抽取失败，已保留来源，可重试分析。'
+              : extraction?.trace?.error && extractedNames.length
+                ? `已提取 ${extractedItems.length} 条观测，但部分正文抽取失败，结果可能不完整；请重试分析。`
+                : extractedNames.length
+                  ? configuredIndicators.length
+                    ? `已按 ${extractedNames.length} 个后台指标完成逐篇抽取，共 ${extractedItems.length} 条观测。`
+                    : `已由模型识别 ${extractedNames.length} 个指标并完成逐篇抽取，共 ${extractedItems.length} 条观测。`
+                  : extraction?.trace?.rejectedItemCount
+                    ? `模型返回的 ${extraction.trace.rejectedItemCount} 条候选未通过原文、数值或统计口径校验，未计入分析。`
+                    : '已完成逐篇指标抽取，但正文中未发现后台指标目录内的明确数值。';
       const structuredSummary = summaries.find(
         (summary) => summary.id === source.id,
       );
       if (structuredSummary) {
         structuredSummary.rowCount += extractedItems.length;
-        structuredSummary.observationCount = observationCounts.get(source.id) ?? 0;
+        structuredSummary.observationCount =
+          observationCounts.get(source.id) ?? 0;
         structuredSummary.indicatorNames = uniqueIds([
           ...structuredSummary.indicatorNames,
           ...extractedNames,
@@ -1247,23 +1378,28 @@ export class AnalysisSessionService {
     });
     const summary = summarizeObservations(normalizedObservations);
     const summaryStartedAt = Date.now();
-    const officialWppOnly = wppRows.length > 0 && extractionCatalog.every((indicator) => wppCodes.has(indicator.code));
+    const officialWppOnly =
+      wppRows.length > 0 &&
+      extractionCatalog.every((indicator) => wppCodes.has(indicator.code));
     const llmSummary = officialWppOnly
       ? `已从联合国 WPP 2024 中方案官方年度文件读取 ${normalizedObservations.length} 条观测，覆盖 ${[...new Set(normalizedObservations.map((item) => item.entity))].join('、')}；人口总量为7月1日人口，出生人数与净迁移人数为年度人数，具体年份、单位及缺失情况见明细与提示。`
       : await this.chat.summarizeAnalysis(
-      query,
-      normalizedObservations.map((item) => ({
-        source: item.source,
-        indicatorCode: item.indicatorCode,
-        indicatorName: item.indicatorName,
-        value: item.normalizedValue ?? item.value,
-        unit: item.unit,
-        originalUnit: item.originalUnit,
-        period: item.period,
-        entity: item.entity,
-      })),
+          query,
+          normalizedObservations.map((item) => ({
+            source: item.source,
+            indicatorCode: item.indicatorCode,
+            indicatorName: item.indicatorName,
+            value: item.normalizedValue ?? item.value,
+            unit: item.unit,
+            originalUnit: item.originalUnit,
+            period: item.period,
+            entity: item.entity,
+          })),
+        );
+    logPrepareStage(
+      'summarize',
+      `stageMs=${Date.now() - summaryStartedAt} observations=${normalizedObservations.length}`,
     );
-    logPrepareStage('summarize', `stageMs=${Date.now() - summaryStartedAt} observations=${normalizedObservations.length}`);
     const queryDimensions = {
       entities: dimensionHints.entities,
       periods: dimensionHints.periods,
@@ -1276,15 +1412,27 @@ export class AnalysisSessionService {
       )
       .map((source) => `「${source.title}」${source.message}`);
     // WPP annual coverage must be complete for each requested country, not just any country.
-    const coverageEntities = wppRows.length ? [...new Set(dimensionHints.entities)] : [''];
+    const coverageEntities = wppRows.length
+      ? [...new Set(dimensionHints.entities)]
+      : [''];
     const missingTargets = extractionCatalog.flatMap((indicator) =>
-      coverageEntities.flatMap((entity) => dimensionHints.periods
-        .filter((period) => !normalizedObservations.some((item) =>
-          item.indicatorCode === indicator.code &&
-          item.period?.match(/[12]\d{3}/)?.[0] === period &&
-          (!entity || item.entity === entity) && item.value != null,
-        ))
-        .map((period) => `${indicator.name}${entity ? ` × ${entity}` : ''} × ${period}`)),
+      coverageEntities.flatMap((entity) =>
+        dimensionHints.periods
+          .filter(
+            (period) =>
+              !normalizedObservations.some(
+                (item) =>
+                  item.indicatorCode === indicator.code &&
+                  item.period?.match(/[12]\d{3}/)?.[0] === period &&
+                  (!entity || item.entity === entity) &&
+                  item.value != null,
+              ),
+          )
+          .map(
+            (period) =>
+              `${indicator.name}${entity ? ` × ${entity}` : ''} × ${period}`,
+          ),
+      ),
     );
     const incompleteSources = extractionResults.filter(
       (result) => result.trace?.error,
@@ -1333,11 +1481,18 @@ export class AnalysisSessionService {
       );
     }
     if (truncatedSources) {
-      warnings.push(`${truncatedSources} 个来源超过记录上限（普通来源 1,000 条，联合国年度数据 20,000 条），当前结果已截断。`);
+      warnings.push(
+        `${truncatedSources} 个来源超过记录上限（普通来源 1,000 条，联合国年度数据 20,000 条），当前结果已截断。`,
+      );
     }
     if (wppRows.length) {
-      warnings.push('联合国 WPP 2024：人口总量采用7月1日人口；1950—2023年为估计值，2024—2100年为中方案预测值；出生人数和人口总量由千人换算为人。');
-      if (wppCodes.has('net_migration')) warnings.push('移民人口采用净迁移人数（迁入减迁出），不是移民存量或迁入人数；负值表示净迁出。');
+      warnings.push(
+        '联合国 WPP 2024：人口总量采用7月1日人口；1950—2023年为估计值，2024—2100年为中方案预测值；出生人数和人口总量由千人换算为人。',
+      );
+      if (wppCodes.has('net_migration'))
+        warnings.push(
+          '移民人口采用净迁移人数（迁入减迁出），不是移民存量或迁入人数；负值表示净迁出。',
+        );
     }
     if (
       queryDimensions.entities.length ||
@@ -1361,21 +1516,34 @@ export class AnalysisSessionService {
       );
     }
     const display = {
-      sources: summaries, availableIndicators, rows: normalizedRows,
-      observations: normalizedObservations, summary, queryDimensions,
+      sources: summaries,
+      availableIndicators,
+      rows: normalizedRows,
+      observations: normalizedObservations,
+      summary,
+      queryDimensions,
     };
     const names = collectDisplayNames(display);
     const translationStartedAt = Date.now();
     const translations = await this.chat.translateDisplayNames(names);
-    logPrepareStage('translate', `stageMs=${Date.now() - translationStartedAt} names=${names.length}`);
+    logPrepareStage(
+      'translate',
+      `stageMs=${Date.now() - translationStartedAt} names=${names.length}`,
+    );
     if (names.some((name) => !translations[name]))
       warnings.push('部分英文名称暂未获得可靠中文译名，已保留原名。');
-    logPrepareStage('complete', `totalMs=${Date.now() - prepareStartedAt} observations=${normalizedObservations.length}`);
+    logPrepareStage(
+      'complete',
+      `totalMs=${Date.now() - prepareStartedAt} observations=${normalizedObservations.length}`,
+    );
     return {
       pipelineVersion: 9,
       query,
       status:
-        usableCount && !missingTargets.length && !incompleteSources && !truncatedSources
+        usableCount &&
+        !missingTargets.length &&
+        !incompleteSources &&
+        !truncatedSources
           ? 'ready'
           : 'partial',
       selectedSourceIds: sources.map((source) => source.id),
@@ -1474,7 +1642,7 @@ function jsonStringArray(value: Prisma.JsonValue | null) {
     : [];
 }
 
-function collectExportColumns(rows: AnalysisRow[]) {
+function collectExportColumns(rows: Array<Record<string, unknown>>) {
   const columns = new Set<string>();
   rows.forEach((row) => {
     Object.keys(row)

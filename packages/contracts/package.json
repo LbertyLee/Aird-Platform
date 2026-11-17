@@ -8,11 +8,12 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist-cjs/index.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/cjs-package.mjs",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "echo No contract tests yet",
     "typecheck": "tsc -p tsconfig.json --noEmit"

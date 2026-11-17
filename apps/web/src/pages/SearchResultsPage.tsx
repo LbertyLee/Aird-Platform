@@ -5,7 +5,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Database,
-  Eye,
   ExternalLink,
   FileText,
   Globe2,
@@ -22,6 +21,7 @@ import type {
   ResearchSource,
   ResearchSearchProgress,
 } from '@agent/contracts';
+import ResearchReport from '../components/ResearchReport';
 import DepositKnowledgeModal from '../components/DepositKnowledgeModal';
 import { knowledgeSourceAttribution } from '../utils/knowledge-source';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -125,15 +125,29 @@ export default function SearchResultsPage({
   const searchAbortRef = useRef<AbortController | null>(null);
   const analysisAbortRef = useRef<AbortController | null>(null);
   const autoAnalysisRunIdRef = useRef<string | null>(null);
-  /** Auto-open first Exa preview once per completed run (user may close manually). */
-  const autoPreviewRunIdRef = useRef<string | null>(null);
+  const analysisRunRef = useRef(result?.runId);
+  analysisRunRef.current = pendingSearch ? undefined : result?.runId;
+  const [analysisLookupRun, setAnalysisLookupRun] = useState<string>();
 
+  useEffect(
+    () => () => {
+      analysisAbortRef.current?.abort();
+    },
+    [],
+  );
   const displayQuery = pendingSearch?.query || result?.query || '';
   useEffect(() => {
+    analysisAbortRef.current?.abort();
+    analysisAbortRef.current = null;
+    setCreatingAnalysis(false);
+    onAnalysisPending(false);
+    setActive(undefined);
     setSavedAnalysis(undefined);
+    setAnalysisLookupRun(undefined);
     setSavedAnalysisError(false);
     if (!result?.runId || !session?.accessToken || pendingSearch) {
       setSavedAnalysisLoading(false);
+      setAnalysisLookupRun(result?.runId);
       return;
     }
     const controller = new AbortController();
@@ -149,7 +163,10 @@ export default function SearchResultsPage({
         if (!controller.signal.aborted) setSavedAnalysisError(true);
       })
       .finally(() => {
-        if (!controller.signal.aborted) setSavedAnalysisLoading(false);
+        if (!controller.signal.aborted) {
+          setSavedAnalysisLoading(false);
+          setAnalysisLookupRun(result.runId);
+        }
       });
     return () => controller.abort();
   }, [
@@ -176,7 +193,6 @@ export default function SearchResultsPage({
     setSearchFailureKind(null);
     setDepositInfo('');
     setActive(undefined);
-    autoPreviewRunIdRef.current = null;
 
     void (async () => {
       try {
@@ -315,7 +331,11 @@ export default function SearchResultsPage({
       !result ||
       !allSources.length ||
       creatingAnalysis ||
-      savedAnalysis ||
+      analysisLookupRun !== result.runId ||
+      (savedAnalysis?.runId === result.runId &&
+        allSources.every((source) =>
+          savedAnalysis.selectedSourceIds?.includes(source.id),
+        )) ||
       autoAnalysisRunIdRef.current === result.runId
     ) {
       return;
@@ -327,15 +347,14 @@ export default function SearchResultsPage({
     // The run id is the intended trigger; source list contents are immutable
     // for a completed search.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result?.runId, running, allSources.length]);
-
-  useEffect(() => {
-    if (running || !result) return;
-    if (autoPreviewRunIdRef.current === result.runId) return;
-    const firstExa = result.sources.find((source) => source.origin === 'exa');
-    autoPreviewRunIdRef.current = result.runId;
-    if (firstExa) setActive(firstExa);
-  }, [result, running]);
+  }, [
+    result?.runId,
+    running,
+    allSources.length,
+    analysisLookupRun,
+    savedAnalysis,
+    creatingAnalysis,
+  ]);
 
   useEffect(() => {
     if (!running) return;
@@ -356,7 +375,7 @@ export default function SearchResultsPage({
     hasResult: Boolean(result),
     creatingAnalysis,
     analysisStatus: currentAnalysis?.status,
-    hasReport: Boolean(currentAnalysis?.visualReport),
+    hasReport: Boolean(currentAnalysis),
   });
 
   const semanticSummary = useMemo(
@@ -387,11 +406,14 @@ export default function SearchResultsPage({
     setDepositOpen(true);
   }
 
-  async function enterAnalysis(sourceIds = allSources.map((source) => source.id)) {
+  async function enterAnalysis(
+    sourceIds = allSources.map((source) => source.id),
+  ) {
     if (!sourceIds.length || creatingAnalysis || !result || running) return;
     analysisAbortRef.current?.abort();
     const controller = new AbortController();
     analysisAbortRef.current = controller;
+    const runId = result.runId;
     setCreatingAnalysis(true);
     onAnalysisPending(true);
     setActionError('');
@@ -404,12 +426,22 @@ export default function SearchResultsPage({
         },
         controller.signal,
       );
-      if (analysisAbortRef.current !== controller) return;
+      if (
+        analysisAbortRef.current !== controller ||
+        controller.signal.aborted ||
+        analysisRunRef.current !== runId
+      )
+        return;
       setSavedAnalysis(analysis);
-      setSavedAnalysisAttempt((value) => value + 1);
+
       onAnalysisReady(analysis.id);
     } catch (error) {
-      if (analysisAbortRef.current !== controller) return;
+      if (
+        analysisAbortRef.current !== controller ||
+        controller.signal.aborted ||
+        analysisRunRef.current !== runId
+      )
+        return;
       if (isGatewayTimeout(error)) {
         setActionError('服务响应超时，正在确认分析结果是否已保存...');
         const recovered = await recoverAnalysisSession(
@@ -417,10 +449,15 @@ export default function SearchResultsPage({
           sourceIds,
           controller,
         );
-        if (analysisAbortRef.current !== controller) return;
+        if (
+          analysisAbortRef.current !== controller ||
+          controller.signal.aborted ||
+          analysisRunRef.current !== runId
+        )
+          return;
         if (recovered) {
           setSavedAnalysis(recovered);
-          setSavedAnalysisAttempt((value) => value + 1);
+
           onAnalysisReady(recovered.id);
           return;
         }
@@ -542,7 +579,11 @@ export default function SearchResultsPage({
                         : searchFailureKind === 'cancelled'
                           ? '检索已取消'
                           : '检索失败'
-                      : '检索完成 · 已生成结果'}
+                      : creatingAnalysis
+                        ? '正在生成研究报告'
+                        : currentAnalysis
+                          ? '研究报告 · 可溯源'
+                          : '检索完成'}
                 </span>
               </div>
               {running ? (
@@ -596,18 +637,16 @@ export default function SearchResultsPage({
                 : progressStatus === 'error'
                   ? searchError
                   : creatingAnalysis
-                    ? '正在提取并标准化所选来源的数据，完成后进入分析工作台。'
+                    ? '正在提取全部检索文档，进行标准化、清洗与交叉验证，完成后在此展示研究报告。'
                     : currentAnalysis?.status === 'partial'
                       ? '数据提取尚不完整，请进入分析工作台查看缺失项与提示。'
                       : currentAnalysis?.status === 'ready'
-                        ? currentAnalysis.visualReport
-                          ? '分析与报告已生成，可进入工作台查看。'
-                          : '数据分析已完成，可进入工作台生成报告与可视化。'
+                        ? '研究报告与数据处理已完成，可进入工作台调整数据与图表，再生成最终分析结果。'
                         : savedAnalysisLoading
                           ? '检索已完成，正在确认后续分析进度…'
                           : savedAnalysisError
                             ? '检索已完成，历史分析进度查找失败，请重试。'
-                    : '检索已完成，已自动对全部来源进行数据提取、标准化与交叉验证。请进入数据分析工作台查看处理结果。'}
+                            : '检索完成，等待处理全部来源。'}
             </p>
 
             {semanticSummary ? (
@@ -683,39 +722,59 @@ export default function SearchResultsPage({
 
           {running ? (
             <div className="empty-source-preview">
-              <FileText size={28} />
+              <LoaderCircle className="spin" size={28} />
               <p>正在检索与整理来源，请稍候…</p>
             </div>
-          ) : active ? (
-            <Preview
-              source={active}
-              knowledgePreview={knowledgePreview}
-              failed={previewFailed}
-              onFailed={() => setPreviewFailed(true)}
-              onRetry={retryPreview}
-              onClose={() => setActive(undefined)}
+          ) : result && progressStatus !== 'error' ? (
+            <ResearchReport
+              result={result}
+              analysis={currentAnalysis}
+              busy={creatingAnalysis || savedAnalysisLoading}
+              onSource={setActive}
             />
-          ) : (
-            <div className="empty-source-preview">
-              <FileText size={28} />
-              <p>
-                {progressStatus === 'error'
-                  ? '检索失败，请返回重新搜索'
-                  : '点击右侧来源卡片查看内容'}
-              </p>
+          ) : null}
+          {active && (
+            <div
+              className="research-source-overlay"
+              role="presentation"
+              onMouseDown={() => setActive(undefined)}
+            >
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-label="来源原文"
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                <Preview
+                  source={active}
+                  knowledgePreview={knowledgePreview}
+                  failed={previewFailed}
+                  onFailed={() => setPreviewFailed(true)}
+                  onRetry={retryPreview}
+                  onClose={() => setActive(undefined)}
+                />
+              </section>
             </div>
           )}
           {!running && result ? (
             <footer className="results-actions">
               <div>
-                <strong>已处理全部 {allSources.length} 个来源</strong>
+                <strong>
+                  {creatingAnalysis
+                    ? '正在处理全部检索来源'
+                    : currentAnalysis
+                      ? `已处理 ${currentAnalysis.sources.length} / ${allSources.length} 个来源${currentAnalysis.status === 'partial' ? ' · 存在缺失项' : ''}`
+                      : `共检索 ${allSources.length} 个来源`}
+                </strong>
                 <span>
                   {actionError ||
                     (savedAnalysisLoading
                       ? '正在查找已保存的分析…'
                       : savedAnalysisError
                         ? '历史分析查找失败，请重试'
-                        : '数据提取、标准化清洗和交叉验证已在后台完成，可进入工作台继续生成图表和最终分析结果')}
+                        : currentAnalysis
+                          ? '研究报告已整理。进入工作台确认数据与图表后，点击生成最终分析结果。'
+                          : '全部来源将自动处理，无需勾选来源。')}
                 </span>
               </div>
               <div>
@@ -727,19 +786,6 @@ export default function SearchResultsPage({
                 >
                   <Upload size={14} /> 存入知识库
                 </button>
-                {savedAnalysis?.runId === result.runId && !creatingAnalysis && (
-                  <button
-                    type="button"
-                    className="reserve-action"
-                    onClick={() =>
-                      navigate(
-                        `/analysis?sessionId=${encodeURIComponent(savedAnalysis.id)}&view=matrix&saved=1`,
-                      )
-                    }
-                  >
-                    <Eye size={14} /> 查看已生成的分析表
-                  </button>
-                )}
                 {savedAnalysisError && (
                   <button
                     type="button"
@@ -754,8 +800,18 @@ export default function SearchResultsPage({
                 <button
                   type="button"
                   className="generate-analysis-action"
-                  disabled={!allSources.length || creatingAnalysis}
-                  onClick={() => void enterAnalysis()}
+                  disabled={
+                    (!allSources.length && !currentAnalysis) ||
+                    creatingAnalysis ||
+                    savedAnalysisLoading
+                  }
+                  onClick={() =>
+                    currentAnalysis
+                      ? navigate(
+                          `/analysis?sessionId=${encodeURIComponent(currentAnalysis.id)}&view=matrix`,
+                        )
+                      : void enterAnalysis()
+                  }
                 >
                   {creatingAnalysis ? (
                     <LoaderCircle className="spin" size={16} />
@@ -763,7 +819,7 @@ export default function SearchResultsPage({
                     <Database size={16} />
                   )}
                   {creatingAnalysis
-                    ? '正在生成数据分析表...'
+                    ? '正在处理全部文档…'
                     : '查看数据分析工作台'}
                 </button>
                 {creatingAnalysis && (
@@ -782,7 +838,7 @@ export default function SearchResultsPage({
 
         <aside className="results-sources">
           <div className="source-heading">
-            <strong>全部检索来源</strong>
+            <strong>来源锚点</strong>
             <span>{allSources.length}</span>
             <button
               type="button"
@@ -795,7 +851,7 @@ export default function SearchResultsPage({
                 )
               }
             >
-              {selectedIds.length === allSources.length ? '取消入库选择' : '全选入库'}
+              {selectedIds.length === allSources.length ? '清空' : '全选'}
             </button>
           </div>
           <div className="source-tabs">
@@ -956,7 +1012,7 @@ function SourceCard({
         ) : null}
         <label onClick={(event) => event.stopPropagation()}>
           <input type="checkbox" checked={selected} onChange={onSelect} />{' '}
-          勾选纳入数据分析
+          选择来源（用于入库）
         </label>
       </div>
     </article>

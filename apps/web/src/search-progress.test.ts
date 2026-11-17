@@ -75,8 +75,8 @@ it('waits for analysis and report evidence separately', () => {
   expect(states({ ...done, analysisStatus: 'partial' })).toEqual([
     'done',
     'done',
-    'pending',
-    'pending',
+    'interrupted',
+    'interrupted',
     'pending',
   ]);
   expect(states({ ...done, analysisStatus: 'ready' })).toEqual([

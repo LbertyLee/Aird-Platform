@@ -403,3 +403,17 @@
     gap: 6px;
   }
 }
+
+/* Final report follows the prototype paper and section-card hierarchy. */
+.visual-report-identity{padding:18px 20px;border:1px solid #dbeafe;border-radius:12px;background:linear-gradient(120deg,#eff6ff,#f8fafc)}
+.visual-report-identity h2{font-size:20px;color:#0f172a;line-height:1.5}
+.visual-report-identity .visual-report-meta{margin-bottom:0;line-height:1.8}
+.visual-report-stats{gap:10px;border:0;margin:16px 0}
+.visual-report-stats>div,.visual-report-stats>div:last-child{padding:14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff}
+.visual-report-stats strong{color:#1d4ed8;font-size:18px}
+.visual-report-section{margin:12px 0;padding:0;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
+.visual-report-section h3{padding:12px 16px;margin:0;background:#f8fafc;color:#0f172a;font-size:14px;border-bottom:1px solid #e2e8f0}
+.visual-report-section p{padding:0 16px;margin:12px 0;font-size:13px;line-height:1.9;color:#334155}
+.visual-report-selection{margin-top:10px;accent-color:#2563eb}
+.visual-report-figure{padding:14px;border:1px solid #e2e8f0;border-radius:12px;background:white}
+.visual-report-figure figcaption{font-weight:700;color:#0f172a}

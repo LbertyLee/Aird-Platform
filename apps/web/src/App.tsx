@@ -240,9 +240,13 @@ export default function App() {
         <Route
           path="/analysis"
           element={
-            result ||
-            new URLSearchParams(location.search).has('sessionId') ? (
+            result || new URLSearchParams(location.search).has('sessionId') ? (
               <DataAnalysisWorkspace
+                onHistorySelect={(next) => {
+                  persistResult(next);
+                  setSelectedIds([]);
+                  navigate('/results');
+                }}
                 result={result}
                 selectedIds={selectedIds}
                 onBack={() => navigate(result ? '/results' : '/research')}
@@ -275,11 +279,6 @@ export default function App() {
             onSearchFailed={setSearchFailed}
             onAnalysisReady={(id) => {
               setReadyAnalysisId(id);
-              if (window.location.pathname === '/results') {
-                navigate(
-                  `/analysis?sessionId=${encodeURIComponent(id)}&view=matrix`,
-                );
-              }
             }}
             onLogout={logout}
             onBack={() => navigate('/research')}

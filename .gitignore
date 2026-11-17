@@ -52,3 +52,5 @@ apps/api/.tmp/
 # App local data
 apps/api/prisma/*.db
 storage/
+
+packages/contracts/dist-cjs/

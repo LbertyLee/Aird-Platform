@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { buildVisualDatasets } from '@agent/contracts';
+import { defaultPresentation } from './utils/analysis-visualization';
 import type {
   LoginResponse,
   ResearchSearchResponse,
   ResearchSource,
 } from '@agent/contracts';
+import ResearchHistoryRail from './components/ResearchHistoryRail';
 import AnalysisResults from './components/AnalysisResults';
 import ResearchLayout from './layouts/ResearchLayout';
 import {
@@ -351,7 +354,9 @@ export default function DataAnalysisWorkspace({
   onBack,
   session,
   onLogout,
+  onHistorySelect,
 }: {
+  onHistorySelect?: (result: ResearchSearchResponse) => void;
   result: ResearchSearchResponse | null;
   selectedIds: string[];
   onBack: () => void;
@@ -508,7 +513,6 @@ export default function DataAnalysisWorkspace({
   ]);
   const observationCount = analysisSession?.observations.length ?? rows.length;
   const summaryCount = analysisSession?.summary.length ?? 0;
-  const columns = useMemo(() => collectColumns(rows), [rows]);
   const requestedView = searchParams.get('view');
   const initialView: AnalysisTab =
     requestedView === 'charts' || requestedView === 'report'
@@ -516,6 +520,8 @@ export default function DataAnalysisWorkspace({
       : 'matrix';
   const [activeTab, setActiveTab] = useState<AnalysisTab>(initialView);
   const [tableSearch, setTableSearch] = useState('');
+  const [generateFinalReport, setGenerateFinalReport] = useState(false);
+  useEffect(() => setGenerateFinalReport(false), [analysisSessionId]);
   const [matrixIndicator, setMatrixIndicator] = useState('');
   const [matrixSortPeriod, setMatrixSortPeriod] = useState<string>();
   const [selectedMatrixEntities, setSelectedMatrixEntities] = useState<
@@ -557,23 +563,32 @@ export default function DataAnalysisWorkspace({
       // incidental entities, periods, or fields found in source documents.
       entities: analysisSession?.queryDimensions?.entities?.length
         ? analysisSession.queryDimensions.entities
-        : [...new Set((analysisSession?.observations ?? []).map((item) => item.entity || item.source))],
+        : [
+            ...new Set(
+              (analysisSession?.observations ?? []).map(
+                (item) => item.entity || item.source,
+              ),
+            ),
+          ],
     };
-  }, [analysisSession?.queryDimensions?.entities, analysisSession?.observations]);
+  }, [
+    analysisSession?.queryDimensions?.entities,
+    analysisSession?.observations,
+  ]);
   const matrixIndicators = useMemo(() => {
     const preferredCodes = new Set(
       analysisSession?.queryDimensions?.preferredIndicatorCodes ?? [],
     );
     const preferredIds = new Set(analysisSession?.preferredIndicatorIds ?? []);
-    return (analysisSession?.availableIndicators ?? [])
-      .filter(
-        (item) => preferredCodes.has(item.code) || preferredIds.has(item.id),
-      )
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        unit: item.unit,
-      }));
+    const available = analysisSession?.availableIndicators ?? [];
+    const preferred = available.filter(
+      (item) => preferredCodes.has(item.code) || preferredIds.has(item.id),
+    );
+    return (preferred.length ? preferred : available).map((item) => ({
+      id: item.id,
+      name: item.name,
+      unit: item.unit,
+    }));
   }, [
     analysisSession?.availableIndicators,
     analysisSession?.preferredIndicatorIds,
@@ -584,10 +599,21 @@ export default function DataAnalysisWorkspace({
     matrixIndicators[0];
   const matrixPeriods = useMemo(() => {
     const periods = analysisSession?.queryDimensions?.periods;
-    return [...(periods?.length ? periods : [...new Set((analysisSession?.observations ?? []).flatMap((item) => item.period ? [item.period] : []))])].sort(
-      (a, b) => a.localeCompare(b, undefined, { numeric: true }),
-    );
-  }, [analysisSession?.queryDimensions?.periods, analysisSession?.observations]);
+    return [
+      ...(periods?.length
+        ? periods
+        : [
+            ...new Set(
+              (analysisSession?.observations ?? []).flatMap((item) =>
+                item.period ? [item.period] : [],
+              ),
+            ),
+          ]),
+    ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [
+    analysisSession?.queryDimensions?.periods,
+    analysisSession?.observations,
+  ]);
   const matrixAnomalies = useMemo(
     () =>
       detectMatrixAnomalies(
@@ -603,143 +629,108 @@ export default function DataAnalysisWorkspace({
       matrixPeriods,
     ],
   );
+  const scopedVisualDatasets = useMemo(
+    () =>
+      analysisSession
+        ? buildVisualDatasets({
+            ...analysisSession,
+            observations: (analysisSession.observations ?? []).filter((item) =>
+              selectedMatrixSources.includes(item.source),
+            ),
+          })
+        : [],
+    [analysisSession, selectedMatrixSources],
+  );
+  const activeVisualDataset = scopedVisualDatasets.find(
+    (item) =>
+      item.id ===
+      JSON.stringify([activeMatrixIndicator?.id, activeMatrixIndicator?.unit]),
+  );
   const matrixRows = useMemo(() => {
     const map = new Map<string, Record<string, unknown>>();
-    const normRank = (status?: string) => {
-      if (status === 'converted' || status === 'same') return 2;
-      if (status === 'unknown') return 0;
-      return 1;
-    };
-    for (const item of analysisSession?.observations ?? []) {
-      if (
-        activeMatrixIndicator &&
-        item.indicatorId !== activeMatrixIndicator.id &&
-        item.indicatorName !== activeMatrixIndicator.name
-      )
-        continue;
-      if (
-        selectedMatrixSources.length > 0 &&
-        !selectedMatrixSources.includes(item.source)
-      )
-        continue;
-      if (item.normalizationStatus === 'unknown') continue;
-      const entity = item.entity || item.source || '未标注实体';
-      const row = map.get(entity) ?? { entity };
-      if (item.period) {
-        const nextValue = item.normalizedValue ?? item.value;
-        const ranks =
-          (row.__normRanks as Record<string, number> | undefined) ?? {};
-        const previousRank = ranks[item.period] ?? -1;
-        const nextRank = normRank(item.normalizationStatus);
-        // Prefer successfully normalized values over raw "unknown" unit rows
-        // (e.g. traditional 億元 that failed before alias mapping).
-        if (nextValue != null && nextRank >= previousRank) {
-          const conflicts = (row.__conflicts as Record<string, boolean> | undefined) ?? {};
-          const previous = row[item.period];
-          if (nextRank > previousRank) conflicts[item.period] = false;
-          else if (typeof previous === 'number' && Math.abs(previous - nextValue) / Math.max(Math.abs(previous), Math.abs(nextValue), 1e-9) > 0.02) {
-            conflicts[item.period] = true;
-          }
-          row[item.period] = conflicts[item.period] ? null : nextValue;
-          row.__conflicts = conflicts;
-          ranks[item.period] = nextRank;
-          row.__normRanks = ranks;
-        }
-      }
-      const sources = new Set<string>(
-        Array.isArray(row.__sources) ? row.__sources.map(String) : [],
+    for (const point of activeVisualDataset?.points ?? []) {
+      const row = map.get(point.entity) ?? { entity: point.entity };
+      row[point.period] = point.conflict ? null : point.value;
+      const ids = [
+        ...new Set([
+          ...((row.__sourceIds as string[]) ?? []),
+          ...point.sourceIds,
+        ]),
+      ];
+      row.__sourceIds = ids;
+      row.__sources = ids.map(
+        (id) =>
+          analysisSession?.sources.find((source) => source.id === id)?.title ??
+          id,
       );
-      sources.add(item.source);
-      row.__sources = [...sources];
-      row.__source = [...sources].join('、');
-      row.__unit = item.unit;
-      row.__citation = item.citation.field;
-      map.set(entity, row);
+      row.__source = (row.__sources as string[]).join('、');
+      row.__unit = activeVisualDataset?.unit;
+      map.set(point.entity, row);
     }
-    if (map.size === 0) {
-      for (const row of rows) {
-        const indicator = String(
-          row['指标'] ?? row.indicatorName ?? row.indicator ?? '',
-        );
-        if (
-          activeMatrixIndicator &&
-          indicator !== activeMatrixIndicator.name &&
-          indicator !== activeMatrixIndicator.id
-        )
-          continue;
-        if (
-          selectedMatrixSources.length > 0 &&
-          !selectedMatrixSources.includes(row.__source)
-        )
-          continue;
-        const entity = String(
-          row['实体'] ?? row['entity'] ?? row.__source ?? '未标注实体',
-        );
-        const period = String(
-          row['年份'] ?? row['period'] ?? row['year'] ?? '',
-        );
-        const next = map.get(entity) ?? { entity };
-        if (period) {
-          next[period] =
-            row['数值'] ?? row.value ?? row['value'] ?? next[period];
-        }
-        next.__source = row.__source;
-        map.set(entity, next);
-      }
+    for (const entity of analysisSession?.queryDimensions?.entities ?? []) {
+      if (!map.has(entity)) map.set(entity, { entity });
     }
-    // Seed empty skeleton from the research question so filters/table show
-    // 中国 × 近5年 even before any observation is extracted.
-    if (map.size === 0) {
-      for (const entity of analysisSession?.queryDimensions?.entities ?? []) {
-        const row: Record<string, unknown> = { entity, __fromQuery: true };
-        for (const period of matrixPeriods) row[period] = null;
-        map.set(entity, row);
-      }
-    } else {
-      for (const entity of analysisSession?.queryDimensions?.entities ?? []) {
-        if (map.has(entity)) continue;
-        const row: Record<string, unknown> = { entity, __fromQuery: true };
-        for (const period of matrixPeriods) row[period] = null;
-        map.set(entity, row);
-      }
-    }
-    let list = [...map.values()];
-    if (selectedMatrixEntities.length > 0) {
-      list = list.filter((row) =>
-        selectedMatrixEntities.includes(String(row.entity)),
-      );
-    }
-    if (tableSearch.trim()) {
-      const needle = tableSearch.trim().toLowerCase();
-      list = list.filter((row) =>
-        String(row.entity ?? '')
-          .toLowerCase()
-          .includes(needle),
-      );
-    }
-    if (matrixSortPeriod) {
-      list.sort((left, right) => {
-        const a = Number(left[matrixSortPeriod] ?? Number.NEGATIVE_INFINITY);
-        const b = Number(right[matrixSortPeriod] ?? Number.NEGATIVE_INFINITY);
-        return b - a;
-      });
-    } else {
-      list.sort((left, right) =>
-        String(left.entity).localeCompare(String(right.entity), 'zh-CN'),
-      );
-    }
+    let list = [...map.values()].filter(
+      (row) =>
+        selectedMatrixEntities.includes(String(row.entity)) &&
+        (!tableSearch.trim() ||
+          String(row.entity)
+            .toLowerCase()
+            .includes(tableSearch.trim().toLowerCase())),
+    );
+    list.sort((a, b) =>
+      matrixSortPeriod
+        ? Number(b[matrixSortPeriod] ?? -Infinity) -
+          Number(a[matrixSortPeriod] ?? -Infinity)
+        : String(a.entity).localeCompare(String(b.entity), 'zh-CN'),
+    );
     return list;
   }, [
-    activeMatrixIndicator,
-    analysisSession?.observations,
-    analysisSession?.queryDimensions?.entities,
-    matrixPeriods,
-    matrixSortPeriod,
-    rows,
+    activeVisualDataset,
+    analysisSession,
     selectedMatrixEntities,
-    selectedMatrixSources,
     tableSearch,
+    matrixSortPeriod,
   ]);
+
+  function matrixPresentation() {
+    if (
+      !analysisSession ||
+      !activeVisualDataset ||
+      !matrixRows.length ||
+      !selectedMatrixSources.length
+    )
+      return;
+    const periods = activeVisualDataset.periods.filter((period) =>
+      selectedMatrixPeriods.includes(period),
+    );
+    if (!periods.length) return;
+    return {
+      ...defaultPresentation(activeVisualDataset),
+      entities: matrixRows
+        .map((row) => String(row.entity))
+        .filter((entity) => activeVisualDataset.entities.includes(entity)),
+      periods,
+      startPeriod: periods[0],
+      endPeriod: periods.at(-1)!,
+      currentPeriod: periods.at(-1)!,
+      ...(selectedMatrixSources.length
+        ? {
+            sourceIds: analysisSession.sources
+              .filter((source) => selectedMatrixSources.includes(source.title))
+              .map((source) => source.id),
+          }
+        : {}),
+    };
+  }
+
+  function openMatrixView(view: 'charts' | 'report') {
+    const presentation = matrixPresentation();
+    if (!analysisSession || !presentation) return;
+    setAnalysisSession({ ...analysisSession, presentation });
+    setGenerateFinalReport(view === 'report');
+    navigateView(view);
+  }
   useEffect(() => {
     if (matrixIndicators.length === 0) return;
     setMatrixIndicator((current) => {
@@ -756,6 +747,13 @@ export default function DataAnalysisWorkspace({
   const matrixSourceOptionsSignature = selectedSources
     .map((source) => `${source.id}:${source.title}`)
     .join('\u0001');
+  useEffect(() => {
+    if (!analysisSession?.id) return;
+    setSelectedMatrixEntities(filterOptions.entities);
+    setSelectedMatrixPeriods(matrixPeriods);
+    setSelectedMatrixSources(selectedSources.map((source) => source.title));
+  }, [analysisSession?.id]);
+
   useEffect(() => {
     setSelectedMatrixEntities((current) => {
       const next = current.filter((item) =>
@@ -792,7 +790,7 @@ export default function DataAnalysisWorkspace({
   ]);
 
   async function exportExcel() {
-    if (!rows.length || excelExporting) return;
+    if (!matrixPresentation() || excelExporting) return;
     exportRequestRef.current?.abort();
     const controller = new AbortController();
     exportRequestRef.current = controller;
@@ -820,8 +818,9 @@ export default function DataAnalysisWorkspace({
       }
       const blob = await exportAnalysisSession(
         sessionId,
-        columns,
+        undefined,
         controller.signal,
+        matrixPresentation(),
       );
       if (exportRequestRef.current !== controller) return;
       downloadBlob(
@@ -846,499 +845,535 @@ export default function DataAnalysisWorkspace({
 
   return (
     <ResearchLayout session={session} onLogout={onLogout}>
-      <div className="analysis-app">
+      <div className={`analysis-app prototype-analysis-${activeTab}`}>
+        {activeTab !== 'report' && session && (
+          <ResearchHistoryRail
+            query={analysisSession?.query ?? result?.query}
+            onBack={onBack}
+            onSelect={onHistorySelect}
+          />
+        )}
         <div className="analysis-workspace">
-        <header className="analysis-topbar">
-          <div>
-            <button
-              className="icon-button"
-              type="button"
-              title="返回搜索结果"
-              onClick={onBack}
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <span>AI数据智搜</span>
-            <span>/</span>
-            <strong>
-              {activeTab === 'matrix'
-                ? '数据分析工作台'
-                : activeTab === 'charts'
-                  ? '数据图表'
-                  : '分析结果'}
-            </strong>
-          </div>
-        </header>
-
-        <main className="analysis-content">
-          {activeTab !== 'matrix' && (
-            <section className="analysis-heading">
-              <div>
-                <p className="eyebrow">DATA EXPLORATION</p>
-                <h1>{activeTab === 'charts' ? '数据图表' : '分析结果'}</h1>
-                <p>
-                  {analysisSession?.query ?? (savedSessionUnavailable ? undefined : result?.query) ?? '已保存分析会话'}
-                </p>
-              </div>
-              {!savedSessionUnavailable && <div className="analysis-stats">
-                <span>
-                  <strong>
-                    {analysisSession?.sources.length ?? selectedSources.length}
-                  </strong>{' '}
-                  数据来源
-                </span>
-                <span>
-                  <strong>{structuredSourceCount}</strong> 表格来源
-                </span>
-                <span>
-                  <strong>{rows.length}</strong> 数据记录
-                </span>
-                <span>
-                  <strong>{observationCount}</strong> 指标观测
-                </span>
-                <span>
-                  <strong>{summaryCount}</strong> 汇总项
-                </span>
-                <span>
-                  <strong>{knowledgeSourceCount}</strong> 知识资料
-                </span>
-              </div>}
-            </section>
-          )}
-
-          {analysisLoading && (
-            <div className="analysis-session-state">
-              正在加载已保存的分析会话...
-            </div>
-          )}
-          {analysisLoadError && (
-            <div className="analysis-session-state error" role="alert">
-              <span>{analysisLoadError}</span>
+          <header className="analysis-topbar">
+            <div>
               <button
+                className="icon-button"
                 type="button"
-                className="secondary-button"
-                onClick={() => setAnalysisLoadAttempt((attempt) => attempt + 1)}
-              >
-                <LoaderCircle size={14} /> 重新加载
-              </button>
-              <button
-                type="button"
-                className="secondary-button"
+                title="返回搜索结果"
                 onClick={onBack}
               >
-                <ArrowLeft size={14} /> 返回搜索结果
+                <ArrowLeft size={18} />
               </button>
+              <span>AI数据智搜</span>
+              <span>/</span>
+              <strong>
+                {activeTab === 'matrix'
+                  ? '数据分析工作台'
+                  : activeTab === 'charts'
+                    ? '数据图表'
+                    : '分析结果'}
+              </strong>
             </div>
-          )}
-          {exportError && (
-            <div className="analysis-session-state error" role="alert">
-              {exportError}
-            </div>
-          )}
-          {!savedSessionUnavailable && activeTab === 'matrix' && (
-            <section className="prototype-matrix-shell">
-              <aside className="prototype-matrix-filter">
-                <div className="prototype-filter-title">多级筛选</div>
-                <div className="prototype-filter-stats">
-                  <b>{matrixRows.length}</b>
-                  <span>国家/地区</span>
-                  <b>{matrixPeriods.length}</b>
-                  <span>时间（年份）</span>
+          </header>
+
+          <main className="analysis-content">
+            {activeTab !== 'matrix' && (
+              <section className="analysis-heading">
+                <div>
+                  <p className="eyebrow">DATA EXPLORATION</p>
+                  <h1>{activeTab === 'charts' ? '数据图表' : '分析结果'}</h1>
+                  <p>
+                    {analysisSession?.query ??
+                      (savedSessionUnavailable ? undefined : result?.query) ??
+                      '已保存分析会话'}
+                  </p>
                 </div>
-                <label className="prototype-search">
-                  <Search size={14} />
-                  <input
-                    value={tableSearch}
-                    onChange={(event) => setTableSearch(event.target.value)}
-                    placeholder="关键词检索筛选项"
-                  />
-                </label>
-                <SelectableFilterGroup
-                  title="国家/地区"
-                  items={filterOptions.entities}
-                  selected={selectedMatrixEntities}
-                  onChange={setSelectedMatrixEntities}
-                />
-                <SelectableFilterGroup
-                  title="时间（年份）"
-                  items={matrixPeriods}
-                  selected={selectedMatrixPeriods}
-                  onChange={setSelectedMatrixPeriods}
-                />
-                <SelectableFilterGroup
-                  title="指标序列"
-                  items={matrixIndicators.map((item) => item.name)}
-                  selected={
-                    activeMatrixIndicator ? [activeMatrixIndicator.name] : []
-                  }
-                  onChange={(names) => {
-                    const next = matrixIndicators.find((item) =>
-                      names.includes(item.name),
-                    );
-                    if (next) setMatrixIndicator(next.id);
-                  }}
-                  singleSelect
-                />
-                <SelectableFilterGroup
-                  title="数据来源"
-                  items={selectedSources.map((source) => source.title)}
-                  selected={selectedMatrixSources}
-                  onChange={setSelectedMatrixSources}
-                />
-                <div className="prototype-source-note">
-                  <Database size={14} />
-                  <span>
-                    {selectedSources.length} 个来源，
-                    {analysisSession?.observations.length ?? 0}{' '}
-                    条指标观测已统一汇总
-                  </span>
-                </div>
-              </aside>
-              <div className="prototype-matrix-main">
-                <div className="prototype-matrix-toolbar">
-                  <label>分析指标</label>
-                  <select
-                    value={activeMatrixIndicator?.id ?? ''}
-                    onChange={(event) => setMatrixIndicator(event.target.value)}
-                  >
-                    {matrixIndicators.length === 0 ? (
-                      <option value="">暂无指标</option>
-                    ) : (
-                      matrixIndicators.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                          {item.unit ? `（${item.unit}）` : ''}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <span className="prototype-info">i</span>
-                  <span className="prototype-matrix-meta">
-                    {matrixPeriods[0] ?? '-'} -{' '}
-                    {matrixPeriods[matrixPeriods.length - 1] ?? '-'} ·{' '}
-                    {matrixRows.length} 个国家/地区
-                  </span>
-                </div>
-                <div
-                  className={`prototype-anomaly-panel ${matrixAnomalies.some((item) => item.level === 'warning') ? 'has-warning' : 'is-clear'}`}
-                  role="status"
-                >
-                  <div className="prototype-anomaly-heading">
-                    <AlertTriangle size={15} />
-                    <strong>异常提示</strong>
+                {!savedSessionUnavailable && (
+                  <div className="analysis-stats">
                     <span>
-                      {matrixAnomalies.some((item) => item.level === 'warning')
-                        ? '发现需要复核的情况'
-                        : '当前数据未发现明显异常'}
+                      <strong>
+                        {analysisSession?.sources.length ??
+                          selectedSources.length}
+                      </strong>{' '}
+                      数据来源
+                    </span>
+                    <span>
+                      <strong>{structuredSourceCount}</strong> 表格来源
+                    </span>
+                    <span>
+                      <strong>{rows.length}</strong> 数据记录
+                    </span>
+                    <span>
+                      <strong>{observationCount}</strong> 指标观测
+                    </span>
+                    <span>
+                      <strong>{summaryCount}</strong> 汇总项
+                    </span>
+                    <span>
+                      <strong>{knowledgeSourceCount}</strong> 知识资料
                     </span>
                   </div>
-                  <div className="prototype-anomaly-list">
-                    {matrixAnomalies.map((item) => (
-                      <div
-                        className={`prototype-anomaly-item ${item.level}`}
-                        key={item.key}
-                      >
-                        <b>{item.title}</b>
-                        <span>{item.detail}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="prototype-matrix-table-wrap">
-                  {matrixRows.length === 0 ? (
-                    <AnalysisEmpty
-                      title="暂无可聚合的指标观测"
-                      description="请返回搜索结果选择知识库或 Exa 来源，并等待指标提取完成。"
-                    />
-                  ) : (
-                    <>
-                      {matrixRows.every((row) =>
-                        matrixPeriods.every((period) => row[period] == null),
-                      ) ? (
-                        <div className="prototype-matrix-skeleton-note">
-                          已按研究问题填充「
-                          {(analysisSession?.queryDimensions?.entities ?? []).join(
-                            '、',
-                          ) || '实体'}
-                          ×
-                          {(analysisSession?.queryDimensions?.periods ?? []).join(
-                            '、',
-                          ) || '年份'}
-                          」维度骨架；数值待来源抽取完成后填入。
-                        </div>
-                      ) : null}
-                    <table className="prototype-matrix-table">
-                      <thead>
-                        <tr>
-                          <th>国家/地区</th>
-                          {matrixPeriods
-                            .filter(
-                              (period) =>
-                                selectedMatrixPeriods.length === 0 ||
-                                selectedMatrixPeriods.includes(period),
-                            )
-                            .map((period) => (
-                              <th
-                                key={period}
-                                onClick={() =>
-                                  setMatrixSortPeriod((current) =>
-                                    current === period ? undefined : period,
-                                  )
-                                }
-                              >
-                                {period}{' '}
-                                {matrixSortPeriod === period ? '↓' : '↕'}
-                              </th>
-                            ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {matrixRows
-                          .filter(
-                            (row) =>
-                              !tableSearch.trim() ||
-                              String(row.entity)
-                                .toLowerCase()
-                                .includes(tableSearch.trim().toLowerCase()),
-                          )
-                          .flatMap((row) => {
-                            const entity = String(row.entity);
-                            const periods = matrixPeriods.filter(
-                              (period) =>
-                                selectedMatrixPeriods.length === 0 ||
-                                selectedMatrixPeriods.includes(period),
-                            );
-                            const cells = periods.map((period) => {
-                              const value = row[period];
-                              return (
-                                <td
-                                  key={period}
-                                  className={
-                                    value == null
-                                      ? 'na'
-                                      : period === matrixSortPeriod
-                                        ? 'selected-period'
-                                        : undefined
-                                  }
-                                >
-                                  {value == null ? '..' : formatCell(value)}
-                                </td>
-                              );
-                            });
-                            const main = (
-                              <tr
-                                key={entity}
-                                onClick={() =>
-                                  setExpandedMatrixEntity((current) =>
-                                    current === entity ? undefined : entity,
-                                  )
-                                }
-                                tabIndex={0}
-                                onKeyDown={(event) => {
-                                  if (
-                                    event.key === 'Enter' ||
-                                    event.key === ' '
-                                  ) {
-                                    event.preventDefault();
-                                    setExpandedMatrixEntity((current) =>
-                                      current === entity ? undefined : entity,
-                                    );
-                                  }
-                                }}
-                              >
-                                <td className="sticky-col">
-                                  <span className="matrix-entity">
-                                    {expandedMatrixEntity === entity
-                                      ? '▾'
-                                      : '▸'}{' '}
-                                    {entity}
-                                  </span>
-                                </td>
-                                {cells}
-                              </tr>
-                            );
-                            if (expandedMatrixEntity !== entity) return [main];
-                            return [
-                              main,
-                              <tr
-                                className="prototype-matrix-detail"
-                                key={`${entity}-detail`}
-                              >
-                                <td className="sticky-col">数据口径</td>
-                                <td colSpan={Math.max(1, periods.length)}>
-                                  <div className="prototype-matrix-detail-body">
-                                    <span>
-                                      来源：
-                                      {String(row.__source || '当前分析会话')}
-                                    </span>
-                                    <span>
-                                      单位：
-                                      {String(
-                                        row.__unit ||
-                                          activeMatrixIndicator?.unit ||
-                                          '按指标统一口径',
-                                      )}
-                                    </span>
-                                    <span>
-                                      引用字段：
-                                      {String(
-                                        row.__citation || '指标提取结果',
-                                      )}
-                                    </span>
-                                  </div>
-                                </td>
-                              </tr>,
-                            ];
-                          })}
-                      </tbody>
-                    </table>
-                    </>
-                  )}
-                </div>
-                <div className="prototype-matrix-source">
-                  <b>数据来源：</b>
-                  {selectedSources.map((source) => source.title).join('、') ||
-                    '当前分析会话'}
-                  <span>
-                    {' '}
-                    · 单位：{activeMatrixIndicator?.unit || '按指标统一口径'} ·
-                    数据引用规范
-                  </span>
-                </div>
-                <div className="prototype-matrix-actions">
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={() =>
-                      downloadCsv(matrixRows as DataRow[], [
-                        'entity',
-                        ...matrixPeriods,
-                      ])
-                    }
-                  >
-                    <Download size={15} /> 下载
-                  </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={() =>
-                      downloadCsv(matrixRows as DataRow[], [
-                        'entity',
-                        ...matrixPeriods,
-                      ])
-                    }
-                  >
-                    CSV
-                  </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    disabled={!rows.length || excelExporting}
-                    onClick={() => void exportExcel()}
-                  >
-                    {excelExporting ? '生成 Excel…' : 'EXCEL'}
-                  </button>
-                  <span className="action-spacer" />
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => navigateView('charts')}
-                  >
-                    <BarChart3 size={15} /> {analysisSession ? '查看数据图表' : '生成数据图表'}
-                  </button>
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => {
-                      navigateView('report');
-                    }}
-                  >
-                    <Sparkles size={15} /> {analysisSession?.visualReport ? '查看分析结果' : '生成分析结果'}
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {!savedSessionUnavailable && (activeTab === 'charts' || activeTab === 'report') && (
-            <AnalysisResults
-              session={analysisSession}
-              result={savedSessionUnavailable ? null : result}
-              sources={selectedSources}
-              mode={activeTab}
-              // The prototype keeps report generation as the final explicit
-              // user action after extraction, cleaning, validation and chart
-              // preparation have completed.
-              autoGenerateReport={false}
-              onSession={(next, view) => {
-                setAnalysisSession(next);
-                const params = new URLSearchParams(searchParams);
-                params.set('sessionId', next.id);
-                params.set('view', view);
-                setActiveTab(view);
-                setSearchParams(params, { replace: true });
-              }}
-              onNavigate={navigateView}
-            />
-          )}
-          {activeRow && (
-            <div
-              className="data-preview-backdrop"
-              role="presentation"
-              onMouseDown={() => setActiveRow(undefined)}
-            >
-              <section
-                className="data-record-dialog"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="data-record-title"
-                onMouseDown={(event) => event.stopPropagation()}
-              >
-                <header>
-                  <div>
-                    <span>数据记录详情</span>
-                    <h2 id="data-record-title">{activeRow.__source}</h2>
-                    <p>完整字段内容</p>
-                  </div>
-                  <button
-                    className="icon-button"
-                    type="button"
-                    title="关闭记录详情"
-                    onClick={() => setActiveRow(undefined)}
-                  >
-                    <X size={18} />
-                  </button>
-                </header>
-                <dl className="data-record-fields">
-                  {Object.entries(activeRow)
-                    .filter(([field]) => !field.startsWith('__'))
-                    .map(([field, value]) => (
-                      <div key={field}>
-                        <dt>{field}</dt>
-                        <dd>{formatCell(value)}</dd>
-                      </div>
-                    ))}
-                </dl>
-                {selectedSources.find(
-                  (source) => source.title === activeRow.__source,
-                )?.sourceUrl && (
-                  <a
-                    className="record-source-link"
-                    href={
-                      selectedSources.find(
-                        (source) => source.title === activeRow.__source,
-                      )?.sourceUrl ?? undefined
-                    }
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    打开官方数据来源
-                  </a>
                 )}
               </section>
-            </div>
-          )}
-        </main>
+            )}
+
+            {analysisLoading && (
+              <div className="analysis-session-state">
+                正在加载已保存的分析会话...
+              </div>
+            )}
+            {analysisLoadError && (
+              <div className="analysis-session-state error" role="alert">
+                <span>{analysisLoadError}</span>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    setAnalysisLoadAttempt((attempt) => attempt + 1)
+                  }
+                >
+                  <LoaderCircle size={14} /> 重新加载
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={onBack}
+                >
+                  <ArrowLeft size={14} /> 返回搜索结果
+                </button>
+              </div>
+            )}
+            {exportError && (
+              <div className="analysis-session-state error" role="alert">
+                {exportError}
+              </div>
+            )}
+            {!savedSessionUnavailable && activeTab === 'matrix' && (
+              <section className="prototype-matrix-shell">
+                <aside className="prototype-matrix-filter">
+                  <div className="prototype-filter-title">多级筛选</div>
+                  <div className="prototype-filter-stats">
+                    <b>{matrixRows.length}</b>
+                    <span>国家/地区</span>
+                    <b>{matrixPeriods.length}</b>
+                    <span>时间（年份）</span>
+                  </div>
+                  <label className="prototype-search">
+                    <Search size={14} />
+                    <input
+                      value={tableSearch}
+                      onChange={(event) => setTableSearch(event.target.value)}
+                      placeholder="关键词检索筛选项"
+                    />
+                  </label>
+                  <SelectableFilterGroup
+                    title="国家/地区"
+                    items={filterOptions.entities}
+                    selected={selectedMatrixEntities}
+                    onChange={setSelectedMatrixEntities}
+                  />
+                  <SelectableFilterGroup
+                    title="时间（年份）"
+                    items={matrixPeriods}
+                    selected={selectedMatrixPeriods}
+                    onChange={setSelectedMatrixPeriods}
+                  />
+                  <SelectableFilterGroup
+                    title="指标序列"
+                    items={matrixIndicators.map((item) => item.name)}
+                    selected={
+                      activeMatrixIndicator ? [activeMatrixIndicator.name] : []
+                    }
+                    onChange={(names) => {
+                      const next = matrixIndicators.find((item) =>
+                        names.includes(item.name),
+                      );
+                      if (next) setMatrixIndicator(next.id);
+                    }}
+                    singleSelect
+                  />
+                  <SelectableFilterGroup
+                    title="数据来源"
+                    items={selectedSources.map((source) => source.title)}
+                    selected={selectedMatrixSources}
+                    onChange={setSelectedMatrixSources}
+                  />
+                  <div className="prototype-source-note">
+                    <Database size={14} />
+                    <span>
+                      {selectedSources.length} 个来源，
+                      {analysisSession?.observations.length ?? 0}{' '}
+                      条指标观测已统一汇总
+                    </span>
+                  </div>
+                </aside>
+                <div className="prototype-matrix-main">
+                  <div className="prototype-matrix-toolbar">
+                    <label>分析指标</label>
+                    <select
+                      value={activeMatrixIndicator?.id ?? ''}
+                      onChange={(event) =>
+                        setMatrixIndicator(event.target.value)
+                      }
+                    >
+                      {matrixIndicators.length === 0 ? (
+                        <option value="">暂无指标</option>
+                      ) : (
+                        matrixIndicators.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                            {item.unit ? `（${item.unit}）` : ''}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <span className="prototype-info">i</span>
+                    <span className="prototype-matrix-meta">
+                      {matrixPeriods[0] ?? '-'} -{' '}
+                      {matrixPeriods[matrixPeriods.length - 1] ?? '-'} ·{' '}
+                      {matrixRows.length} 个国家/地区
+                    </span>
+                  </div>
+                  <div
+                    className={`prototype-anomaly-panel ${matrixAnomalies.some((item) => item.level === 'warning') ? 'has-warning' : 'is-clear'}`}
+                    role="status"
+                  >
+                    <div className="prototype-anomaly-heading">
+                      <AlertTriangle size={15} />
+                      <strong>异常提示</strong>
+                      <span>
+                        {matrixAnomalies.some(
+                          (item) => item.level === 'warning',
+                        )
+                          ? '发现需要复核的情况'
+                          : '当前数据未发现明显异常'}
+                      </span>
+                    </div>
+                    <div className="prototype-anomaly-list">
+                      {matrixAnomalies.map((item) => (
+                        <div
+                          className={`prototype-anomaly-item ${item.level}`}
+                          key={item.key}
+                        >
+                          <b>{item.title}</b>
+                          <span>{item.detail}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="prototype-matrix-table-wrap">
+                    {matrixRows.length === 0 ? (
+                      <AnalysisEmpty
+                        title="暂无可聚合的指标观测"
+                        description="请返回搜索结果选择知识库或 Exa 来源，并等待指标提取完成。"
+                      />
+                    ) : (
+                      <>
+                        {matrixRows.every((row) =>
+                          matrixPeriods.every((period) => row[period] == null),
+                        ) ? (
+                          <div className="prototype-matrix-skeleton-note">
+                            已按研究问题填充「
+                            {(
+                              analysisSession?.queryDimensions?.entities ?? []
+                            ).join('、') || '实体'}
+                            ×
+                            {(
+                              analysisSession?.queryDimensions?.periods ?? []
+                            ).join('、') || '年份'}
+                            」维度骨架；数值待来源抽取完成后填入。
+                          </div>
+                        ) : null}
+                        <table className="prototype-matrix-table">
+                          <thead>
+                            <tr>
+                              <th>国家/地区</th>
+                              {matrixPeriods
+                                .filter((period) =>
+                                  selectedMatrixPeriods.includes(period),
+                                )
+                                .map((period) => (
+                                  <th
+                                    key={period}
+                                    onClick={() =>
+                                      setMatrixSortPeriod((current) =>
+                                        current === period ? undefined : period,
+                                      )
+                                    }
+                                  >
+                                    {period}{' '}
+                                    {matrixSortPeriod === period ? '↓' : '↕'}
+                                  </th>
+                                ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {matrixRows
+                              .filter(
+                                (row) =>
+                                  !tableSearch.trim() ||
+                                  String(row.entity)
+                                    .toLowerCase()
+                                    .includes(tableSearch.trim().toLowerCase()),
+                              )
+                              .flatMap((row) => {
+                                const entity = String(row.entity);
+                                const periods = matrixPeriods.filter((period) =>
+                                  selectedMatrixPeriods.includes(period),
+                                );
+                                const cells = periods.map((period) => {
+                                  const value = row[period];
+                                  return (
+                                    <td
+                                      key={period}
+                                      className={
+                                        value == null
+                                          ? 'na'
+                                          : period === matrixSortPeriod
+                                            ? 'selected-period'
+                                            : undefined
+                                      }
+                                    >
+                                      {value == null ? '..' : formatCell(value)}
+                                    </td>
+                                  );
+                                });
+                                const main = (
+                                  <tr
+                                    key={entity}
+                                    onClick={() =>
+                                      setExpandedMatrixEntity((current) =>
+                                        current === entity ? undefined : entity,
+                                      )
+                                    }
+                                    tabIndex={0}
+                                    onKeyDown={(event) => {
+                                      if (
+                                        event.key === 'Enter' ||
+                                        event.key === ' '
+                                      ) {
+                                        event.preventDefault();
+                                        setExpandedMatrixEntity((current) =>
+                                          current === entity
+                                            ? undefined
+                                            : entity,
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    <td className="sticky-col">
+                                      <span className="matrix-entity">
+                                        {expandedMatrixEntity === entity
+                                          ? '▾'
+                                          : '▸'}{' '}
+                                        {entity}
+                                      </span>
+                                    </td>
+                                    {cells}
+                                  </tr>
+                                );
+                                if (expandedMatrixEntity !== entity)
+                                  return [main];
+                                return [
+                                  main,
+                                  <tr
+                                    className="prototype-matrix-detail"
+                                    key={`${entity}-detail`}
+                                  >
+                                    <td className="sticky-col">数据口径</td>
+                                    <td colSpan={Math.max(1, periods.length)}>
+                                      <div className="prototype-matrix-detail-body">
+                                        <span>
+                                          来源：
+                                          {String(
+                                            row.__source || '当前分析会话',
+                                          )}
+                                        </span>
+                                        <span>
+                                          单位：
+                                          {String(
+                                            row.__unit ||
+                                              activeMatrixIndicator?.unit ||
+                                              '按指标统一口径',
+                                          )}
+                                        </span>
+                                        <span>
+                                          引用字段：
+                                          {String(
+                                            row.__citation || '指标提取结果',
+                                          )}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  </tr>,
+                                ];
+                              })}
+                          </tbody>
+                        </table>
+                      </>
+                    )}
+                  </div>
+                  <div className="prototype-matrix-source">
+                    <b>数据来源：</b>
+                    {selectedSources.map((source) => source.title).join('、') ||
+                      '当前分析会话'}
+                    <span>
+                      {' '}
+                      · 单位：{activeMatrixIndicator?.unit ||
+                        '按指标统一口径'}{' '}
+                      · 数据引用规范
+                    </span>
+                  </div>
+                  <div className="prototype-matrix-actions">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() =>
+                        downloadCsv(matrixRows as DataRow[], [
+                          'entity',
+                          ...matrixPeriods.filter((period) =>
+                            selectedMatrixPeriods.includes(period),
+                          ),
+                        ])
+                      }
+                    >
+                      <Download size={15} /> 下载
+                    </button>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() =>
+                        downloadCsv(matrixRows as DataRow[], [
+                          'entity',
+                          ...matrixPeriods.filter((period) =>
+                            selectedMatrixPeriods.includes(period),
+                          ),
+                        ])
+                      }
+                    >
+                      CSV
+                    </button>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      disabled={!matrixPresentation() || excelExporting}
+                      onClick={() => void exportExcel()}
+                    >
+                      {excelExporting ? '生成 Excel…' : 'EXCEL'}
+                    </button>
+                    <span className="action-spacer" />
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={
+                        !activeVisualDataset ||
+                        !matrixRows.length ||
+                        !selectedMatrixPeriods.length ||
+                        !selectedMatrixSources.length
+                      }
+                      onClick={() => openMatrixView('charts')}
+                    >
+                      <BarChart3 size={15} />{' '}
+                      {analysisSession ? '查看数据图表' : '生成数据图表'}
+                    </button>
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={
+                        !activeVisualDataset ||
+                        !matrixRows.length ||
+                        !selectedMatrixPeriods.length ||
+                        !selectedMatrixSources.length
+                      }
+                      onClick={() => openMatrixView('report')}
+                    >
+                      <Sparkles size={15} /> 生成分析结果
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {!savedSessionUnavailable &&
+              (activeTab === 'charts' || activeTab === 'report') && (
+                <AnalysisResults
+                  session={analysisSession}
+                  result={savedSessionUnavailable ? null : result}
+                  sources={selectedSources}
+                  mode={activeTab}
+                  // The prototype keeps report generation as the final explicit
+                  // user action after extraction, cleaning, validation and chart
+                  // preparation have completed.
+                  autoGenerateReport={generateFinalReport}
+                  onSession={(next, view) => {
+                    setAnalysisSession(next);
+                    const params = new URLSearchParams(searchParams);
+                    params.set('sessionId', next.id);
+                    params.set('view', view);
+                    setActiveTab(view);
+                    setSearchParams(params, { replace: true });
+                  }}
+                  onNavigate={navigateView}
+                />
+              )}
+            {activeRow && (
+              <div
+                className="data-preview-backdrop"
+                role="presentation"
+                onMouseDown={() => setActiveRow(undefined)}
+              >
+                <section
+                  className="data-record-dialog"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="data-record-title"
+                  onMouseDown={(event) => event.stopPropagation()}
+                >
+                  <header>
+                    <div>
+                      <span>数据记录详情</span>
+                      <h2 id="data-record-title">{activeRow.__source}</h2>
+                      <p>完整字段内容</p>
+                    </div>
+                    <button
+                      className="icon-button"
+                      type="button"
+                      title="关闭记录详情"
+                      onClick={() => setActiveRow(undefined)}
+                    >
+                      <X size={18} />
+                    </button>
+                  </header>
+                  <dl className="data-record-fields">
+                    {Object.entries(activeRow)
+                      .filter(([field]) => !field.startsWith('__'))
+                      .map(([field, value]) => (
+                        <div key={field}>
+                          <dt>{field}</dt>
+                          <dd>{formatCell(value)}</dd>
+                        </div>
+                      ))}
+                  </dl>
+                  {selectedSources.find(
+                    (source) => source.title === activeRow.__source,
+                  )?.sourceUrl && (
+                    <a
+                      className="record-source-link"
+                      href={
+                        selectedSources.find(
+                          (source) => source.title === activeRow.__source,
+                        )?.sourceUrl ?? undefined
+                      }
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      打开官方数据来源
+                    </a>
+                  )}
+                </section>
+              </div>
+            )}
+          </main>
         </div>
       </div>
     </ResearchLayout>
@@ -1538,10 +1573,6 @@ function SelectableFilterGroup({
       onChange([item]);
       return;
     }
-    if (selected.length === 0) {
-      onChange(items.filter((value) => value !== item));
-      return;
-    }
     onChange(
       selected.includes(item)
         ? selected.filter((value) => value !== item)
@@ -1554,7 +1585,7 @@ function SelectableFilterGroup({
       <summary>
         <span>{title}</span>
         <small>
-          {selected.length || items.length}/{items.length}
+          {selected.length}/{items.length}
         </small>
       </summary>
       <div>
@@ -1568,7 +1599,7 @@ function SelectableFilterGroup({
                 (
                   singleSelect
                     ? selected.includes(item)
-                    : selected.length === 0 || selected.includes(item)
+                    : selected.includes(item)
                 )
                   ? 'selected'
                   : ''
@@ -1579,7 +1610,7 @@ function SelectableFilterGroup({
                 checked={
                   singleSelect
                     ? selected.includes(item)
-                    : selected.length === 0 || selected.includes(item)
+                    : selected.includes(item)
                 }
                 onChange={() => toggle(item)}
               />

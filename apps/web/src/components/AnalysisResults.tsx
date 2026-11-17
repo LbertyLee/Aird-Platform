@@ -6,6 +6,7 @@ import {
   LoaderCircle,
   Save,
 } from 'lucide-react';
+import { buildVisualDatasets } from '@agent/contracts';
 import type {
   AnalysisPresentation,
   AnalysisVisualDataset,
@@ -43,7 +44,7 @@ export default function AnalysisResults({
   mode,
   onSession,
   onNavigate,
-  autoGenerateReport = true,
+  autoGenerateReport = false,
 }: {
   session?: AnalysisSession;
   result: ResearchSearchResponse | null;
@@ -53,12 +54,20 @@ export default function AnalysisResults({
   onNavigate: (view: 'matrix' | 'charts' | 'report') => void;
   autoGenerateReport?: boolean;
 }) {
-  const datasets = useMemo(
-    () => session?.visualDatasets ?? datasetsFromSources(sources),
-    [session?.visualDatasets, sources],
-  );
   const [selection, setSelection] = useState<AnalysisPresentation | undefined>(
     session?.presentation,
+  );
+  const datasets = useMemo(
+    () =>
+      session && selection?.sourceIds
+        ? buildVisualDatasets({
+            ...session,
+            observations: session.observations.filter((item) =>
+              selection.sourceIds!.includes(item.sourceId),
+            ),
+          })
+        : (session?.visualDatasets ?? datasetsFromSources(sources)),
+    [session, selection?.sourceIds, sources],
   );
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
@@ -84,7 +93,16 @@ export default function AnalysisResults({
   }, [session?.id, session?.presentation]);
   useEffect(() => () => requestRef.current?.abort(), []);
   const report = session?.visualReport;
-  const reportDataset = datasets.find(
+  const reportDatasets =
+    session && report?.presentation.sourceIds
+      ? buildVisualDatasets({
+          ...session,
+          observations: session.observations.filter((item) =>
+            report.presentation.sourceIds!.includes(item.sourceId),
+          ),
+        })
+      : (session?.visualDatasets ?? datasets);
+  const reportDataset = reportDatasets.find(
     (entry) => entry.id === report?.presentation.datasetId,
   );
   function update(patch: Partial<AnalysisPresentation>) {
@@ -168,8 +186,8 @@ export default function AnalysisResults({
   useEffect(() => {
     const key = session?.id ?? result?.runId ?? '';
     if (
-      autoGenerateReport && mode === 'report' &&
-      !report &&
+      autoGenerateReport &&
+      mode === 'report' &&
       presentation?.entities.length &&
       !busy &&
       key &&
@@ -181,7 +199,16 @@ export default function AnalysisResults({
       }, 0);
       return () => window.clearTimeout(timer);
     }
-  }, [autoGenerateReport, mode, report, presentation, busy, session?.id, result?.runId, save]);
+  }, [
+    autoGenerateReport,
+    mode,
+    report,
+    presentation,
+    busy,
+    session?.id,
+    result?.runId,
+    save,
+  ]);
 
   async function downloadReport() {
     if (!report || !reportDataset || downloadingReport) return;
@@ -290,11 +317,13 @@ export default function AnalysisResults({
     .map((entity) => ({
       entity,
       value:
-        dataset.points.find(
-          (point) =>
-            point.entity === entity &&
-            point.period === presentation.currentPeriod,
-        )?.value ?? null,
+        dataset.points
+          .filter((point) => !point.conflict)
+          .find(
+            (point) =>
+              point.entity === entity &&
+              point.period === presentation.currentPeriod,
+          )?.value ?? null,
     }))
     .sort(
       (a, b) =>
@@ -434,6 +463,9 @@ export default function AnalysisResults({
                     onChange={() => {
                       setSelection({
                         ...defaultPresentation(entry),
+                        ...(presentation.sourceIds
+                          ? { sourceIds: presentation.sourceIds }
+                          : {}),
                         view: presentation.view,
                         reportViews: presentation.reportViews,
                       });
@@ -468,11 +500,14 @@ export default function AnalysisResults({
             </>
           ) : (
             <>
-              <h2>{report.title}</h2>
-              <div className="visual-report-meta">
-                生成时间：{new Date(report.createdAt).toLocaleString('zh-CN')} ·
-                当前年份：{report.presentation.currentPeriod}
-              </div>
+              <header className="visual-report-identity">
+                <h2>{report.title}</h2>
+                <div className="visual-report-meta">
+                  生成时间：{new Date(report.createdAt).toLocaleString('zh-CN')}{' '}
+                  · 当前年份：{report.presentation.currentPeriod} · 覆盖{' '}
+                  {report.presentation.entities.length} 个国家/地区
+                </div>
+              </header>
               {JSON.stringify(report.presentation) !==
                 JSON.stringify(presentation) && (
                 <p className="visual-message">
@@ -487,16 +522,26 @@ export default function AnalysisResults({
                   </div>
                 ))}
               </div>
-              {report.sections.map((section) => (
-                <section className="visual-report-section" key={section.title}>
-                  <h3>{section.title}</h3>
-                  {section.paragraphs.map((paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
-                  ))}
-                </section>
-              ))}
+              {report.sections
+                .filter(
+                  (section) =>
+                    !['方法与数据质量说明', '数据来源', '风险与展望'].includes(
+                      section.title,
+                    ),
+                )
+                .map((section) => (
+                  <section
+                    className="visual-report-section"
+                    key={section.title}
+                  >
+                    <h3>{section.title}</h3>
+                    {section.paragraphs.map((paragraph, index) => (
+                      <p key={index}>{paragraph}</p>
+                    ))}
+                  </section>
+                ))}
               <section className="visual-report-section">
-                <h3>数据明细</h3>
+                <h3>数据分析表（单位：{reportDataset.unit || '—'}）</h3>
                 <AnalysisVisual
                   dataset={reportDataset}
                   presentation={{ ...report.presentation, view: 'table' }}
@@ -524,11 +569,32 @@ export default function AnalysisResults({
                     </figcaption>
                     <AnalysisVisual
                       dataset={reportDataset}
-                      presentation={{ ...presentation, view }}
+                      presentation={{
+                        ...report.presentation,
+                        reportViews: presentation.reportViews,
+                        view,
+                      }}
                     />
                   </figure>
                 ))}
               </section>
+              {report.sections
+                .filter((section) =>
+                  ['方法与数据质量说明', '数据来源', '风险与展望'].includes(
+                    section.title,
+                  ),
+                )
+                .map((section) => (
+                  <section
+                    className="visual-report-section"
+                    key={section.title}
+                  >
+                    <h3>{section.title}</h3>
+                    {section.paragraphs.map((paragraph, index) => (
+                      <p key={index}>{paragraph}</p>
+                    ))}
+                  </section>
+                ))}
             </>
           )}
         </div>
@@ -602,6 +668,7 @@ function TimeControls({
           onChange={(event) => {
             const next = Math.min(Number(event.target.value), end);
             onChange({
+              periods: undefined,
               startPeriod: dataset.periods[next],
               currentPeriod: dataset.periods[Math.max(current, next)],
             });
@@ -620,6 +687,7 @@ function TimeControls({
           onChange={(event) => {
             const next = Math.max(Number(event.target.value), start);
             onChange({
+              periods: undefined,
               endPeriod: dataset.periods[next],
               currentPeriod: dataset.periods[Math.min(current, next)],
             });
@@ -637,7 +705,21 @@ function TimeControls({
           value={current}
           onChange={(event) =>
             onChange({
-              currentPeriod: dataset.periods[Number(event.target.value)],
+              currentPeriod:
+                presentation.periods?.reduce(
+                  (best, period) =>
+                    Math.abs(
+                      dataset.periods.indexOf(period) -
+                        Number(event.target.value),
+                    ) <
+                    Math.abs(
+                      dataset.periods.indexOf(best) -
+                        Number(event.target.value),
+                    )
+                      ? period
+                      : best,
+                  presentation.periods[0],
+                ) ?? dataset.periods[Number(event.target.value)],
             })
           }
         />

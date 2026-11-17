@@ -41,6 +41,35 @@ const selection = (): AnalysisPresentation => ({
 });
 
 describe('analysis visualization', () => {
+  it('excludes unchecked intermediate periods and conflicting endpoints from statistics', () => {
+    const dataset = buildVisualDatasets({
+      observations: [
+        observation('中国', '2023', 2),
+        observation('中国', '2024', 100),
+        observation('中国', '2025', 4),
+        observation('中国', '2025', 9, 's2'),
+      ],
+    })[0];
+    const presentation = {
+      ...selection(),
+      datasetId: dataset.id,
+      entities: ['中国'],
+      startPeriod: '2023',
+      periods: ['2023', '2025'],
+    };
+    validatePresentation([dataset], presentation);
+    const report = buildVisualReport(dataset, presentation);
+    expect(
+      report.metrics.find((item) => item.label === '样本均值')?.value,
+    ).toBe('2 %');
+    expect(
+      report.sections.find((item) => item.title === '逐经济体解读')
+        ?.paragraphs[0],
+    ).toContain('无法计算变化');
+    expect(() =>
+      validatePresentation([dataset], { ...presentation, periods: ['2023'] }),
+    ).toThrow();
+  });
   it('separates units and keeps the most frequent conflicting value', () => {
     const result = buildVisualDatasets({
       observations: [
@@ -125,10 +154,11 @@ describe('analysis visualization', () => {
       report.metrics.find((item) => item.label === '样本均值')?.value,
     ).toBe('5 %');
     expect(
-      report.sections.find((item) => item.title === '当前排名')?.paragraphs[0],
+      report.sections.find((item) => item.title === '数据解读（Top 8）')
+        ?.paragraphs[0],
     ).toContain('印度');
     expect(
-      report.sections.find((item) => item.title === '数据质量与口径')
+      report.sections.find((item) => item.title === '方法与数据质量说明')
         ?.paragraphs[0],
     ).toContain('75%');
     const filtered = buildVisualReport(datasets()[0], {
@@ -139,10 +169,11 @@ describe('analysis visualization', () => {
       filtered.metrics.find((item) => item.label === '样本均值')?.value,
     ).toBe('4.5 %');
     expect(
-      filtered.sections.find((item) => item.title === '趋势与变化')?.paragraphs,
+      filtered.sections.find((item) => item.title === '逐经济体解读')
+        ?.paragraphs,
     ).toHaveLength(1);
     expect(
-      filtered.sections.find((item) => item.title === '趋势与变化')
+      filtered.sections.find((item) => item.title === '逐经济体解读')
         ?.paragraphs[0],
     ).toContain('1 个百分点');
     expect(() =>
