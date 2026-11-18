@@ -56,6 +56,7 @@ describe('ExternalSearchService branch selection', () => {
       resolution: {
         ...resolution,
         time: { type: 'YEAR', value: 2025 },
+        entityGroups: [{ name: '主要经济体', basis: '候选范围', members: ['中国'] }],
         entities: [{ code: 'CHN', name: '中国', entityId: 'china' }],
         metrics: [{ code: 'GDP', name: 'GDP', indicatorId: 'gdp' }],
         dimensions: [{ type: 'industry', code: 'industry', name: '行业' }],
@@ -74,6 +75,7 @@ describe('ExternalSearchService branch selection', () => {
       entities: ['中国', '主要经济体'],
       indicators: ['GDP', '工业机器人密度'],
       dimensions: ['行业', '行业=制造业'],
+      entityGroups: [{ name: '主要经济体', basis: '候选范围', members: ['中国'] }],
       timeRanges: ['2025'],
     }));
     expect(repository.completeRun).toHaveBeenCalledWith(expect.objectContaining({

@@ -33,6 +33,21 @@ function response(): ResearchSearchResponse {
 }
 
 describe('semantic parse summary', () => {
+  it('shows a recognized group and candidate scope without treating it as a verified ranking', () => {
+    const result = response();
+    result.plan.entityGroups = [{ name: '主要经济体', basis: '按经济规模选取', members: ['中国'] }];
+    const summary = buildSemanticParseSummary(researchSearchResponseSchema.parse(result));
+    expect(summary?.entities).toContain('主要经济体（候选范围）');
+    expect(summary?.explanation).toContain('候选范围，非已核实排名');
+  });
+
+  it('shows pending expansion for a recognized group without invented members', () => {
+    const result = response();
+    result.plan.entities = [];
+    result.plan.entityGroups = [{ name: '主要经济体', basis: '需要检索确认', members: [] }];
+    expect(buildSemanticParseSummary(result)?.entities).toEqual(['主要经济体（待展开）']);
+  });
+
   it('displays structured discovery fields after contract parsing without stage text', () => {
     const parsed = researchSearchResponseSchema.parse(response());
 

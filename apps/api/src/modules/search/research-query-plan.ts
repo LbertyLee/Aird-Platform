@@ -13,6 +13,7 @@ import { metricTranslationKey } from './research-metric-aliases';
 
 /** Shared constraints for retrieval ranking and LLM extraction. */
 export type ResearchQueryPlan = {
+  entityGroups?: SemanticResolution['entityGroups'];
   discovery?: SemanticResolution['discovery'];
   originalQuery: string;
   searchQuery: string;
@@ -144,6 +145,7 @@ export function buildResearchQueryPlan(input: {
     input.resolution.intent,
   );
   return {
+    entityGroups: input.resolution.entityGroups,
     discovery: input.resolution.discovery,
     originalQuery: input.originalQuery.trim(),
     searchQuery,

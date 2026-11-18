@@ -5,6 +5,11 @@ import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { inferQueryRegions } from '../../common/utils/query-regions';
 import { externalSourceDatasetWhere } from '../dataset/dataset-scope';
 import { rankIndicatorsForQuery } from '../analysis/indicator-query-rank';
+import {
+  entityGroupMembers,
+  entityGroupName,
+  withEntityGroupScope,
+} from './entity-group-resolution';
 import type {
   LlmSemanticParseResult,
   ResolvedConcept,
@@ -105,57 +110,99 @@ export class SemanticResolutionService {
       this.logger.warn(
         'AI_API_KEY 未配置，Qwen 语义解析无法调用大模型，将使用目录兜底匹配',
       );
-      return this.applyRecentYearOverride(
+      return withEntityGroupScope(
         text,
-        this.enrichRegionalResolution(
+        this.applyRecentYearOverride(
           text,
-          this.fallbackResolve(
+          this.enrichRegionalResolution(
             text,
-            indicators,
-            entities,
-            concepts,
-            dictionaries,
+            this.fallbackResolve(
+              text,
+              indicators,
+              entities,
+              concepts,
+              dictionaries,
+            ),
           ),
         ),
       );
     }
 
     const parsed = await this.chat.parseSemanticQuery(text, catalog);
-    if (parsed) {
-      const grounded = this.ground(
-        parsed,
-        indicators,
-        entities,
-        concepts,
-        dictionaries,
-        text,
-      );
-      let resolution = grounded;
-      // LLM 常把「近5年」漏成 UNKNOWN，或臆造过时的 2019-2023 等区间
-      if (grounded.time.type === 'UNKNOWN') {
-        const inferred = this.inferTimeFallback(text);
-        if (inferred.type !== 'UNKNOWN') {
-          resolution = { ...grounded, time: inferred };
-        }
-      }
-      return this.applyRecentYearOverride(
-        text,
-        this.enrichRegionalResolution(text, resolution),
-      );
-    }
-
-    this.logger.warn('大模型语义解析失败，回退到目录兜底匹配');
-    return this.applyRecentYearOverride(
-      text,
-      this.enrichRegionalResolution(
-        text,
-        this.fallbackResolve(
+    if (!parsed) this.logger.warn('大模型语义解析失败，回退到目录兜底匹配');
+    let resolution = parsed
+      ? this.ground(parsed, indicators, entities, concepts, dictionaries, text)
+      : this.fallbackResolve(
           text,
           indicators,
           entities,
           concepts,
           dictionaries,
-        ),
+        );
+    const groupScope = withEntityGroupScope(text, resolution);
+    if (
+      (entityGroupName(text) || groupScope.entityGroups?.length) &&
+      !entityGroupMembers(groupScope).length
+    ) {
+      const expanded = await this.chat.parseSemanticQuery(text, catalog, {
+        expandEntityGroups: true,
+      });
+      if (expanded) {
+        const supplement = this.ground(
+          expanded,
+          indicators,
+          entities,
+          concepts,
+          dictionaries,
+          text,
+        );
+        // A targeted retry must not replace already recognized metrics, time or dimensions.
+        resolution = {
+          ...resolution,
+          entityGroups: supplement.entityGroups?.length
+            ? supplement.entityGroups
+            : resolution.entityGroups,
+          entities: [
+            ...new Map(
+              [...resolution.entities, ...supplement.entities].map((entity) => [
+                entity.entityId,
+                entity,
+              ]),
+            ).values(),
+          ],
+          discovery: {
+            metrics: resolution.discovery?.metrics ?? [],
+            entities: [
+              ...new Set([
+                ...(resolution.discovery?.entities ?? []),
+                ...(supplement.discovery?.entities ?? []),
+              ]),
+            ],
+            dimensions: resolution.discovery?.dimensions ?? [],
+            dataNeeds: [
+              ...new Set([
+                ...(resolution.discovery?.dataNeeds ?? []),
+                ...(supplement.discovery?.dataNeeds ?? []),
+              ]),
+            ],
+            websites: [
+              ...new Set([
+                ...(resolution.discovery?.websites ?? []),
+                ...(supplement.discovery?.websites ?? []),
+              ]),
+            ],
+          },
+        };
+      }
+    }
+    if (resolution.time.type === 'UNKNOWN') {
+      resolution = { ...resolution, time: this.inferTimeFallback(text) };
+    }
+    return withEntityGroupScope(
+      text,
+      this.applyRecentYearOverride(
+        text,
+        this.enrichRegionalResolution(text, resolution),
       ),
     );
   }
@@ -316,7 +363,11 @@ export class SemanticResolutionService {
     }
 
     const resolvedEntities: ResolvedEntity[] = [];
-    for (const code of parsed.entityCodes) {
+    const groupMembers = (parsed.entityGroups ?? []).flatMap(
+      (group) => group.members,
+    );
+    const discoveryEntities = [...(parsed.discovery?.entities ?? [])];
+    for (const code of [...parsed.entityCodes, ...groupMembers]) {
       const hit =
         entityByCode.get(code) ??
         this.findByLooseCode(entities, code, (e) => [
@@ -333,6 +384,7 @@ export class SemanticResolutionService {
           aliases: [hit.name, ...hit.aliases.map((a) => a.alias)],
         });
       }
+      if (!hit && groupMembers.includes(code)) discoveryEntities.push(code);
     }
 
     const resolvedConcepts: ResolvedConcept[] = [];
@@ -400,6 +452,9 @@ export class SemanticResolutionService {
     );
 
     return {
+      ...(parsed.entityGroups?.length
+        ? { entityGroups: parsed.entityGroups }
+        : {}),
       metrics,
       entities: resolvedEntities,
       concepts: resolvedConcepts,
@@ -407,7 +462,17 @@ export class SemanticResolutionService {
       time,
       confidence,
       intent,
-      ...(parsed.discovery ? { discovery: parsed.discovery } : {}),
+      ...(parsed.discovery || discoveryEntities.length
+        ? {
+            discovery: {
+              metrics: parsed.discovery?.metrics ?? [],
+              dimensions: parsed.discovery?.dimensions ?? [],
+              dataNeeds: parsed.discovery?.dataNeeds ?? [],
+              websites: parsed.discovery?.websites ?? [],
+              entities: [...new Set(discoveryEntities)],
+            },
+          }
+        : {}),
     };
   }
 

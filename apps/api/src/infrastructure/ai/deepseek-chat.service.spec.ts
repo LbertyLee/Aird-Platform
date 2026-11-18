@@ -216,6 +216,26 @@ describe('research intent and bilingual source planning', () => {
     expect(result?.discovery?.dimensions).toEqual(['行业=制造业']);
   });
 
+  it('preserves more than eight group members and prompts for candidate scope rather than invented rankings', async () => {
+    const { service, create } = setup();
+    const members = ['美国', '中国', '德国', '日本', '印度', '英国', '法国', '意大利', '加拿大', '巴西', '俄罗斯', '韩国'];
+    create.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({
+      intent: 'lookup', time: { type: 'UNKNOWN' },
+      entityGroups: [{ name: '主要经济体', basis: '经济规模候选，排名需核实', members }],
+      discovery: { entities: [...members, null, 1, '中国'] },
+    }) } }] });
+
+    const result = await service.parseSemanticQuery('主要经济体有哪些', {
+      metrics: [], entities: [], dimensions: [], concepts: [],
+    }, { expandEntityGroups: true });
+
+    expect(result?.discovery?.entities).toEqual(members);
+    expect(result?.entityGroups?.[0].members).toEqual(members);
+    const prompt = create.mock.calls[0][0].messages[0].content;
+    expect(prompt).toContain('上次解析遗漏了集合成员');
+    expect(prompt).toContain('不能宣称这些候选就是指定年份的前十排名');
+  });
+
   it('requests Chinese explanations, English foreign-site queries and equivalent bilingual terms', async () => {
     const { service, create } = setup();
     create.mockResolvedValue({

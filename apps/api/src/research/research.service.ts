@@ -528,6 +528,7 @@ export class ResearchService {
       entities,
       indicators,
       dimensions,
+      entityGroups: resolution.entityGroups,
       timeRanges,
       sources: fallback.sources,
       intent:

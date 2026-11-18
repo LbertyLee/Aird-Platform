@@ -45,6 +45,17 @@ function setup(text = query, allowed = true) {
 }
 
 describe('official numeric coverage in the retrieval loop', () => {
+  it('does not equate complete candidate observations with a verified group ranking', async () => {
+    const bank = new WorldBankDataService();
+    jest.spyOn(bank, 'fetch').mockResolvedValue([makeDataset(['USA', 'CHN'], [2025])]);
+    const plan = buildResearchQueryPlanLite('美国中国2025年GDP');
+    plan.metrics = ['GDP'];
+    plan.entityGroups = [{ name: '主要经济体', basis: '候选范围', members: ['美国', '中国'] }];
+    const coverage = new OfficialResearchCoverage(bank, '主要经济体2025年GDP排名', filters, plan, true);
+    await coverage.retrieve();
+    expect(coverage.evaluate(null)).toBeNull();
+  });
+
   it('retains all five requested countries and closes the loop after missing countries are retrieved', async () => {
     const { fetch, coverage } = setup();
     fetch

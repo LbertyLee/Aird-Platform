@@ -33,6 +33,13 @@ export type ResolvedTime = {
   end?: string;
 };
 
+/** Candidate scope inferred from a collective name, not a verified ranking. */
+export type ResolvedEntityGroup = {
+  name: string;
+  basis: string;
+  members: string[];
+};
+
 /** Request-scoped research needs, never database IDs or verified evidence. */
 export type ResearchDiscovery = {
   metrics: string[];
@@ -54,6 +61,7 @@ export type ResearchSourcePlan = {
 };
 
 export type SemanticResolution = {
+  entityGroups?: ResolvedEntityGroup[];
   sourcePlan?: ResearchSourcePlan;
   discovery?: ResearchDiscovery;
   metrics: ResolvedMetric[];
@@ -67,6 +75,7 @@ export type SemanticResolution = {
 
 /** LLM 原始解析结果（code 需再对照 Semantic Layer 落地） */
 export type LlmSemanticParseResult = {
+  entityGroups?: ResolvedEntityGroup[];
   discovery?: ResearchDiscovery;
   intent: SemanticResolution['intent'];
   confidence: number;

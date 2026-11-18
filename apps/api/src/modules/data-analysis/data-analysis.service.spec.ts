@@ -14,6 +14,7 @@ jest.mock('../../infrastructure/milvus/milvus.service', () => ({
 
 describe('DataAnalysisService semantic plan', () => {
   const resolution: SemanticResolution = {
+    entityGroups: [{ name: '主要经济体', basis: '候选范围', members: ['中国'] }],
     metrics: [{ code: 'GDP', name: 'GDP', indicatorId: 'gdp' }],
     entities: [{ code: 'CHN', name: '中国', entityId: 'china' }],
     concepts: [],
@@ -61,6 +62,7 @@ describe('DataAnalysisService semantic plan', () => {
       entities: ['中国', '主要经济体', '用户指定企业'],
       indicators: ['GDP', '工业机器人密度', '用户指定指标'],
       dimensions: ['行业', '行业=制造业', '历史维度'],
+      entityGroups: resolution.entityGroups,
       timeRanges: ['2025'],
     }));
     expect(result.plan.explanation).toContain('维度：行业、行业=制造业、历史维度');

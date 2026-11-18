@@ -79,6 +79,7 @@ export class ExternalSearchService {
       const sources = this.research ? await this.research.hydrateStructuredSources(evidenceSources, normalizedQuery) : evidenceSources;
       const resolution = result.resolution;
       const plan: ResearchSearchResponse['plan'] = {
+        entityGroups: resolution.entityGroups,
         countries: resolution.dimensions.filter((item) => item.type === 'country_region').map((item) => item.name),
         regions: resolution.dimensions.filter((item) => /^(region|province|city|area)$/.test(item.type)).map((item) => item.name),
         entities: [...new Set([

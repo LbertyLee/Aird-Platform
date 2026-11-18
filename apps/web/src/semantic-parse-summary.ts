@@ -1,4 +1,7 @@
-import type { ResearchQueryPlan, ResearchSearchResponse } from '@agent/contracts';
+import type {
+  ResearchQueryPlan,
+  ResearchSearchResponse,
+} from '@agent/contracts';
 import { timeRangeLabelFromQuery } from './utils/recent-years';
 
 export type SemanticParseSummary = {
@@ -43,9 +46,28 @@ function fromPlan(
       `时间：${anchoredTime}`,
     );
   }
+  const groups = plan.entityGroups ?? [];
+  if (groups.length) {
+    explanation = [
+      explanation,
+      ...groups.map(
+        (group) =>
+          `范围：${group.name}；${group.basis || '成员范围需核实'}（候选范围，非已核实排名）。`,
+      ),
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }
   return {
     metrics: unique(plan.indicators),
-    entities: unique([...plan.entities, ...plan.countries]),
+    entities: unique([
+      ...groups.map(
+        (group) =>
+          `${group.name}（${group.members.length ? '候选范围' : '待展开'}）`,
+      ),
+      ...plan.entities,
+      ...plan.countries,
+    ]),
     dimensions: unique([
       ...(plan.dimensions ?? []),
       ...plan.regions,
@@ -70,14 +92,8 @@ export function buildSemanticParseSummary(
     ? anchoredTime
     : detail.match(/时间：([^；。]+)/)?.[1]?.trim();
   return {
-    metrics: unique([
-      ...base.metrics,
-      ...pickLabeledSegment(detail, '指标'),
-    ]),
-    entities: unique([
-      ...base.entities,
-      ...pickLabeledSegment(detail, '实体'),
-    ]),
+    metrics: unique([...base.metrics, ...pickLabeledSegment(detail, '指标')]),
+    entities: unique([...base.entities, ...pickLabeledSegment(detail, '实体')]),
     dimensions: unique([
       ...(anchoredTime ? [anchoredTime] : []),
       ...base.dimensions.filter(

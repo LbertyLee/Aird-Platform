@@ -56,6 +56,7 @@ export class OfficialResearchCoverage {
       ? worldBank.getCriteria(this.request, query)
       : undefined;
     this.completeScope =
+      !plan.entityGroups?.length &&
       plan.periods.length > 0 &&
       !/预测|未来|原因|政策|影响|解释|定义|什么是|forecast|projection|\bwhy\b|policy|impact|definition/i.test(
         query,
@@ -72,7 +73,9 @@ export class OfficialResearchCoverage {
           Boolean(
             worldBank.getCriteria(
               { ...this.request, indicators: [indicator] },
-              query,
+              // Test each metric on its own; another metric in the original
+              // question must not make an unsupported metric look covered.
+              indicator,
             ),
           ),
         );

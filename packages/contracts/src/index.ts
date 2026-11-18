@@ -75,6 +75,12 @@ export const researchQueryPlanSchema = z.object({
   indicators: z.array(z.string()),
   /** Semantic catalog and discovery dimensions; absent in historical plans. */
   dimensions: z.array(z.string()).optional(),
+  /** Inferred collective scopes; members are candidates, not verified rankings. */
+  entityGroups: z.array(z.object({
+    name: z.string(),
+    basis: z.string(),
+    members: z.array(z.string()),
+  })).optional(),
   timeRanges: z.array(z.string()),
   sources: z.array(z.string()),
   intent: z.enum(['comparison', 'trend', 'lookup', 'policy', 'general']),
