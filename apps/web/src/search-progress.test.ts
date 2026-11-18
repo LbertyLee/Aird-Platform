@@ -63,7 +63,7 @@ it('marks only the actual interrupted stage', () => {
   ).toEqual(['done', 'interrupted', 'pending', 'pending', 'pending']);
 });
 
-it('waits for analysis and report evidence separately', () => {
+it('marks the workflow complete while retaining partial data coverage separately', () => {
   const done = { ...initial, status: 'done' as const, hasResult: true };
   expect(states({ ...done, creatingAnalysis: true })).toEqual([
     'done',
@@ -75,8 +75,8 @@ it('waits for analysis and report evidence separately', () => {
   expect(states({ ...done, analysisStatus: 'partial' })).toEqual([
     'done',
     'done',
-    'interrupted',
-    'interrupted',
+    'done',
+    'done',
     'pending',
   ]);
   expect(states({ ...done, analysisStatus: 'ready' })).toEqual([

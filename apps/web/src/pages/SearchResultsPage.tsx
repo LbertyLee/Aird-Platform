@@ -610,7 +610,9 @@ export default function SearchResultsPage({
                   stage.state === 'active'
                     ? '进行中'
                     : stage.state === 'interrupted'
-                      ? '存在缺项'
+                      ? progressStatus === 'error'
+                        ? '已中断'
+                        : '存在缺项'
                       : stage.state === 'pending'
                         ? '等待中'
                         : '已完成';
@@ -641,7 +643,7 @@ export default function SearchResultsPage({
                   : creatingAnalysis
                     ? '正在提取全部检索文档，进行标准化、清洗与交叉验证，完成后在此展示研究报告。'
                     : currentAnalysis?.status === 'partial'
-                      ? '数据提取尚不完整，请进入分析工作台查看缺失项与提示。'
+                      ? '全部检索文档已处理，流程已完成；部分指标或年份缺少来源数据，请进入分析工作台查看缺项与口径提示。'
                       : currentAnalysis?.status === 'ready'
                         ? '研究报告与数据处理已完成，可进入工作台调整数据与图表，再生成最终分析结果。'
                         : savedAnalysisLoading

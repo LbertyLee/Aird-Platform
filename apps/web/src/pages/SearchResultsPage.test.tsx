@@ -229,7 +229,11 @@ it('实时检索时在正文展示本次搜索的问题', async () => {
       name: '中国 CPI / PPI 月度走势分析（2023-2025）',
     }),
   ).toBeTruthy();
-  expect(document.querySelector('.results-center')?.classList.contains('is-search-running')).toBe(true);
+  expect(
+    document
+      .querySelector('.results-center')
+      ?.classList.contains('is-search-running'),
+  ).toBe(true);
 });
 
 function analysis(runId = 'run-1', id = 'saved'): AnalysisSession {
@@ -303,6 +307,20 @@ it('提取失败不显示已完成，提供重试入口', async () => {
       .getByRole('button', { name: '查看数据分析工作台' })
       .hasAttribute('disabled'),
   ).toBe(false);
+});
+
+it('数据覆盖有缺项时仍标记流程步骤完成，并明确提示缺失数据', async () => {
+  vi.mocked(getRecentAnalysisSessions).mockResolvedValue([]);
+  vi.mocked(createAnalysisSession).mockResolvedValue({
+    ...analysis(),
+    status: 'partial',
+    warnings: ['2024 年 PPI 暂无来源数值'],
+  });
+  render(page('run-1', null, documents));
+  await screen.findByText(/全部检索文档已处理，流程已完成/);
+  expect(screen.getByLabelText('数据标准化与清洗：已完成')).toBeTruthy();
+  expect(screen.getByLabelText('智能分析与交叉验证：已完成')).toBeTruthy();
+  expect(screen.getByLabelText('生成报告与可视化：已完成')).toBeTruthy();
 });
 
 it('切换检索后丢弃旧任务的迟到结果，并启动新任务', async () => {

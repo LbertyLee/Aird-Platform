@@ -49,17 +49,7 @@ export function buildSearchWorkflowSteps(input: {
       }
     } else if (searchFinished) {
       if (index === 2 && input.creatingAnalysis) state = 'active';
-      if (
-        !input.creatingAnalysis &&
-        input.analysisStatus === 'partial' &&
-        (index === 2 || index === 3)
-      )
-        state = 'interrupted';
-      if (
-        !input.creatingAnalysis &&
-        index <= 3 &&
-        input.analysisStatus === 'ready'
-      )
+      if (!input.creatingAnalysis && index <= 3 && input.analysisStatus)
         state = 'done';
       if (
         !input.creatingAnalysis &&
