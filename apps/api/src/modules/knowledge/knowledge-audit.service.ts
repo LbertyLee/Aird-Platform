@@ -78,7 +78,7 @@ export class KnowledgeAuditService {
         where,
         skip,
         take,
-        orderBy: { createdAt: 'asc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         include: {
           category: { select: { id: true, name: true, code: true } },
           tags: {

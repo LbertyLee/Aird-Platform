@@ -1,0 +1,9 @@
+.payment-orders-table .ant-table-thead > tr > th,
+.payment-orders-table .ant-table-tbody > tr > td {
+  padding: 12px;
+  white-space: nowrap;
+}
+
+.payment-orders-table .ant-table-cell .ant-space {
+  flex-wrap: nowrap;
+}

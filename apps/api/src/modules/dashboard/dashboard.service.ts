@@ -137,6 +137,9 @@ export class DashboardTrendPointDto {
 
   @ApiPropertyOptional({ nullable: true, type: Number })
   newUserCount!: number | null;
+
+  @ApiPropertyOptional({ nullable: true, type: Number, description: '当日发起研究检索的去重用户数' })
+  activeUserCount!: number | null;
 }
 
 /**
@@ -183,6 +186,7 @@ type SqlRelation = {
   table: string;
   column: string;
   extraWhere: string;
+  distinctColumn?: string;
 };
 
 /**
@@ -272,7 +276,7 @@ export class DashboardService {
    */
   async getTrends(query: DashboardRangeQueryDto = {}): Promise<DashboardTrends> {
     const range = this.resolveRange(query);
-    const cacheKey = `dashboard:trends:v1:${range.timezone}:${range.startDate}:${range.endDate}`;
+    const cacheKey = `dashboard:trends:v2:${range.timezone}:${range.startDate}:${range.endDate}`;
     const cached = await this.redis.get(cacheKey);
     if (cached) {
       return JSON.parse(cached) as DashboardTrends;
@@ -302,14 +306,20 @@ export class DashboardService {
             userTotal: null,
             searchCount: null,
             newUserCount: null,
+            activeUserCount: null,
           };
         }
         const metrics = (row.metrics ?? {}) as Record<string, unknown>;
         const newUserRaw = metrics.newUserCount;
+        const activeUserRaw = metrics.activeUserCount;
         return {
           date,
           userTotal: row.userTotal,
           searchCount: row.searchCount,
+          activeUserCount:
+            typeof activeUserRaw === 'number' && Number.isFinite(activeUserRaw)
+              ? activeUserRaw
+              : null,
           newUserCount:
             typeof newUserRaw === 'number' && Number.isFinite(newUserRaw)
               ? newUserRaw
@@ -407,12 +417,23 @@ export class DashboardService {
       timezone,
     );
 
-    const [searchBuckets, newUserBuckets, userTotalByDay] = await Promise.all([
+    const [searchBuckets, activeUserBuckets, newUserBuckets, userTotalByDay] = await Promise.all([
       this.groupCountByZonedDay(
         {
           table: '"ResearchRun"',
           column: '"createdAt"',
           extraWhere: 'TRUE',
+        },
+        start,
+        endExclusive,
+        timezone,
+      ),
+      this.groupCountByZonedDay(
+        {
+          table: '"ResearchRun"',
+          column: '"createdAt"',
+          extraWhere: 'user_id IS NOT NULL',
+          distinctColumn: 'user_id',
         },
         start,
         endExclusive,
@@ -438,6 +459,8 @@ export class DashboardService {
         const userTotal = userTotalByDay.get(date) ?? 0;
         const metrics = {
           newUserCount,
+          activeUserCount: activeUserBuckets.get(date) ?? 0,
+          activeUserSource: 'ResearchRun.user_id',
           searchSource: 'ResearchRun',
           userSource: 'users',
           aggregatedAt: new Date().toISOString(),
@@ -489,6 +512,8 @@ export class DashboardService {
     if (rows.length !== dates.length) return false;
     const now = Date.now();
     return rows.every((row) => {
+      const metrics = row.metrics as Record<string, unknown> | null;
+      if (typeof metrics?.activeUserCount !== 'number') return false;
       const aggregatedAt = (row.metrics as Record<string, unknown> | null)
         ?.aggregatedAt;
       if (typeof aggregatedAt !== 'string') return false;
@@ -558,7 +583,7 @@ export class DashboardService {
                (${relation.column} AT TIME ZONE 'UTC') AT TIME ZONE $3,
                'YYYY-MM-DD'
              ) AS day,
-             COUNT(*)::bigint AS cnt
+             COUNT(${relation.distinctColumn ? `DISTINCT ${relation.distinctColumn}` : '*'})::bigint AS cnt
       FROM ${relation.table}
       WHERE ${relation.column} >= $1
         AND ${relation.column} < $2
@@ -650,6 +675,15 @@ export class DashboardService {
         source: 'users',
       },
       {
+        key: 'activeUserCount',
+        label: '活跃用户',
+        unit: '人',
+        definition:
+          '业务时区日历日内发起研究检索的去重用户数；同一用户多次检索计 1 人，匿名检索不计入。不等同于新增注册人数或登录人数。',
+        available: true,
+        source: 'ResearchRun.user_id',
+      },
+      {
         key: 'searchCount',
         label: '检索量',
         unit: '次',
@@ -687,7 +721,7 @@ export class DashboardService {
         `dashboard:overview:v3:${timezone}:${startDate}:${endDate}`,
       ),
       this.redis.del(
-        `dashboard:trends:v1:${timezone}:${startDate}:${endDate}`,
+        `dashboard:trends:v2:${timezone}:${startDate}:${endDate}`,
       ),
       this.redis.del('dashboard:overview:v2'),
     ]);

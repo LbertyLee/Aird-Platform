@@ -142,6 +142,7 @@ export default function SearchResultsPage({
     setCreatingAnalysis(false);
     onAnalysisPending(false);
     setActive(undefined);
+    setActionError('');
     setSavedAnalysis(undefined);
     setAnalysisLookupRun(undefined);
     setSavedAnalysisError(false);
@@ -154,10 +155,18 @@ export default function SearchResultsPage({
     setSavedAnalysisLoading(true);
     void getRecentAnalysisSessions([result.runId], controller.signal)
       .then((sessions) => {
-        if (!controller.signal.aborted)
-          setSavedAnalysis(
-            sessions.find((item) => item.runId === result.runId),
-          );
+        if (!controller.signal.aborted) {
+          const saved = sessions.find((item) => item.runId === result.runId);
+          setSavedAnalysis(saved);
+          if (saved) {
+            const availableIds = new Set(
+              result.sources.map((source) => source.id),
+            );
+            onSelectionChange(
+              saved.selectedSourceIds.filter((id) => availableIds.has(id)),
+            );
+          }
+        }
       })
       .catch(() => {
         if (!controller.signal.aborted) setSavedAnalysisError(true);
@@ -322,20 +331,17 @@ export default function SearchResultsPage({
   const localCount = allSources.length - exaCount;
   const running = progressStatus === 'running';
 
-  // The prototype processes every retrieved document as one pipeline. Source
-  // checkboxes remain useful for inspection/deposit, but they no longer gate
-  // extraction, normalization, validation, or analysis.
+  // A new search processes all sources once. Existing analyses are restored
+  // without regeneration; changing their source selection requires a click.
   useEffect(() => {
     if (
       running ||
       !result ||
       !allSources.length ||
       creatingAnalysis ||
+      savedAnalysisError ||
       analysisLookupRun !== result.runId ||
-      (savedAnalysis?.runId === result.runId &&
-        allSources.every((source) =>
-          savedAnalysis.selectedSourceIds?.includes(source.id),
-        )) ||
+      savedAnalysis?.runId === result.runId ||
       autoAnalysisRunIdRef.current === result.runId
     ) {
       return;
@@ -353,6 +359,7 @@ export default function SearchResultsPage({
     allSources.length,
     analysisLookupRun,
     savedAnalysis,
+    savedAnalysisError,
     creatingAnalysis,
   ]);
 
@@ -369,6 +376,10 @@ export default function SearchResultsPage({
     !running && savedAnalysis?.runId === result?.runId
       ? savedAnalysis
       : undefined;
+  const selectionChanged = Boolean(
+    currentAnalysis &&
+    !sameSourceSelection(selectedIds, currentAnalysis.selectedSourceIds),
+  );
   const progressStages = buildSearchWorkflowSteps({
     status: progressStatus,
     stage: liveStage,
@@ -641,9 +652,9 @@ export default function SearchResultsPage({
                 : progressStatus === 'error'
                   ? searchError
                   : creatingAnalysis
-                    ? '正在提取全部检索文档，进行标准化、清洗与交叉验证，完成后在此展示研究报告。'
+                    ? '正在提取所选来源，进行标准化、清洗与交叉验证，完成后在此展示研究报告。'
                     : currentAnalysis?.status === 'partial'
-                      ? '全部检索文档已处理，流程已完成；部分指标或年份缺少来源数据，请进入分析工作台查看缺项与口径提示。'
+                      ? '所选来源已处理，流程已完成；部分指标或年份缺少来源数据，请进入分析工作台查看缺项与口径提示。'
                       : currentAnalysis?.status === 'ready'
                         ? '研究报告与数据处理已完成，可进入工作台调整数据与图表，再生成最终分析结果。'
                         : savedAnalysisLoading
@@ -765,9 +776,9 @@ export default function SearchResultsPage({
               <div>
                 <strong>
                   {creatingAnalysis
-                    ? '正在处理全部检索来源'
+                    ? '正在处理所选检索来源'
                     : currentAnalysis
-                      ? `已处理 ${currentAnalysis.sources.length} / ${allSources.length} 个来源${currentAnalysis.status === 'partial' ? ' · 存在缺失项' : ''}`
+                      ? `已处理 ${currentAnalysis.sources.length} / ${currentAnalysis.selectedSourceIds.length} 个所选来源${currentAnalysis.status === 'partial' ? ' · 存在缺失项' : ''}`
                       : `共检索 ${allSources.length} 个来源`}
                 </strong>
                 <span>
@@ -777,7 +788,9 @@ export default function SearchResultsPage({
                       : savedAnalysisError
                         ? '历史分析查找失败，请重试'
                         : currentAnalysis
-                          ? '研究报告已整理。进入工作台确认数据与图表后，点击生成最终分析结果。'
+                          ? selectionChanged
+                            ? `来源选择已变更（已选 ${selectedSources.length} 个），重新生成后生效；当前仍展示原分析。`
+                            : '研究报告已整理。进入工作台确认数据与图表后，点击生成最终分析结果。'
                           : '全部来源将自动处理，无需勾选来源。')}
                 </span>
               </div>
@@ -823,9 +836,27 @@ export default function SearchResultsPage({
                     <Database size={16} />
                   )}
                   {creatingAnalysis
-                    ? '正在处理全部文档…'
+                    ? '正在处理所选文档…'
                     : '查看数据分析工作台'}
                 </button>
+                {selectionChanged && (
+                  <button
+                    type="button"
+                    className="generate-analysis-action"
+                    disabled={
+                      !selectedSources.length ||
+                      creatingAnalysis ||
+                      savedAnalysisLoading
+                    }
+                    onClick={() =>
+                      void enterAnalysis(
+                        selectedSources.map((source) => source.id),
+                      )
+                    }
+                  >
+                    <RotateCcw size={16} /> 按所选来源重新生成分析
+                  </button>
+                )}
                 {creatingAnalysis && (
                   <button
                     type="button"
@@ -1016,7 +1047,7 @@ function SourceCard({
         ) : null}
         <label onClick={(event) => event.stopPropagation()}>
           <input type="checkbox" checked={selected} onChange={onSelect} />{' '}
-          选择来源（用于入库）
+          选择来源（用于分析及入库）
         </label>
       </div>
     </article>
@@ -1355,6 +1386,15 @@ function isGatewayTimeout(error: unknown) {
   if (!error || typeof error !== 'object') return false;
   const response = (error as { response?: { status?: unknown } }).response;
   return response?.status === 504;
+}
+
+function sameSourceSelection(left: string[], right: string[]) {
+  const leftIds = new Set(left);
+  const rightIds = new Set(right);
+  return (
+    leftIds.size === rightIds.size &&
+    [...leftIds].every((id) => rightIds.has(id))
+  );
 }
 
 async function recoverAnalysisSession(

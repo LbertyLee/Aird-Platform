@@ -231,7 +231,13 @@ export function KnowledgePublicReviewPage() {
   }, [loadItems]);
 
   const docs = useMemo(
-    () => items.map((item) => toRow(item, groupMap)),
+    () => [...items]
+      .sort((a, b) => {
+        const aTime = Date.parse(a.createdAt || a.updatedAt) || 0;
+        const bTime = Date.parse(b.createdAt || b.updatedAt) || 0;
+        return bTime - aTime || b.id.localeCompare(a.id);
+      })
+      .map((item) => toRow(item, groupMap)),
     [items, groupMap],
   );
 

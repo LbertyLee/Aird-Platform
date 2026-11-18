@@ -85,6 +85,7 @@ export const dashboardTrendPointSchema = z.object({
   userTotal: z.number().nullable().describe('当日用户量快照；无数据为 null'),
   searchCount: z.number().nullable().describe('当日检索量；无数据为 null'),
   newUserCount: z.number().nullable().describe('当日新增用户；无数据为 null'),
+  activeUserCount: z.number().nullable().optional().describe('当日发起研究检索的去重用户数；无数据为 null'),
 });
 
 /**

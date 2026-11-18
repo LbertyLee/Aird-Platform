@@ -29,6 +29,7 @@ import {
   type OrderItem,
 } from '../api/admin';
 import { useSessionStore } from '../stores/session';
+import './PaymentCenterPage.css';
 
 /** 订单状态（与 OrderStatus 对齐；failed 展示为问题异常） */
 type PayOrderStatus =
@@ -348,12 +349,13 @@ export function PaymentCenterPage() {
   };
 
   const orderColumns: ColumnsType<OrderItem> = [
-    { title: '订单号', dataIndex: 'orderNo', width: 180 },
+    { title: '订单号', dataIndex: 'orderNo', width: 250, ellipsis: true },
     {
       title: '用户',
-      width: 160,
+      width: 250,
+      ellipsis: true,
       render: (_, row) => (
-        <span>
+        <span title={[row.buyerUsername ?? row.buyerId, row.buyerDisplayName].filter(Boolean).join(' ')}>
           {row.buyerUsername ?? row.buyerId}{' '}
           {row.buyerDisplayName ? (
             <Typography.Text type="warning">
@@ -365,6 +367,7 @@ export function PaymentCenterPage() {
     },
     {
       title: '类型',
+      width: 230,
       ellipsis: true,
       render: (_, row) =>
         row.levelTitle ??
@@ -402,12 +405,12 @@ export function PaymentCenterPage() {
     },
     {
       title: '时间',
-      width: 160,
+      width: 175,
       render: (_, row) => formatTime(row.paidAt ?? row.createdAt),
     },
     {
       title: '操作',
-      width: 180,
+      width: 160,
       fixed: 'right',
       render: (_, row) => (
         <Space size="middle">
@@ -595,8 +598,10 @@ export function PaymentCenterPage() {
 
                 <Typography.Text strong>订单列表</Typography.Text>
                 <Table
+                  className="payment-orders-table"
                   rowKey="id"
                   size="middle"
+                  tableLayout="fixed"
                   loading={loading}
                   dataSource={orders}
                   columns={orderColumns}
@@ -610,7 +615,7 @@ export function PaymentCenterPage() {
                       void loadOrders(p, ps);
                     },
                   }}
-                  scroll={{ x: 1100 }}
+                  scroll={{ x: 1385 }}
                 />
               </Space>
             ),

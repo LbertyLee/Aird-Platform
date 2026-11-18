@@ -1596,7 +1596,7 @@ function UploadFilesModal({
                 onChange={(e) => setGroupCode(e.target.value)}
                 disabled={submitting}
               >
-                <option value="">请选择分组</option>
+                <option value="">未分组</option>
                 {groups.map((g) => (
                   <option key={g.code} value={g.code}>
                     {g.name}

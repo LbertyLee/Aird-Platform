@@ -197,7 +197,7 @@ export function DashboardPage() {
   const periodLabel = PERIOD_LABEL[period];
   const points = trends?.points ?? [];
   const chartDates = points.map((p) => formatChartDate(p.date));
-  const userSeries = points.map((p) => p.newUserCount ?? p.userTotal);
+  const userSeries = points.map((p) => p.activeUserCount ?? null);
   const searchSeries = points.map((p) => p.searchCount);
 
   const userChartOption = useMemo(
@@ -400,7 +400,7 @@ export function DashboardPage() {
                 <div>
                   <span className="dashboard-chart-title">用户活跃趋势</span>
                   <span className="dashboard-chart-sub">
-                    {periodLabel} · 活跃用户
+                    {periodLabel} · 检索用户（按日去重）
                   </span>
                 </div>
                 <Tag className="dashboard-refresh-tag">{lastRefresh}</Tag>

@@ -21,6 +21,7 @@ import {
   searchDataAnalysisAsync,
 } from '../api/data-analysis';
 import type { PendingSearchJob } from '../search-progress';
+import { useState, type ComponentProps } from 'react';
 
 vi.mock('../layouts/ResearchLayout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -49,6 +50,16 @@ function Location() {
   const location = useLocation();
   return <div>{location.pathname + location.search}</div>;
 }
+function StatefulResults(props: ComponentProps<typeof SearchResultsPage>) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  return (
+    <SearchResultsPage
+      {...props}
+      selectedIds={selectedIds}
+      onSelectionChange={setSelectedIds}
+    />
+  );
+}
 function page(
   runId = 'run-1',
   pendingSearch: PendingSearchJob | null = null,
@@ -67,7 +78,7 @@ function page(
         <Route
           path="/results"
           element={
-            <SearchResultsPage
+            <StatefulResults
               session={{ accessToken: 'token' } as LoginResponse}
               result={result}
               pendingSearch={pendingSearch}
@@ -282,17 +293,91 @@ it('不依赖勾选，自动提取全部来源；完成后保留研究报告，�
   ).toBeTruthy();
 });
 
-it('旧会话只处理部分来源时重新对全部文档提取', async () => {
+it('打开历史会话恢复原来源勾选，不自动改用全部来源', async () => {
   vi.mocked(getRecentAnalysisSessions).mockResolvedValue([
     { ...analysis(), selectedSourceIds: ['s1'] },
   ]);
   vi.mocked(createAnalysisSession).mockResolvedValue(analysis());
   render(page('run-1', null, documents));
   await screen.findByText(/研究报告与数据处理已完成/);
+  expect(createAnalysisSession).not.toHaveBeenCalled();
+  const checkboxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
+  expect(checkboxes.map((input) => input.checked)).toEqual([true, false]);
+  expect(
+    screen.queryByRole('button', { name: '按所选来源重新生成分析' }),
+  ).toBeNull();
+});
+
+it('历史来源勾选改变后点击重新生成，仅提交当前所选来源', async () => {
+  vi.mocked(getRecentAnalysisSessions).mockResolvedValue([analysis()]);
+  vi.mocked(createAnalysisSession).mockResolvedValue({
+    ...analysis('run-1', 'regenerated'),
+    selectedSourceIds: ['s2'],
+  });
+  render(page('run-1', null, documents));
+  await screen.findByText(/研究报告与数据处理已完成/);
+  fireEvent.click(screen.getAllByRole('checkbox')[0]);
+  expect(createAnalysisSession).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole('button', { name: '按所选来源重新生成分析' }),
+  );
+  await screen.findByText(/研究报告与数据处理已完成/);
+  expect(createAnalysisSession).toHaveBeenCalledTimes(1);
   expect(createAnalysisSession).toHaveBeenCalledWith(
-    expect.objectContaining({ sourceIds: ['s1', 's2'] }),
+    { runId: 'run-1', query: '历史搜索', sourceIds: ['s2'] },
     expect.any(AbortSignal),
   );
+  expect(
+    screen.queryByRole('button', { name: '按所选来源重新生成分析' }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '查看数据分析工作台' }));
+  expect(
+    screen.getByText('/analysis?sessionId=regenerated&view=matrix'),
+  ).toBeTruthy();
+});
+
+it('清空来源时禁用重新生成，恢复相同集合后隐藏重新生成按钮', async () => {
+  vi.mocked(getRecentAnalysisSessions).mockResolvedValue([analysis()]);
+  render(page('run-1', null, documents));
+  await screen.findByText(/研究报告与数据处理已完成/);
+  fireEvent.click(screen.getByRole('button', { name: '清空' }));
+  expect(
+    screen
+      .getByRole('button', { name: '按所选来源重新生成分析' })
+      .hasAttribute('disabled'),
+  ).toBe(true);
+  const checkboxes = screen.getAllByRole('checkbox');
+  fireEvent.click(checkboxes[1]);
+  fireEvent.click(checkboxes[0]);
+  expect(
+    screen.queryByRole('button', { name: '按所选来源重新生成分析' }),
+  ).toBeNull();
+  expect(createAnalysisSession).not.toHaveBeenCalled();
+});
+
+it('重新生成失败时保留旧分析和新勾选，允许重试', async () => {
+  vi.mocked(getRecentAnalysisSessions).mockResolvedValue([analysis()]);
+  vi.mocked(createAnalysisSession).mockRejectedValue(new Error('failed'));
+  render(page('run-1', null, documents));
+  await screen.findByText(/研究报告与数据处理已完成/);
+  fireEvent.click(screen.getAllByRole('checkbox')[0]);
+  fireEvent.click(
+    screen.getByRole('button', { name: '按所选来源重新生成分析' }),
+  );
+  await screen.findByText('请求失败');
+  expect((screen.getAllByRole('checkbox')[1] as HTMLInputElement).checked).toBe(
+    true,
+  );
+  expect(
+    screen
+      .getByRole('button', { name: '按所选来源重新生成分析' })
+      .hasAttribute('disabled'),
+  ).toBe(false);
+  expect(createAnalysisSession).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: '查看数据分析工作台' }));
+  expect(
+    screen.getByText('/analysis?sessionId=saved&view=matrix'),
+  ).toBeTruthy();
 });
 
 it('提取失败不显示已完成，提供重试入口', async () => {
@@ -317,7 +402,7 @@ it('数据覆盖有缺项时仍标记流程步骤完成，并明确提示缺失�
     warnings: ['2024 年 PPI 暂无来源数值'],
   });
   render(page('run-1', null, documents));
-  await screen.findByText(/全部检索文档已处理，流程已完成/);
+  await screen.findByText(/所选来源已处理，流程已完成/);
   expect(screen.getByLabelText('数据标准化与清洗：已完成')).toBeTruthy();
   expect(screen.getByLabelText('智能分析与交叉验证：已完成')).toBeTruthy();
   expect(screen.getByLabelText('生成报告与可视化：已完成')).toBeTruthy();
@@ -335,7 +420,7 @@ it('切换检索后丢弃旧任务的迟到结果，并启动新任务', async (
     )
     .mockResolvedValueOnce(analysis('run-2', 'new-session'));
   const view = render(page('run-1', null, documents));
-  await screen.findByText('正在处理全部检索来源');
+  await screen.findByText('正在处理所选检索来源');
   view.rerender(page('run-2', null, documents));
   await screen.findByText(/研究报告与数据处理已完成/);
   await act(async () => completeOld(analysis('run-1', 'old-session')));
