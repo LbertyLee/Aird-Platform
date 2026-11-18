@@ -1,6 +1,20 @@
 import { validateEnvironment } from './env.validation';
 
 describe('environment validation', () => {
+  it('accepts the full 120-second planning timeout and rejects higher values', () => {
+    const config = {
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
+      MINIO_ENDPOINT: 'http://localhost:9000',
+      MINIO_ACCESS_KEY: 'agent',
+      MINIO_SECRET_KEY: 'local-secret',
+      MINIO_BUCKET: 'files',
+      JWT_SECRET: 'x'.repeat(32),
+    };
+    expect(validateEnvironment(config).RESEARCH_PLANNING_TIMEOUT_MS).toBe(120000);
+    expect(validateEnvironment({ ...config, RESEARCH_PLANNING_TIMEOUT_MS: '120000' }).RESEARCH_PLANNING_TIMEOUT_MS).toBe(120000);
+    expect(() => validateEnvironment({ ...config, RESEARCH_PLANNING_TIMEOUT_MS: '120001' })).toThrow();
+  });
+
   it('preserves WeChat Pay configuration for the payment service', () => {
     const wechatConfig = {
       WECHAT_PAY_ENABLED: 'true',

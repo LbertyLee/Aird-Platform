@@ -110,6 +110,11 @@ docker compose exec -T api node scripts/probe-semantic.cjs "主要经济体有�
 最终实体范围和检索计划。可追加 `--model 模型标识` 对齐页面所选模型。
 它不检索外部统计数据，输出的候选成员不能视为已核实的GDP排名。
 
+DashScope Qwen 的问句改写、语义解析和来源规划使用 `enable_thinking=false`，
+避免简短结构化解析消耗大量思考时间。证据评估和报告生成仍使用原有推理配置。
+`RESEARCH_PLANNING_TIMEOUT_MS` 默认120秒（可显式设置，最大120秒，适用于每次问句改写、语义解析和来源规划调用）；
+旧版本默认12秒，线上已出现两次语义解析和来源规划连续超时，导致回退到目录匹配。
+
 入口：`AiQueryService.execute()`。
 
 | 顺序 | Stage key | 做什么 | 关键服务 |

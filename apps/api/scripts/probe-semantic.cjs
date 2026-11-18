@@ -51,7 +51,7 @@ async function main() {
       OPENAI_MODEL: model,
       OPENAI_TIMEOUT_MS: Number(process.env.OPENAI_TIMEOUT_MS || 60000),
       RESEARCH_PLANNING_TIMEOUT_MS: Number(
-        process.env.RESEARCH_PLANNING_TIMEOUT_MS || 12000,
+        process.env.RESEARCH_PLANNING_TIMEOUT_MS || 120000,
       ),
     }),
     meter,

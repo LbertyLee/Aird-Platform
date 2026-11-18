@@ -83,8 +83,8 @@ const environmentSchema = z.object({
     .number()
     .int()
     .min(3000)
-    .max(30000)
-    .default(12000),
+    .max(120000)
+    .default(120000),
   /** 证据评估、研究结论、跨来源分析和报告生成使用的复杂推理模型。 */
   OPENAI_REASONING_MODEL: z.string().trim().min(1).default('qwen3.8-max'),
   /** 模型计费单价：{ model: { inputYuanPerMillionTokens, outputYuanPerMillionTokens } } */

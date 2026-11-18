@@ -115,10 +115,10 @@ export class DeepSeekChatService {
       this.config.get<number>('OPENAI_TIMEOUT_MS') ?? 60_000,
     );
     this.researchPlanningTimeoutMs = Math.min(
-      30_000,
+      120_000,
       Math.max(
         3_000,
-        this.config.get<number>('RESEARCH_PLANNING_TIMEOUT_MS') ?? 12_000,
+        this.config.get<number>('RESEARCH_PLANNING_TIMEOUT_MS') ?? 120_000,
       ),
     );
     this.client = apiKey
@@ -140,6 +140,15 @@ export class DeepSeekChatService {
     return this.modelSelection?.current(defaultModel) ?? defaultModel;
   }
 
+  /** Parsing and source selection need short structured answers, not a thinking trace. */
+  private fastPlanningParameters(): { enable_thinking?: false } {
+    const host = new URL(this.config.getOrThrow<string>('OPENAI_BASE_URL')).hostname;
+    return /^qwen/i.test(this.selectedModel(this.model)) &&
+      /^dashscope(?:-intl|-us)?\.aliyuncs\.com$/i.test(host)
+      ? { enable_thinking: false }
+      : {};
+  }
+
   /** 将用户问题与已选筛选项合并为后续检索共用的查询语句。 */
   async optimizeResearchQuery(
     query: string,
@@ -157,6 +166,7 @@ export class DeepSeekChatService {
       const res = await this.client.chat.completions.create(
         {
           model: this.selectedModel(this.model),
+          ...this.fastPlanningParameters(),
           temperature: 0,
           messages: [
             {
@@ -249,6 +259,7 @@ export class DeepSeekChatService {
       const res = await this.client.chat.completions.create(
         {
           model: this.selectedModel(this.model),
+          ...this.fastPlanningParameters(),
           temperature: 0,
           response_format: { type: 'json_object' },
           messages: [
@@ -307,6 +318,7 @@ export class DeepSeekChatService {
       const response = await this.client.chat.completions.create(
         {
           model: this.selectedModel(this.model),
+          ...this.fastPlanningParameters(),
           temperature: 0,
           response_format: { type: 'json_object' },
           messages: [

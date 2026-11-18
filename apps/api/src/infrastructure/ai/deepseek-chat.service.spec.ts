@@ -54,6 +54,40 @@ function setup(config: Record<string, unknown> = {}) {
 }
 
 describe('complex reasoning model routing', () => {
+  it('disables Qwen thinking for planning only and honors an explicit timeout', async () => {
+    const { service, create } = setup({
+      OPENAI_BASE_URL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      OPENAI_MODEL: 'qwen3.7-plus-2026-05-26',
+      RESEARCH_PLANNING_TIMEOUT_MS: 120000,
+    });
+    create.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({
+      intent: 'lookup', metricCodes: [], entityCodes: [], conceptCodes: [],
+      dimensionCodes: [], time: { type: 'UNKNOWN' }, sufficient: false,
+      dataNeeds: [], sources: [],
+    }) } }] });
+    const filters = { countries: [], regions: [], entities: [], indicators: [], timeRanges: [], sources: [] };
+    await service.optimizeResearchQuery('主要经济体有哪些', filters);
+    await service.parseSemanticQuery('主要经济体有哪些', { metrics: [], entities: [], concepts: [], dimensions: [] });
+    await service.planResearchSources('主要经济体有哪些', {
+      metrics: [], entities: [], concepts: [], dimensions: [],
+      time: { type: 'UNKNOWN' }, confidence: 0.9, intent: 'lookup',
+    }, [], []);
+    await service.evaluateResearchEvidence('主要经济体有哪些', [], []);
+
+    for (const [request, options] of create.mock.calls.slice(0, 3)) {
+      expect(request.enable_thinking).toBe(false);
+      expect(options.timeout).toBe(120000);
+    }
+    expect(create.mock.calls[3][0]).not.toHaveProperty('enable_thinking');
+  });
+
+  it('does not send the DashScope thinking parameter to other providers', async () => {
+    const { service, create } = setup({ OPENAI_MODEL: 'qwen-compatible' });
+    create.mockResolvedValue({ choices: [{ message: { content: '{"time":{"type":"UNKNOWN"}}' } }] });
+    await service.parseSemanticQuery('主要经济体', { metrics: [], entities: [], concepts: [], dimensions: [] });
+    expect(create.mock.calls[0][0]).not.toHaveProperty('enable_thinking');
+  });
+
   it('routes evidence evaluation, answers and analysis to Max while preserving the regular model', async () => {
     const { service, create, usageMeter } = setup();
     create.mockResolvedValue({
@@ -88,7 +122,7 @@ describe('complex reasoning model routing', () => {
       sources: [],
     });
     expect(create.mock.calls[3][0].model).toBe('test');
-    expect(create.mock.calls[3][1]).toEqual({ timeout: 12000, maxRetries: 0 });
+    expect(create.mock.calls[3][1]).toEqual({ timeout: 120000, maxRetries: 0 });
     expect(usageMeter.record.mock.calls[3][0].model).toBe('test');
   });
 
@@ -211,7 +245,7 @@ describe('research intent and bilingual source planning', () => {
     expect(create.mock.calls[0][0].messages[1].content).toContain(
       'worldbank.org',
     );
-    expect(create.mock.calls[0][1]).toEqual({ timeout: 12000, maxRetries: 0 });
+    expect(create.mock.calls[0][1]).toEqual({ timeout: 120000, maxRetries: 0 });
     expect(result?.discovery?.metrics).toEqual(['工业机器人密度']);
     expect(result?.discovery?.dimensions).toEqual(['行业=制造业']);
   });
@@ -281,7 +315,7 @@ describe('research intent and bilingual source planning', () => {
       ['用户指定来源'],
     );
     expect(plan?.allowDiscovery).toBe(false);
-    expect(create.mock.calls[0][1]).toEqual({ timeout: 12000, maxRetries: 0 });
+    expect(create.mock.calls[0][1]).toEqual({ timeout: 120000, maxRetries: 0 });
     expect(plan?.sources[0].query).toBe(
       'Indonesia industrial robot density 2024',
     );
