@@ -83,6 +83,16 @@ DataAnalysisWorkspace（矩阵 / 图表 / 可视化报告）
 
 ### 3.2 多源检索（AiQuery 单分支）
 
+结果页的 `plan` 直接携带语义解析结果：`entities` 合并目录实体与
+`discovery.entities`，`indicators` 合并目录指标与 `discovery.metrics`，
+`dimensions` 合并目录维度与 `discovery.dimensions`，同名值去重。
+知识库分支和旧研究入口继续合并原有计划中的筛选项；联网分支继续以显式筛选项覆盖对应字段。
+这些字段表示查询需求，不代表已找到对应数据或核实了来源。
+
+`plan.dimensions` 是可选字符串数组，用于兼容历史响应。结果页将它与地区、时间合并展示在“维度”栏，
+并保留从 `stages` 文案补充旧记录的逻辑。新响应即使没有阶段文案，也可以展示目录外实体、指标和维度。
+已保存的旧研究结果不会自动重新解析；需要重新发起查询才能获得新计划。
+
 入口：`AiQueryService.execute()`。
 
 | 顺序 | Stage key | 做什么 | 关键服务 |

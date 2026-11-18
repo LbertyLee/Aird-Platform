@@ -81,8 +81,18 @@ export class ExternalSearchService {
       const plan: ResearchSearchResponse['plan'] = {
         countries: resolution.dimensions.filter((item) => item.type === 'country_region').map((item) => item.name),
         regions: resolution.dimensions.filter((item) => /^(region|province|city|area)$/.test(item.type)).map((item) => item.name),
-        entities: resolution.entities.map((item) => item.name),
-        indicators: resolution.metrics.map((item) => item.name),
+        entities: [...new Set([
+          ...resolution.entities.map((item) => item.name),
+          ...(resolution.discovery?.entities ?? []),
+        ])],
+        indicators: [...new Set([
+          ...resolution.metrics.map((item) => item.name),
+          ...(resolution.discovery?.metrics ?? []),
+        ])],
+        dimensions: [...new Set([
+          ...resolution.dimensions.map((item) => item.name),
+          ...(resolution.discovery?.dimensions ?? []),
+        ])],
         timeRanges: timeRangeLabelsForPlan(
           normalizedQuery,
           prepared.optimizedQuery,

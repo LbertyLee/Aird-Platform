@@ -488,11 +488,18 @@ export class ResearchService {
     const entities = uniqueStrings([
       ...regions,
       ...resolution.entities.map((e) => e.name),
+      ...(resolution.discovery?.entities ?? []),
       ...fallback.entities,
     ]);
     const indicators = uniqueStrings([
       ...resolution.metrics.map((m) => m.name),
+      ...(resolution.discovery?.metrics ?? []),
       ...fallback.indicators,
+    ]);
+    const dimensions = uniqueStrings([
+      ...resolution.dimensions.map((dimension) => dimension.name),
+      ...(resolution.discovery?.dimensions ?? []),
+      ...(fallback.dimensions ?? []),
     ]);
     const timeRanges =
       resolution.time.type === 'YEAR' && resolution.time.value
@@ -508,6 +515,7 @@ export class ResearchService {
       regions.length ? `地区：${regions.join('、')}` : '',
       indicators.length ? `指标：${indicators.join('、')}` : '',
       entities.length ? `实体：${entities.join('、')}` : '',
+      dimensions.length ? `维度：${dimensions.join('、')}` : '',
       resolution.concepts.length
         ? `概念：${resolution.concepts.map((c) => c.name).join('、')}`
         : '',
@@ -519,6 +527,7 @@ export class ResearchService {
       regions,
       entities,
       indicators,
+      dimensions,
       timeRanges,
       sources: fallback.sources,
       intent:

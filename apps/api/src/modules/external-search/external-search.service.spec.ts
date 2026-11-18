@@ -48,4 +48,55 @@ describe('ExternalSearchService branch selection', () => {
     expect(ai.execute).not.toHaveBeenCalled();
     expect(repository.createRun).not.toHaveBeenCalled();
   });
+
+  it.each(['exa', 'ai-search'] as const)('preserves discovery in the %s response and history', async (mode) => {
+    const { service, ai, repository } = setup();
+    ai.execute.mockResolvedValueOnce({
+      aiQueryId: 'q1', answer: '研究结果', stages: [],
+      resolution: {
+        ...resolution,
+        time: { type: 'YEAR', value: 2025 },
+        entities: [{ code: 'CHN', name: '中国', entityId: 'china' }],
+        metrics: [{ code: 'GDP', name: 'GDP', indicatorId: 'gdp' }],
+        dimensions: [{ type: 'industry', code: 'industry', name: '行业' }],
+        discovery: {
+          entities: ['中国', '主要经济体'],
+          metrics: ['GDP', '工业机器人密度'],
+          dimensions: ['行业', '行业=制造业'],
+          dataNeeds: [], websites: [],
+        },
+      },
+    } as never);
+
+    const result = await service.search('user1', '主要经济体2025年工业机器人密度', filters, { mode });
+
+    expect(result.plan).toEqual(expect.objectContaining({
+      entities: ['中国', '主要经济体'],
+      indicators: ['GDP', '工业机器人密度'],
+      dimensions: ['行业', '行业=制造业'],
+      timeRanges: ['2025'],
+    }));
+    expect(repository.completeRun).toHaveBeenCalledWith(expect.objectContaining({
+      resultJson: expect.objectContaining({ plan: result.plan }),
+    }));
+  });
+
+  it('keeps explicit external filters authoritative when discovery adds candidates', async () => {
+    const { service, ai } = setup();
+    ai.execute.mockResolvedValueOnce({
+      aiQueryId: 'q1', answer: '', stages: [],
+      resolution: {
+        ...resolution,
+        discovery: { entities: ['主要经济体'], metrics: ['GDP'], dimensions: ['行业=制造业'], dataNeeds: [], websites: [] },
+      },
+    } as never);
+
+    const result = await service.search('user1', 'GDP', {
+      ...filters, entities: ['中国'], indicators: ['人均GDP'],
+    });
+
+    expect(result.plan.entities).toEqual(['中国']);
+    expect(result.plan.indicators).toEqual(['人均GDP']);
+    expect(result.plan.dimensions).toEqual(['行业=制造业']);
+  });
 });

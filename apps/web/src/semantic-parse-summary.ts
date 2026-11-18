@@ -46,7 +46,11 @@ function fromPlan(
   return {
     metrics: unique(plan.indicators),
     entities: unique([...plan.entities, ...plan.countries]),
-    dimensions: unique([...plan.regions, ...timeDims]),
+    dimensions: unique([
+      ...(plan.dimensions ?? []),
+      ...plan.regions,
+      ...timeDims,
+    ]),
     explanation,
   };
 }

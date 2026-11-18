@@ -73,6 +73,8 @@ export const researchQueryPlanSchema = z.object({
   regions: z.array(z.string()),
   entities: z.array(z.string()),
   indicators: z.array(z.string()),
+  /** Semantic catalog and discovery dimensions; absent in historical plans. */
+  dimensions: z.array(z.string()).optional(),
   timeRanges: z.array(z.string()),
   sources: z.array(z.string()),
   intent: z.enum(['comparison', 'trend', 'lookup', 'policy', 'general']),

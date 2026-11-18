@@ -213,6 +213,64 @@ describe('ResearchService AI query pipeline', () => {
     expect(response.aiQueryId).toBe('ai-query-1');
   });
 
+  it('returns and persists catalog and discovery semantics without stage text', async () => {
+    const aiExecute = jest.fn().mockResolvedValue({
+      aiQueryId: 'ai-query-discovery',
+      answer: '研究结果',
+      resolution: {
+        metrics: [{ code: 'GDP', name: 'GDP', indicatorId: 'gdp' }],
+        entities: [{ code: 'CHN', name: '中国', entityId: 'china' }],
+        concepts: [],
+        dimensions: [{ type: 'industry', code: 'industry', name: '行业' }],
+        time: { type: 'YEAR', value: 2025 },
+        confidence: 0.9,
+        intent: 'analysis',
+        discovery: {
+          metrics: ['GDP', '工业机器人密度'],
+          entities: ['中国', '主要经济体'],
+          dimensions: ['行业', '行业=制造业'],
+          dataNeeds: ['机器人安装量'],
+          websites: ['https://example.org'],
+        },
+      },
+      stages: [],
+    });
+    const { service, repository } = setup(emptyCatalog, {}, aiExecute);
+
+    const response = await service.search('主要经济体2025年工业机器人密度', {
+      entities: ['中国', '用户指定企业'],
+      indicators: ['GDP', '用户指定指标'],
+    });
+
+    expect(response.plan).toEqual(expect.objectContaining({
+      entities: ['中国', '主要经济体', '用户指定企业'],
+      indicators: ['GDP', '工业机器人密度', '用户指定指标'],
+      dimensions: ['行业', '行业=制造业'],
+      timeRanges: ['2025'],
+    }));
+    expect(response.plan.explanation).toContain('实体：中国、主要经济体、用户指定企业');
+    expect(response.plan.explanation).toContain('指标：GDP、工业机器人密度、用户指定指标');
+    expect(response.plan.explanation).toContain('维度：行业、行业=制造业');
+    expect(repository.completeRun).toHaveBeenCalledWith(expect.objectContaining({
+      resultJson: expect.objectContaining({ plan: response.plan }),
+    }));
+  });
+
+  it('keeps catalog semantics when discovery is absent', () => {
+    const { service } = setup();
+    const plan = service['semanticToPlan']({
+      metrics: [{ code: 'GDP', name: 'GDP', indicatorId: 'gdp' }],
+      entities: [{ code: 'CHN', name: '中国', entityId: 'china' }],
+      concepts: [],
+      dimensions: [{ type: 'industry', code: 'industry', name: '行业' }],
+      time: { type: 'UNKNOWN' }, confidence: 0.9, intent: 'analysis',
+    }, { ...emptyPlan, dimensions: ['行业', '历史维度'] });
+
+    expect(plan.entities).toEqual(['中国']);
+    expect(plan.indicators).toEqual(['GDP']);
+    expect(plan.dimensions).toEqual(['行业', '历史维度']);
+  });
+
   it('maps vector evidence into persisted research sources', async () => {
     const aiExecute = jest.fn().mockResolvedValue({
       aiQueryId: 'ai-query-2',
