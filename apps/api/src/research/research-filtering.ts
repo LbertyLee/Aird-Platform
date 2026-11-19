@@ -26,10 +26,23 @@ export interface ExternalSearchBranch {
 }
 
 const OFFICIAL_SOURCE_DOMAINS: Array<{ terms: string[]; domains: string[] }> = [
-  { terms: ['world bank', 'worldbank', '世界银行'], domains: ['worldbank.org', 'data.worldbank.org'] },
-  { terms: ['international monetary fund', 'imf', '国际货币基金组织'], domains: ['imf.org'] },
-  { terms: ['un data', 'united nations', '联合国'], domains: ['data.un.org', 'un.org'] },
+  {
+    terms: ['world bank', 'worldbank', '世界银行'],
+    domains: ['worldbank.org', 'data.worldbank.org'],
+  },
+  {
+    terms: ['international monetary fund', 'imf', '国际货币基金组织'],
+    domains: ['imf.org'],
+  },
+  {
+    terms: ['un data', 'united nations', '联合国', 'un population'],
+    domains: ['data.un.org', 'un.org', 'population.un.org'],
+  },
   { terms: ['oecd'], domains: ['oecd.org'] },
+  {
+    terms: ['our world in data', 'ourworldindata', 'maddison'],
+    domains: ['ourworldindata.org'],
+  },
 ];
 
 const FILTER_KEYS: FilterKey[] = [
@@ -48,6 +61,7 @@ export function matchesResearchFilters(
   catalog: ResearchCatalog,
 ): boolean {
   for (const key of TEXT_FILTER_KEYS) {
+    if (key === 'timeRanges') continue;
     const selected = filters[key];
     if (selected.length === 0) continue;
     const matchesDimension = selected.some((value) => {
@@ -91,9 +105,10 @@ export function buildExternalSearchBranches(
   filters: ResearchFilters,
   maxBranches = 8,
 ): ExternalSearchBranch[] {
-  const groups = FILTER_KEYS
-    .map((key) => ({ key, values: [...new Set(filters[key])].filter(Boolean) }))
-    .filter((group) => group.values.length > 0);
+  const groups = FILTER_KEYS.map((key) => ({
+    key,
+    values: [...new Set(filters[key])].filter(Boolean),
+  })).filter((group) => group.values.length > 0);
   if (groups.length === 0) return [{ query, filters: emptyFilters() }];
 
   const primary = groups.find((group) => group.values.length > 1);
@@ -184,7 +199,9 @@ function termsFor(value: string, entry?: ResearchCatalogEntry): string[] {
 
 function matchesTimeRange(text: string, value: string): boolean {
   if (containsSearchTerm(text, value)) return true;
-  const selected = value.match(/((?:19|20|21)\d{2})\s*[-—至到]\s*((?:19|20|21)\d{2})/);
+  const selected = value.match(
+    /((?:19|20|21)\d{2})\s*[-—至到]\s*((?:19|20|21)\d{2})/,
+  );
   if (!selected) return false;
   const start = Number(selected[1]);
   const end = Number(selected[2]);

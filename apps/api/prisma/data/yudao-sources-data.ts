@@ -657,6 +657,7 @@ export const dataSources: DataSourceItem[] = [
   { id: 'DS0643', name: "广东省湛江市遂溪县黄略镇人民政府", category: '中国政府机构', region: "乡镇级", site: "通过遂溪县政府网站访问", note: "无独立官网", status: '启用' },
   { id: 'DS0644', name: "广西壮族自治区灵山县陆屋镇人民政府", category: '中国政府机构', region: "乡镇级", site: "通过灵山县政府网站访问", note: "无独立官网", status: '启用' },
   { id: 'DS0645', name: "云南省永仁县莲池镇人民政府", category: '中国政府机构', region: "乡镇级", site: "通过永仁县政府网站访问", note: "无独立官网", status: '启用' },
+  { id: 'DS0646', name: "Maddison Project Database（Our World in Data）", en: "Maddison Project Database via Our World in Data", category: '国际组织', region: "国际", site: "https://ourworldindata.org/grapher/gdp-per-capita-maddison-project-database", note: "结构化数据：历史人均 GDP；Maddison Project Database 2023，经 Our World in Data 处理；单位为 2011 年国际元", status: '启用' },
 ]
 
 export const sourceCategories = ['国际组织', '各国统计局', '中国政府机构']

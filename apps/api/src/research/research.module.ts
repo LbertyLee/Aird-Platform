@@ -17,6 +17,7 @@ import { WorldBankDataService } from './world-bank-data.service';
 import { UserOptionsController } from './user-options.controller';
 import { UserKnowledgeController } from './user-knowledge.controller';
 import { SiteDataDiscoveryService } from './site-data-discovery.service';
+import { OurWorldInDataService } from './our-world-in-data.service';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { SiteDataDiscoveryService } from './site-data-discovery.service';
     ResearchCatalogService,
     WorldBankDataService,
     UnWppDataService,
+    OurWorldInDataService,
     SiteDataDiscoveryService,
   ],
   exports: [
@@ -52,6 +54,7 @@ import { SiteDataDiscoveryService } from './site-data-discovery.service';
     ExaContentHydrationService,
     WorldBankDataService,
     UnWppDataService,
+    OurWorldInDataService,
     SiteDataDiscoveryService,
   ],
 })

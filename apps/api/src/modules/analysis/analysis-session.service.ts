@@ -61,6 +61,7 @@ import {
 import { normalizeObservationUnits } from './unit-normalize';
 import { extractNominalGdpFallback } from '../../infrastructure/ai/gdp-text-fallback';
 import { WorldBankDataService } from '../../research/world-bank-data.service';
+import { OurWorldInDataService } from '../../research/our-world-in-data.service';
 
 type AnalysisRow = Record<string, unknown> & {
   __source: string;
@@ -172,6 +173,7 @@ export class AnalysisSessionService {
     private readonly exaContent: ExaContentHydrationService,
     private readonly worldBank: WorldBankDataService,
     private readonly unWpp: UnWppDataService = new UnWppDataService(),
+    private readonly ourWorldInData: OurWorldInDataService = new OurWorldInDataService(),
   ) {
     this.structuredStore = new StructuredDataStore(
       undefined,
@@ -229,7 +231,7 @@ export class AnalysisSessionService {
     });
     if (existing?.resultJson && typeof existing.resultJson === 'object') {
       const result = existing.resultJson as unknown as AnalysisResult;
-      if (result.pipelineVersion === 9 && result.status === 'ready')
+      if (result.pipelineVersion === 10 && result.status === 'ready')
         return {
           id: existing.id,
           createdAt: existing.createdAt.toISOString(),
@@ -679,6 +681,17 @@ export class AnalysisSessionService {
       'unWpp',
       `stageMs=${Date.now() - wppStartedAt} sources=${sources.length}`,
     );
+    const owidStartedAt = Date.now();
+    sources = await this.ourWorldInData.hydrateSources(
+      sources,
+      dimensionHints.entities,
+      dimensionHints.periods,
+      context.regions ?? [],
+    );
+    logPrepareStage(
+      'ourWorldInData',
+      `stageMs=${Date.now() - owidStartedAt} sources=${sources.length}`,
+    );
     const wppRows = sources
       .filter((source) => source.metadata?.analysisProvider === 'un-wpp-2024')
       .flatMap((source) => structuredValues(source.structuredData));
@@ -1047,7 +1060,10 @@ export class AnalysisSessionService {
           : [];
       if (values.length) {
         const rowLimit =
-          source.metadata?.analysisProvider === 'un-wpp-2024' ? 20_000 : 1_000;
+          source.metadata?.analysisProvider === 'un-wpp-2024' ||
+          source.metadata?.analysisProvider === 'owid-grapher'
+            ? 25_000
+            : 1_000;
         if (values.length > rowLimit) truncatedSources += 1;
         values.slice(0, rowLimit).forEach((value, rowIndex) => {
           const rowMappings =
@@ -1220,12 +1236,14 @@ export class AnalysisSessionService {
           message:
             source.metadata?.analysisProvider === 'un-wpp-2024'
               ? `已读取联合国 WPP 2024 官方年度数据（中方案），载入 ${Math.min(values.length, rowLimit)} 条记录，关联 ${mappedNames.length} 个指标；数据文件链接、原始字段和单位保留在数据行中。`
-              : typeof source.metadata?.analysisProvider === 'string' &&
-                  source.metadata.analysisProvider.endsWith('-api')
-                ? `已通过 ${source.metadata.analysisProvider.replace(/-api$/, '')} 官方 API 载入 ${values.length} 条结构化记录，已关联 ${mappedNames.length} 个指标；原始 API 地址保留在数据行中。`
-                : mappedNames.length
-                  ? `已按 ${mappedNames.length} 个指标载入 ${values.length} 条结构化记录。`
-                  : `已载入 ${values.length} 条结构化记录，尚未关联后台指标。`,
+              : source.metadata?.analysisProvider === 'owid-grapher'
+                ? `已读取 Our World in Data 的 Maddison Project Database 2023 人均 GDP 历史序列，载入 ${Math.min(values.length, rowLimit)} 条记录；年份、实体代码、2011 年国际元单位及数据引用均保留在数据行中。`
+                : typeof source.metadata?.analysisProvider === 'string' &&
+                    source.metadata.analysisProvider.endsWith('-api')
+                  ? `已通过 ${source.metadata.analysisProvider.replace(/-api$/, '')} 官方 API 载入 ${values.length} 条结构化记录，已关联 ${mappedNames.length} 个指标；原始 API 地址保留在数据行中。`
+                  : mappedNames.length
+                    ? `已按 ${mappedNames.length} 个指标载入 ${values.length} 条结构化记录。`
+                    : `已载入 ${values.length} 条结构化记录，尚未关联后台指标。`,
         });
         if (
           (source.metadata?.analysisProvider !== 'world-bank-api' &&
@@ -1572,7 +1590,7 @@ export class AnalysisSessionService {
       `totalMs=${Date.now() - prepareStartedAt} observations=${normalizedObservations.length}`,
     );
     return {
-      pipelineVersion: 9,
+      pipelineVersion: 10,
       query,
       status:
         usableCount &&

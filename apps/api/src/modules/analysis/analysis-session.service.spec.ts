@@ -566,7 +566,7 @@ describe('search evidence to analysis', () => {
       resultJson: {
         runId: 'run',
         query: '近5年GDP',
-        pipelineVersion: 9,
+        pipelineVersion: 10,
         status: 'ready',
         selectedSourceIds: ['source'],
         sources: [],

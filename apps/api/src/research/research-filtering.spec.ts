@@ -61,9 +61,18 @@ describe('research filtering', () => {
   });
 
   it('matches selected historical and future year ranges', () => {
-    const range = { ...filters, countries: [], indicators: [], timeRanges: ['1950-2100'] };
-    expect(matchesResearchFilters({ text: '人口统计 1950 和 2100' }, range, catalog)).toBe(true);
-    expect(matchesResearchFilters({ text: '人口统计 1949' }, range, catalog)).toBe(false);
+    const range = {
+      ...filters,
+      countries: [],
+      indicators: [],
+      timeRanges: ['1950-2100'],
+    };
+    expect(
+      matchesResearchFilters({ text: '人口统计 1950 和 2100' }, range, catalog),
+    ).toBe(true);
+    expect(
+      matchesResearchFilters({ text: '人口统计 1949' }, range, catalog),
+    ).toBe(false);
   });
 
   it('branches external search by one OR dimension without cartesian explosion', () => {
@@ -106,9 +115,11 @@ describe('research filtering', () => {
         ],
       },
     };
-    expect(externalSearchDomains(['World Bank'], catalogWithWorldBank)).toEqual([
-      'worldbank.org',
-      'data.worldbank.org',
+    expect(externalSearchDomains(['World Bank'], catalogWithWorldBank)).toEqual(
+      ['worldbank.org', 'data.worldbank.org'],
+    );
+    expect(externalSearchDomains(['Maddison'], catalog)).toEqual([
+      'ourworldindata.org',
     ]);
   });
 });
