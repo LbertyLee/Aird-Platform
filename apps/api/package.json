@@ -23,6 +23,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
+    "prisma:seed-countries": "node -r ts-node/register/transpile-only prisma/seed-countries.ts",
     "prisma:seed-sources": "node -r ts-node/register/transpile-only prisma/seed-sources.ts",
     "prisma:db-comments": "node prisma/scripts/generate-db-comments.mjs",
     "dict:sync": "node scripts/sync-dictionaries.mjs"
