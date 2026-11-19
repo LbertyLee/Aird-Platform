@@ -105,6 +105,7 @@ export default function AnalysisResults({
   const reportDataset = reportDatasets.find(
     (entry) => entry.id === report?.presentation.datasetId,
   );
+  const reportComparison = reportDatasets.find((entry) => entry.id === report?.presentation.comparisonDatasetIds?.[0]);
   function update(patch: Partial<AnalysisPresentation>) {
     if (presentation) {
       setSelection({ ...presentation, ...patch });
@@ -218,6 +219,7 @@ export default function AnalysisResults({
       const figures = await collectReportFigureImages({
         reportRoot: reportElement.current,
         dataset: reportDataset,
+        comparisonDataset: reportComparison,
         presentation: report.presentation,
         figures: reportFigureRequests(report.presentation),
       });
@@ -493,7 +495,7 @@ export default function AnalysisResults({
                 value={presentation.reportViews}
                 onChange={(reportViews) => update({ reportViews })}
               />
-              <AnalysisVisual dataset={dataset} presentation={presentation} />
+              <AnalysisVisual dataset={dataset} comparisonDataset={comparisonDataset} presentation={presentation} />
               <div className="visual-empty">
                 点击“生成分析结果”保存当前数据的分析与图表。
               </div>
@@ -541,11 +543,12 @@ export default function AnalysisResults({
                   </section>
                 ))}
               <section className="visual-report-section">
-                <h3>数据分析表（单位：{reportDataset.unit || '—'}）</h3>
+                <h3>数据分析表：{reportDataset.name}（单位：{reportDataset.unit || '—'}）</h3>
                 <AnalysisVisual
                   dataset={reportDataset}
                   presentation={{ ...report.presentation, view: 'table' }}
                 />
+                {reportComparison && <><h3>数据分析表：{reportComparison.name}（单位：{reportComparison.unit || '—'}）</h3><AnalysisVisual dataset={reportComparison} presentation={{ ...report.presentation, periods: selectVisualData(reportDataset, report.presentation).periods, view: 'table' }} /></>}
               </section>
               <section className="visual-report-section">
                 <h3>可视化图表</h3>
@@ -569,6 +572,7 @@ export default function AnalysisResults({
                     </figcaption>
                     <AnalysisVisual
                       dataset={reportDataset}
+                      comparisonDataset={reportComparison}
                       presentation={{
                         ...report.presentation,
                         reportViews: presentation.reportViews,

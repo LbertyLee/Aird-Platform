@@ -42,6 +42,7 @@ export function buildVisualReport(
   dataset: AnalysisVisualDataset,
   presentation: AnalysisPresentation,
   warnings: string[] = [],
+  comparison?: AnalysisVisualDataset,
 ): AnalysisVisualReport {
   const periods =
     presentation.periods ??
@@ -93,8 +94,18 @@ export function buildVisualReport(
   const total = presentation.entities.length * periods.length;
   const conflictCount = points.filter((point) => point.conflict).length;
   const usedSources = new Set(points.flatMap((point) => point.sourceIds));
+  const paired = comparison ? values.flatMap((point) => {
+    const other = comparison.points.find((item) => item.entity === point.entity && item.period === point.period && !item.conflict && item.value !== null);
+    return other?.value == null ? [] : [{ x: point.value, y: other.value }];
+  }) : [];
+  const meanX = paired.reduce((sum, point) => sum + point.x, 0) / paired.length;
+  const meanY = paired.reduce((sum, point) => sum + point.y, 0) / paired.length;
+  const covariance = paired.reduce((sum, point) => sum + (point.x - meanX) * (point.y - meanY), 0);
+  const varianceX = paired.reduce((sum, point) => sum + (point.x - meanX) ** 2, 0);
+  const varianceY = paired.reduce((sum, point) => sum + (point.y - meanY) ** 2, 0);
+  const correlation = paired.length >= 3 && varianceX > 0 && varianceY > 0 ? covariance / Math.sqrt(varianceX * varianceY) : null;
   return {
-    title: `${dataset.name}${dataset.unit ? `（${dataset.unit}）` : ''} 分析结果`,
+    title: `${dataset.name}${comparison ? ` 与 ${comparison.name}` : ''}${dataset.unit && !comparison ? `（${dataset.unit}）` : ''} 分析结果`,
     createdAt: new Date().toISOString(),
     presentation,
     metrics: [
@@ -108,6 +119,10 @@ export function buildVisualReport(
       { label: '最大值', value: `${number(max)}${unit}` },
     ],
     sections: [
+      ...(comparison ? [{ title: '指标关系分析', paragraphs: [
+        `对比指标：${dataset.name}（${dataset.unit || '未注明单位'}）与${comparison.name}（${comparison.unit || '未注明单位'}），按相同国家/地区和年份配对，共 ${paired.length} 对有效观测。`,
+        correlation === null ? '有效配对不足或数值没有变化，无法计算相关系数。' : `配对观测的皮尔逊相关系数为 ${number(correlation)}。相关性描述线性关系，不代表因果关系；跨年份趋势和不同地区的混合可能影响结果。`,
+      ] }] : []),
       {
         title: '报告摘要',
         paragraphs: [

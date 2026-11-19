@@ -160,6 +160,7 @@ export async function svgMarkupToPngBytes(
 export async function collectReportFigureImages(input: {
   reportRoot: HTMLElement | null;
   dataset: AnalysisVisualDataset;
+  comparisonDataset?: AnalysisVisualDataset;
   presentation: AnalysisPresentation;
   figures: ReportFigureRequest[];
 }): Promise<ReportFigureImage[]> {
@@ -182,6 +183,10 @@ export async function collectReportFigureImages(input: {
     }
     const { png, width, height } = await svgMarkupToPngBytes(svg);
     rendered.push({ ...request, caption, png, width, height });
+    if (request.view === 'table' && input.comparisonDataset) {
+      const { png: comparisonPng, width: comparisonWidth, height: comparisonHeight } = await svgMarkupToPngBytes(visualTableSvg(input.comparisonDataset, { ...input.presentation, periods: input.presentation.periods ?? input.dataset.periods.slice(input.dataset.periods.indexOf(input.presentation.startPeriod), input.dataset.periods.indexOf(input.presentation.endPeriod) + 1) }));
+      rendered.push({ ...request, caption: `${input.comparisonDataset.name}（${input.comparisonDataset.unit || '未注明单位'}）`, png: comparisonPng, width: comparisonWidth, height: comparisonHeight });
+    }
   }
   return rendered;
 }
