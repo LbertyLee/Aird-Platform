@@ -40,6 +40,11 @@
   font-size: 14px;
 }
 
+.dictionaries-search {
+  width: min(100%, 360px);
+  margin-bottom: 12px;
+}
+
 .dictionaries-table .ant-table-thead > tr > th {
   background: #fafafa;
   color: #606266;

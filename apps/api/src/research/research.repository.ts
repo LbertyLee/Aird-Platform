@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { StructuredDataStore } from './structured-data-store';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -54,7 +53,6 @@ interface MemoryBranchCache {
 @Injectable()
 export class ResearchRepository {
   private readonly logger = new Logger(ResearchRepository.name);
-  private readonly structuredStore = new StructuredDataStore(undefined, undefined, (message) => this.logger.warn(message));
   private readonly memorySources = new Map<string, SourceEntity>();
   private readonly memoryRuns = new Map<string, MemoryRun>();
   private readonly memoryBranchCache = new Map<string, MemoryBranchCache>();
@@ -94,7 +92,8 @@ export class ResearchRepository {
             normalizedInput.structuredData === undefined
               ? undefined
               : (normalizedInput.structuredData as Prisma.InputJsonValue),
-          metadata: normalizedInput.metadata as Prisma.InputJsonValue | undefined,
+          metadata: normalizedInput.metadata as
+            Prisma.InputJsonValue | undefined,
           recordCount: normalizedInput.recordCount,
         };
 
@@ -115,7 +114,8 @@ export class ResearchRepository {
           // Prefer the row that already owns the browsable URL so we never
           // rename a bare host onto a www URL that another row already has.
           const canonical =
-            matches.find((row) => row.sourceUrl === normalizedUrl) ?? matches[0];
+            matches.find((row) => row.sourceUrl === normalizedUrl) ??
+            matches[0];
           const duplicates = matches.filter((row) => row.id !== canonical.id);
           const fullTextDonor =
             matches.find((row) => {
@@ -125,7 +125,9 @@ export class ResearchRepository {
                 !Array.isArray(row.metadata)
                   ? (row.metadata as Record<string, unknown>)
                   : null;
-              return meta?.contentMode === 'full' && Boolean(row.textContent?.trim());
+              return (
+                meta?.contentMode === 'full' && Boolean(row.textContent?.trim())
+              );
             }) ?? canonical;
 
           const updateBase = await this.buildSourceUpdatePreservingFullText(
@@ -161,8 +163,7 @@ export class ResearchRepository {
         const matches = normalizedUrl
           ? [...this.memorySources.values()].filter(
               (source) =>
-                source.sourceUrl != null &&
-                variants.includes(source.sourceUrl),
+                source.sourceUrl != null && variants.includes(source.sourceUrl),
             )
           : [];
         const existing =
@@ -191,7 +192,8 @@ export class ResearchRepository {
           textContent: preserveFull
             ? existing!.textContent
             : normalizedInput.textContent,
-          structuredData: normalizedInput.structuredData ?? existing?.structuredData,
+          structuredData:
+            normalizedInput.structuredData ?? existing?.structuredData,
           metadata: preserveFull
             ? {
                 ...(normalizedInput.metadata ?? {}),
@@ -204,10 +206,6 @@ export class ResearchRepository {
         return source;
       },
     );
-    if (source.structuredData !== undefined && source.structuredData !== null) {
-      // Source IDs keep uploads and private SQL results separate, even for equal URLs/content.
-      await this.structuredStore.write('sources', source.id, source);
-    }
     return source;
   }
 
@@ -271,7 +269,9 @@ export class ResearchRepository {
         });
         if (!existing) return null;
         const previousMeta =
-          existing.metadata && typeof existing.metadata === 'object' && !Array.isArray(existing.metadata)
+          existing.metadata &&
+          typeof existing.metadata === 'object' &&
+          !Array.isArray(existing.metadata)
             ? (existing.metadata as Record<string, unknown>)
             : {};
         const updated = await this.prisma.researchSource.update({
@@ -321,12 +321,19 @@ export class ResearchRepository {
         });
         if (!existing) return;
         const previous =
-          existing.metadata && typeof existing.metadata === 'object' && !Array.isArray(existing.metadata)
+          existing.metadata &&
+          typeof existing.metadata === 'object' &&
+          !Array.isArray(existing.metadata)
             ? (existing.metadata as Record<string, unknown>)
             : {};
         await this.prisma.researchSource.update({
           where: { id },
-          data: { metadata: { ...previous, ...metadataPatch } as Prisma.InputJsonValue },
+          data: {
+            metadata: {
+              ...previous,
+              ...metadataPatch,
+            } as Prisma.InputJsonValue,
+          },
         });
       },
       () => {
@@ -586,7 +593,10 @@ export class ResearchRepository {
             sourceScores: input.sourceScores,
             cacheExpiresAt: input.cacheExpiresAt,
             reportMarkdown: input.reportMarkdown,
-            resultJson: input.resultJson === undefined ? undefined : input.resultJson as Prisma.InputJsonValue,
+            resultJson:
+              input.resultJson === undefined
+                ? undefined
+                : (input.resultJson as Prisma.InputJsonValue),
           },
         });
       },
@@ -606,7 +616,9 @@ export class ResearchRepository {
   async getSourceById(id: string): Promise<SourceEntity | null> {
     return this.withStorage(
       async () => {
-        const source = await this.prisma.researchSource.findUnique({ where: { id } });
+        const source = await this.prisma.researchSource.findUnique({
+          where: { id },
+        });
         return source ? this.mapSource(source) : null;
       },
       () => this.memorySources.get(id) ?? null,
@@ -618,16 +630,39 @@ export class ResearchRepository {
       async () => {
         const rows = await this.prisma.researchRun.findMany({
           where: { userId, status: ResearchRunStatus.COMPLETED },
-          orderBy: { createdAt: 'desc' }, take: limit,
+          orderBy: { createdAt: 'desc' },
+          take: limit,
           select: { id: true, query: true, createdAt: true, resultJson: true },
         });
-        return rows.map((row) => ({ id: row.id, query: row.query, createdAt: row.createdAt.toISOString(), result: row.resultJson }));
+        return rows.map((row) => ({
+          id: row.id,
+          query: row.query,
+          createdAt: row.createdAt.toISOString(),
+          result: row.resultJson,
+        }));
       },
-      () => [...this.memoryRuns.values()].filter((run) => run.status === ResearchRunStatus.COMPLETED && run.userId === userId).sort((a,b) => b.createdAt.getTime()-a.createdAt.getTime()).slice(0, limit).map((run) => ({ id: run.id, query: run.query, createdAt: run.createdAt.toISOString(), result: run.resultJson }))
+      () =>
+        [...this.memoryRuns.values()]
+          .filter(
+            (run) =>
+              run.status === ResearchRunStatus.COMPLETED &&
+              run.userId === userId,
+          )
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, limit)
+          .map((run) => ({
+            id: run.id,
+            query: run.query,
+            createdAt: run.createdAt.toISOString(),
+            result: run.resultJson,
+          })),
     );
   }
 
-  async deleteUserRun(userId: string, id: string): Promise<{ deleted: boolean }> {
+  async deleteUserRun(
+    userId: string,
+    id: string,
+  ): Promise<{ deleted: boolean }> {
     return this.withStorage(
       async () => {
         const result = await this.prisma.researchRun.deleteMany({
@@ -735,9 +770,7 @@ export class ResearchRepository {
       ...source,
       structuredData: rows,
       recordCount: rows.length,
-      textContent: rows
-        .map((row) => JSON.stringify(row))
-        .join('\n'),
+      textContent: rows.map((row) => JSON.stringify(row)).join('\n'),
     };
   }
 

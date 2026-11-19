@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CommonStatus, VectorSyncStatus } from '@prisma/client';
+import { CommonStatus, LocationKind, VectorSyncStatus } from '@prisma/client';
 
 /** 字典类型视图 */
 export class DictionaryTypeViewDto {
@@ -38,6 +38,13 @@ export class DictionaryViewDto {
 
   @ApiProperty({ description: '字典类型编码' })
   type!: string;
+
+  @ApiPropertyOptional({
+    enum: LocationKind,
+    nullable: true,
+    description: '地域层级',
+  })
+  locationKind?: LocationKind | null;
 
   @ApiProperty({ description: '字典编码' })
   code!: string;

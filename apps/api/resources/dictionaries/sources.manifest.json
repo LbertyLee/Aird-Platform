@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-22T07:35:25.668Z",
+  "generatedAt": "2026-11-19T02:12:25.843Z",
   "sources": [
     {
       "id": "thuocl-finance",
@@ -24,6 +24,13 @@
       "url": "https://raw.githubusercontent.com/mledoze/countries/master/countries.json",
       "file": "world-countries.json",
       "format": "countries"
+    },
+    {
+      "id": "world-regions",
+      "url": "https://raw.githubusercontent.com/country-regions/country-region-data/85244c5594a7a8543af5af0ce1a743557bfc5395/data.json",
+      "file": "world-regions.json",
+      "format": "regions",
+      "license": "MIT"
     }
   ]
 }

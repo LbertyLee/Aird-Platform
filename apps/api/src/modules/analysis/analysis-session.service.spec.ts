@@ -396,19 +396,33 @@ describe('search evidence to analysis', () => {
       Object.assign(first.service, {
         structuredStore: new StructuredDataStore(directory, true),
       });
-      await first.service['prepare']('GDP', [source()]);
+      const publicA = {
+        ...source(),
+        id: 'exa-source-a',
+        origin: 'exa' as const,
+        sourceUrl: 'https://stats.gov.cn/reports/gdp',
+      };
+      await first.service['prepare']('GDP', [publicA]);
       expect(first.chat.extractIndicators).toHaveBeenCalledTimes(1);
       const second = setup();
       Object.assign(second.service, {
         structuredStore: new StructuredDataStore(directory, true),
       });
-      const cached = await second.service['prepare']('GDP', [source()]);
+      const publicB = { ...publicA, id: 'exa-source-b' };
+      const cached = await second.service['prepare']('GDP', [publicB]);
       expect(cached.observations.length).toBeGreaterThan(0);
       expect(second.chat.extractIndicators).not.toHaveBeenCalled();
       await second.service['prepare']('GDP', [
-        { ...source(), textContent: source().textContent + '新增修订数据' },
+        { ...publicB, textContent: publicB.textContent + '新增修订数据' },
       ]);
       expect(second.chat.extractIndicators).toHaveBeenCalledTimes(1);
+
+      await first.service['prepare']('GDP', [{ ...source(), id: 'private-a' }]);
+      await second.service['prepare']('GDP', [
+        { ...source(), id: 'private-b' },
+      ]);
+      expect(first.chat.extractIndicators).toHaveBeenCalledTimes(2);
+      expect(second.chat.extractIndicators).toHaveBeenCalledTimes(2);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

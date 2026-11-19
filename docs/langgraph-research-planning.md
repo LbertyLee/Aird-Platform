@@ -56,13 +56,13 @@
 
 ## 其他结构化数据统一持久化
 
-所有结构化入口还会经过 `StructuredDataStore` 和 `ResearchRepository.createSource`：用户 JSON/CSV/Excel 上传、SQL 查询结果、World Bank 之外的公开 API（如 Eurostat、UNData、自建公开 JSON/CSV）以及外部搜索结果中可解析的结构化下载，都会保留结构化原文、记录数、来源 URL、MIME 类型和元数据。研究来源本身继续写入 PostgreSQL；本地磁盘副本位于 `storage/structured-data/{sources,remote,extractions}`，用于服务重启后的复用和故障恢复。
+所有结构化入口还会经过 `StructuredDataStore` 和 `ResearchRepository.createSource`：用户 JSON/CSV/Excel 上传、SQL 查询结果、World Bank 之外的公开 API（如 Eurostat、UNData、自建公开 JSON/CSV）以及外部搜索结果中可解析的结构化下载，都会保留结构化原文、记录数、来源 URL、MIME 类型和元数据。研究来源、下载结果和有效的指标抽取结果均写入 PostgreSQL 的持久表；数据库无记录时会读取并回填旧磁盘文件。
 
-- `remote` 按公开 URL 缓存结构化下载，默认 24 小时；只允许 HTTPS、公开域名、JSON/CSV/Excel，下载上限 2 MB。命中后不重复下载和解析。
-- `extractions` 按来源 ID、正文内容、指标目录、查询、维度提示、规划和模型配置计算指纹，默认 7 天；命中后不重复调用指标抽取模型。正文、目录或模型变化会自动失效。
-- `sources` 按来源 ID归档所有结构化来源，便于数据库故障恢复和排查。私有来源不会因为 URL 相同而进入公开 URL 缓存；分析读取前仍必须通过原有知识库权限检查。
-- 统一缓存支持原子写入、损坏校验、过期刷新、并发请求合并和写盘失败降级。失败或空结果不会污染缓存。多实例部署应将 `STRUCTURED_DATA_CACHE_DIR` 指向共享持久卷；该目录不替代 PostgreSQL，也不绕过租户权限。
+- `remote` 按公开 URL 持久化结构化下载，不设置业务过期时间；只允许 HTTPS、公开域名、JSON/CSV/Excel，下载上限 2 MB。命中后不重复下载和解析。
+- `extractions` 持久化有效的指标抽取结果。公开 Exa 来源按来源 URL、正文、指标目录、查询、维度提示、规划和模型配置共享，不依赖会话或用户 ID；私有来源仍按来源 ID 隔离。正文、目录或模型变化会自动生成新指纹。
+- 完整分析结果写入 `analysis_sessions`，研究来源写入 PostgreSQL 原表。私有来源不会因为 URL 相同而跨用户共享；分析读取前仍必须通过原有知识库权限检查。
+- 数据库记录校验摘要并按指纹唯一保存；有效数据长期保留。旧磁盘文件只作为迁移回填来源，数据库写入失败时会告警并降级，不让来源数据错误导致当前分析请求失败。
 
-默认目录为 API 工作目录下 `storage/structured-data`，可通过 `STRUCTURED_DATA_CACHE_DIR` 设置；`STRUCTURED_DATA_CACHE_ENABLED=false` 可关闭。Compose 已挂载 `structured_data` 命名卷（独立 Compose 使用宿主机 `storage/structured-data`）。World Bank 的按单元格缓存仍保留，因为它能精确补齐缺失国家/年份；统一缓存负责其他结构化来源和抽取结果。
+需要先部署 `structured_data_records` 数据库迁移。旧目录默认是 API 工作目录下 `storage/structured-data`，可通过 `STRUCTURED_DATA_CACHE_DIR` 指定；仅用于迁移既有记录和数据库故障降级。`STRUCTURED_DATA_CACHE_ENABLED=false` 可关闭该持久层。World Bank 的按单元格缓存仍保留，因为它能精确补齐缺失国家/年份；新持久表负责共享复用其他结构化来源和抽取结果。
 
 命中缓存可减少下载、解析和重复抽取成本，但规划、评估、名称翻译和最终总结仍可能调用模型，不能保证整次查询零费用。

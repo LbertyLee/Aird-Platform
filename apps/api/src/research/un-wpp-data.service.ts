@@ -10,6 +10,7 @@ import { QUERY_COUNTRIES } from '../common/utils/query-countries';
 import { StructuredDataStore } from './structured-data-store';
 import type { SourceEntity } from './research.types';
 import { WPP_METRICS } from './population-metrics';
+import { PrismaService } from '../infrastructure/prisma/prisma.service';
 
 export const WPP_2024_SHA256 =
   '286ac36bb1415e2e1ade03acfef0a29f0e4c087e2f78e38c48f50c5df89082bc';
@@ -43,11 +44,16 @@ export function isWppSource(source: SourceEntity): boolean {
 @Injectable()
 export class UnWppDataService {
   private readonly logger = new Logger(UnWppDataService.name);
-  private readonly store = new StructuredDataStore(
-    undefined,
-    undefined,
-    (message) => this.logger.warn(message),
-  );
+  private readonly store: StructuredDataStore;
+
+  constructor(prisma?: PrismaService) {
+    this.store = new StructuredDataStore(
+      undefined,
+      undefined,
+      (message) => this.logger.warn(message),
+      prisma,
+    );
+  }
 
   async hydrateSources(
     sources: SourceEntity[],
@@ -110,7 +116,6 @@ export class UnWppDataService {
       const annual = await this.store.getOrLoad(
         'remote',
         key,
-        30 * 86400_000,
         () => this.download(countryCodes, selectedYears),
         (data) =>
           data.length === countryCodes.length * selectedYears.length &&

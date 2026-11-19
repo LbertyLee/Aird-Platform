@@ -824,6 +824,7 @@ export type IndicatorItem = {
 export type DictionaryItem = {
   id: string;
   type: string;
+  locationKind?: 'country' | 'region' | null;
   code: string;
   name: string;
   aliases: string[];

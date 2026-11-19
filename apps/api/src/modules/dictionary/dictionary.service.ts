@@ -66,18 +66,18 @@ export class DictionaryService {
       },
       select: { code: true, name: true },
     });
-    const values = Object.fromEntries(rows.map(({ code, name }) => [code, name]));
+    const values = Object.fromEntries(
+      rows.map(({ code, name }) => [code, name]),
+    );
     return {
       userAgreement: {
-        content:
-          values.user_agreement_content ?? DEFAULT_USER_AGREEMENT_HTML,
+        content: values.user_agreement_content ?? DEFAULT_USER_AGREEMENT_HTML,
         version: values.user_agreement_version || 'V1.0',
         updatedAt: values.user_agreement_updated_at || '2026-10-26',
         effectiveAt: values.user_agreement_effective_at || '2026-10-26',
       },
       privacyPolicy: {
-        content:
-          values.privacy_policy_content ?? DEFAULT_PRIVACY_POLICY_HTML,
+        content: values.privacy_policy_content ?? DEFAULT_PRIVACY_POLICY_HTML,
         version: values.privacy_policy_version || 'V1.0',
         updatedAt: values.privacy_policy_updated_at || '2026-10-26',
         effectiveAt: values.privacy_policy_effective_at || '2026-10-26',
@@ -92,7 +92,11 @@ export class DictionaryService {
       where: { code, deletedAt: null },
     });
     if (exists) {
-      throw new BusinessException('DICT_TYPE_EXISTS', '字典类型编码已存在', 409);
+      throw new BusinessException(
+        'DICT_TYPE_EXISTS',
+        '字典类型编码已存在',
+        409,
+      );
     }
     const row = await this.prisma.dictionaryType.create({
       data: {
@@ -321,16 +325,29 @@ export class DictionaryService {
   }
 
   async page(query: DictionaryPageQueryDto) {
+    const keyword = query.keyword?.trim();
+    const aliasMatches = keyword
+      ? await this.prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT id
+          FROM dictionary_items
+          WHERE deleted_at IS NULL
+            AND (${query.type ?? null}::text IS NULL OR type = ${query.type ?? null})
+            AND strpos(lower(array_to_string(aliases, ' ')), lower(${keyword})) > 0
+        `
+      : [];
     const where: Prisma.DictionaryItemWhereInput = {
       deletedAt: null,
       ...(query.type ? { type: query.type } : {}),
       ...(query.status ? { status: query.status } : {}),
-      ...(query.keyword
+      ...(keyword
         ? {
             OR: [
-              { name: { contains: query.keyword, mode: 'insensitive' } },
-              { code: { contains: query.keyword, mode: 'insensitive' } },
-              { description: { contains: query.keyword, mode: 'insensitive' } },
+              { name: { contains: keyword, mode: 'insensitive' } },
+              { code: { contains: keyword, mode: 'insensitive' } },
+              { description: { contains: keyword, mode: 'insensitive' } },
+              ...(aliasMatches.length > 0
+                ? [{ id: { in: aliasMatches.map(({ id }) => id) } }]
+                : []),
             ],
           }
         : {}),

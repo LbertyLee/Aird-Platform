@@ -56,6 +56,8 @@ export function DictionariesPage() {
   const [data, setData] = useState<Awaited<
     ReturnType<typeof fetchDictionaries>
   > | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [keyword, setKeyword] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DictionaryItem | null>(null);
   const [form] = Form.useForm();
@@ -123,6 +125,7 @@ export function DictionariesPage() {
           page,
           pageSize: 50,
           type: activeType,
+          keyword: keyword || undefined,
         });
         setData(res);
       } catch {
@@ -131,7 +134,7 @@ export function DictionariesPage() {
         setLoading(false);
       }
     },
-    [activeType],
+    [activeType, keyword],
   );
 
   useEffect(() => {
@@ -344,6 +347,23 @@ export function DictionariesPage() {
       dataIndex: 'code',
       width: 140,
     },
+    ...(activeType === 'country_region'
+      ? [
+          {
+            title: '层级',
+            dataIndex: 'locationKind',
+            width: 110,
+            render: (value: DictionaryItem['locationKind']) =>
+              value === 'region' ? (
+                <Tag color="blue">一级行政区</Tag>
+              ) : value === 'country' ? (
+                <Tag color="green">国家 / 地区</Tag>
+              ) : (
+                '-'
+              ),
+          },
+        ]
+      : []),
     {
       title: '名称',
       dataIndex: 'name',
@@ -528,6 +548,20 @@ export function DictionariesPage() {
             label: tab.name,
           }))}
         />
+
+        <div className="dictionaries-search">
+          <Input.Search
+            allowClear
+            value={searchInput}
+            placeholder="搜索编码、名称、说明或英文名"
+            onChange={(event) => {
+              const value = event.target.value;
+              setSearchInput(value);
+              if (!value) setKeyword('');
+            }}
+            onSearch={(value) => setKeyword(value.trim())}
+          />
+        </div>
 
         <Table
           rowKey="id"

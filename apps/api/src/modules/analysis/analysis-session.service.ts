@@ -54,7 +54,10 @@ import {
   sortYearStrings,
 } from '../../common/utils/recent-years';
 import { writeLlmExtractionTraces } from './llm-extraction-trace.store';
-import { browsableExternalUrl } from '../../common/utils/external-search-domain';
+import {
+  browsableExternalUrl,
+  publicResearchWebsite,
+} from '../../common/utils/external-search-domain';
 import { normalizeObservationUnits } from './unit-normalize';
 import { extractNominalGdpFallback } from '../../infrastructure/ai/gdp-text-fallback';
 import { WorldBankDataService } from '../../research/world-bank-data.service';
@@ -159,11 +162,7 @@ type AnalysisResult = {
 @Injectable()
 export class AnalysisSessionService {
   private readonly logger = new Logger(AnalysisSessionService.name);
-  private readonly structuredStore = new StructuredDataStore(
-    undefined,
-    undefined,
-    (message) => this.logger.warn(message),
-  );
+  private readonly structuredStore: StructuredDataStore;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -173,7 +172,14 @@ export class AnalysisSessionService {
     private readonly exaContent: ExaContentHydrationService,
     private readonly worldBank: WorldBankDataService,
     private readonly unWpp: UnWppDataService = new UnWppDataService(),
-  ) {}
+  ) {
+    this.structuredStore = new StructuredDataStore(
+      undefined,
+      undefined,
+      (message) => this.logger.warn(message),
+      prisma,
+    );
+  }
 
   async create(userId: string, dto: CreateAnalysisSessionDto) {
     const startedAt = Date.now();
@@ -774,9 +780,10 @@ export class AnalysisSessionService {
               unavailable: true,
             };
       }
-      const extractionKey = this.structuredStore.fingerprint({
-        version: 1,
-        sourceId: source.id,
+      const isPublicSource =
+        source.origin === 'exa' &&
+        Boolean(publicResearchWebsite(source.sourceUrl ?? ''));
+      const extractionContext = {
         title: source.title,
         origin: source.origin,
         sourceUrl: source.sourceUrl,
@@ -788,15 +795,35 @@ export class AnalysisSessionService {
         plan: queryPlan,
         model: process.env.OPENAI_MODEL,
         endpoint: process.env.OPENAI_BASE_URL,
+      };
+      const legacyExtractionKey = this.structuredStore.fingerprint({
+        version: 1,
+        sourceId: source.id,
+        ...extractionContext,
+      });
+      const extractionKey = this.structuredStore.fingerprint({
+        version: 2,
+        ...(isPublicSource ? {} : { sourceId: source.id }),
+        ...extractionContext,
       });
       // Access to the selected source was checked before prepare(); source IDs isolate private evidence.
       const runExtraction = () =>
         this.structuredStore.getOrLoad(
           'extractions',
           extractionKey,
-          7 * 86400_000,
-          () =>
-            this.chat.extractIndicators(
+          async () => {
+            const legacy = await this.structuredStore.read<
+              Awaited<ReturnType<DeepSeekChatService['extractIndicators']>>
+            >('extractions', legacyExtractionKey);
+            if (
+              legacy &&
+              Array.isArray(legacy.items) &&
+              legacy.items.length > 0 &&
+              !legacy.trace?.error
+            ) {
+              return legacy;
+            }
+            return this.chat.extractIndicators(
               {
                 title: source.title,
                 origin: source.origin,
@@ -812,7 +839,8 @@ export class AnalysisSessionService {
                 dimensionHints: dimensionHints.promptBlock,
                 plan: queryPlan,
               },
-            ),
+            );
+          },
           (result) =>
             Array.isArray(result.items) &&
             result.items.length > 0 &&

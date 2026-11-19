@@ -10,6 +10,14 @@ interface CountryRecord {
   code: string;
 }
 
+interface RegionRecord {
+  term: string;
+  aliases: string[];
+  category: string;
+  code: string;
+  parent: string;
+}
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -23,6 +31,14 @@ async function main() {
   const countries = records
     .filter((item) => item.category === 'country')
     .map(toDictionaryItem);
+  const regionPath = path.resolve(
+    __dirname,
+    '../resources/dictionaries/world-regions.json',
+  );
+  const regionRecords = JSON.parse(
+    await readFile(regionPath, 'utf8'),
+  ) as RegionRecord[];
+  const regions = regionRecords.filter((item) => item.category === 'region');
 
   if (countries.length < 200) {
     throw new Error(`国家地区数据不完整：仅读取到 ${countries.length} 条`);
@@ -30,6 +46,10 @@ async function main() {
   const codes = new Set(countries.map((item) => item.code));
   if (codes.size !== countries.length) {
     throw new Error('国家地区数据存在重复 ISO-2 编码');
+  }
+  const regionCodes = new Set(regions.map((item) => item.code));
+  if (regions.length < 4000 || regionCodes.size !== regions.length) {
+    throw new Error('全球一级行政区数据不完整或存在重复编码');
   }
 
   const typeCode = SYSTEM_DICT_CODES.country_region;
@@ -83,8 +103,66 @@ async function main() {
     }
   }
 
+  const countryNames = new Map(
+    countries.map((country) => [country.code, country.name]),
+  );
+  const regionData = regions.map((region, index) => {
+    const parentName = countryNames.get(region.parent);
+    if (!parentName) {
+      throw new Error(`地区 ${region.code} 找不到所属国家 ${region.parent}`);
+    }
+    return {
+      type: typeCode,
+      locationKind: LocationKind.region,
+      code: region.code,
+      name: region.term,
+      aliases: region.aliases,
+      description: `一级行政区（${parentName}）`,
+      sort: 10000 + index,
+      deletedAt: null,
+    };
+  });
+  const existingRegions = await prisma.dictionaryItem.findMany({
+    where: {
+      type: typeCode,
+      code: { in: regionData.map((region) => region.code) },
+      deletedAt: null,
+    },
+    select: { id: true, code: true },
+  });
+  const existingRegionCodes = new Set(existingRegions.map((item) => item.code));
+  const existingByCode = new Map(
+    existingRegions.map((region) => [region.code, region.id]),
+  );
+  const newRegions = regionData.filter(
+    (region) => !existingRegionCodes.has(region.code),
+  );
+  for (let index = 0; index < newRegions.length; index += 500) {
+    const result = await prisma.dictionaryItem.createMany({
+      data: newRegions
+        .slice(index, index + 500)
+        .map((region) => ({ ...region, status: CommonStatus.active })),
+      skipDuplicates: true,
+    });
+    created += result.count;
+  }
+  for (let index = 0; index < regionData.length; index += 50) {
+    const batch = regionData
+      .slice(index, index + 50)
+      .filter((region) => existingRegionCodes.has(region.code));
+    await Promise.all(
+      batch.map(async (region) => {
+        await prisma.dictionaryItem.update({
+          where: { id: existingByCode.get(region.code)! },
+          data: region,
+        });
+        updated += 1;
+      }),
+    );
+  }
+
   console.log(
-    `国家地区导入完成：新增 ${created} 条，更新 ${updated} 条，共 ${countries.length} 个国家和地区。`,
+    `国家地区导入完成：新增 ${created} 条，更新 ${updated} 条，包含 ${countries.length} 个国家和地区、${regions.length} 个一级行政区。`,
   );
 }
 

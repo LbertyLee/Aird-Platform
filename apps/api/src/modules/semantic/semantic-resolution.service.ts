@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CommonStatus } from '@prisma/client';
+import { CommonStatus, LocationKind } from '@prisma/client';
 import { DeepSeekChatService } from '../../infrastructure/ai/deepseek-chat.service';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { inferQueryRegions } from '../../common/utils/query-regions';
@@ -53,6 +53,7 @@ type DictRow = {
   code: string;
   name: string;
   aliases: string[];
+  locationKind: LocationKind | null;
 };
 
 /**
@@ -103,6 +104,7 @@ export class SemanticResolutionService {
       entities,
       concepts,
       dictionaries,
+      text,
     );
     catalog.sources = sources;
 
@@ -233,16 +235,25 @@ export class SemanticResolutionService {
   ): SemanticResolution {
     const regions = inferQueryRegions(query);
     if (!regions.length) return resolution;
+    const resolvedRegions = resolution.dimensions.filter((item) =>
+      /^(region|province|city|area)$/.test(item.type),
+    );
     const dimensions = resolution.dimensions.filter(
       (item) => !/^(region|province|city|area|country_region)$/.test(item.type),
     );
+    dimensions.push(...resolvedRegions);
+    const resolvedNames = new Set(
+      resolvedRegions.map((item) => this.normalizeQueryText(item.name)),
+    );
     for (const region of regions) {
+      if (resolvedNames.has(this.normalizeQueryText(region))) continue;
       dimensions.push({
         type: 'region',
         code: region,
         name: region,
         value: region,
       });
+      resolvedNames.add(this.normalizeQueryText(region));
     }
     // A specific province is more selective than a generic country entity.
     const entities = resolution.entities.filter(
@@ -256,6 +267,7 @@ export class SemanticResolutionService {
     entities: EntityRow[],
     concepts: ConceptRow[],
     dictionaries: DictRow[],
+    query: string,
   ): SemanticCatalog {
     return {
       metrics: indicators.map((i) => ({
@@ -273,12 +285,23 @@ export class SemanticResolutionService {
         name: c.name,
         aliases: c.aliases.map((a) => a.alias),
       })),
-      dimensions: dictionaries.map((d) => ({
-        code: d.code,
-        name: d.name,
-        type: d.type,
-        aliases: d.aliases ?? [],
-      })),
+      dimensions: dictionaries
+        .filter(
+          (d) =>
+            d.locationKind !== LocationKind.region ||
+            [d.code, d.name, ...(d.aliases ?? [])].some((term) =>
+              this.containsTerm(
+                this.normalizeQueryText(query),
+                this.normalizeQueryText(term),
+              ),
+            ),
+        )
+        .map((d) => ({
+          code: d.code,
+          name: d.name,
+          type: d.locationKind === LocationKind.region ? 'region' : d.type,
+          aliases: d.aliases ?? [],
+        })),
     };
   }
 
@@ -419,7 +442,7 @@ export class SemanticResolutionService {
         !dimensions.some((d) => d.code === hit.code && d.type === hit.type)
       ) {
         dimensions.push({
-          type: hit.type,
+          type: hit.locationKind === LocationKind.region ? 'region' : hit.type,
           code: hit.code,
           name: hit.name,
           value: hit.code,
@@ -557,7 +580,7 @@ export class SemanticResolutionService {
         );
       })
       .map((d) => ({
-        type: d.type,
+        type: d.locationKind === LocationKind.region ? 'region' : d.type,
         code: d.code,
         name: d.name,
         value: d.code,

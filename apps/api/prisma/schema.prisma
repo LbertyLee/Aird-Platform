@@ -1691,6 +1691,21 @@ model ResearchBranchCache {
   @@map("research_branch_cache")
 }
 
+/// 持久化的结构化来源数据与指标抽取结果
+model StructuredDataRecord {
+  id          String   @id @default(cuid())
+  namespace   String   @db.VarChar(32)
+  fingerprint String   @db.VarChar(64)
+  checksum    String   @db.VarChar(64)
+  data        Json
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([namespace, fingerprint])
+  @@index([namespace, createdAt])
+  @@map("structured_data_records")
+}
+
 // =========================
 // 知识库
 // =========================

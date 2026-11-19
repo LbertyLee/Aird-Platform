@@ -49,13 +49,16 @@ import {
   toResearchSourceResponse,
 } from './query-evidence-sources.mapper';
 import { WorldBankDataService } from './world-bank-data.service';
-import { SiteDataDiscoveryService, needsStructuredDiscovery } from './site-data-discovery.service';
+import {
+  SiteDataDiscoveryService,
+  needsStructuredDiscovery,
+} from './site-data-discovery.service';
 import { reportResearchProgress } from '../modules/search/research-progress';
 
 @Injectable()
 export class ResearchService {
   private readonly logger = new Logger(ResearchService.name);
-  private readonly structuredStore = new StructuredDataStore(undefined, undefined, (message) => this.logger.warn(message));
+  private readonly structuredStore: StructuredDataStore;
   private readonly cacheTtlSeconds: number;
   private readonly cacheVersion: string;
   private readonly embeddingModel: string;
@@ -79,6 +82,12 @@ export class ResearchService {
     @Optional()
     private readonly siteDataDiscovery?: SiteDataDiscoveryService,
   ) {
+    this.structuredStore = new StructuredDataStore(
+      undefined,
+      undefined,
+      (message) => this.logger.warn(message),
+      prisma,
+    );
     this.cacheTtlSeconds =
       config.get<number>('RESEARCH_CACHE_TTL_SECONDS') ?? 3600;
     this.cacheVersion = config.get<string>('RESEARCH_CACHE_VERSION') ?? 'v1';
@@ -88,7 +97,6 @@ export class ResearchService {
   async getFilterCatalog() {
     return (await this.catalog.load()).filters;
   }
-
 
   getStatus() {
     return {
@@ -320,11 +328,7 @@ export class ResearchService {
     return item;
   }
 
-  async generateReport(
-    query: string,
-    sourceIds: string[],
-    actorId?: string,
-  ) {
+  async generateReport(query: string, sourceIds: string[], actorId?: string) {
     const normalizedQuery = query.trim();
     const ids = [...new Set(sourceIds.map((id) => id.trim()).filter(Boolean))];
     if (normalizedQuery.length < 2) {
@@ -343,9 +347,8 @@ export class ResearchService {
     }
 
     if (actorId && this.accessScope) {
-      const accessible = await this.accessScope.resolveAccessibleKnowledgeIds(
-        actorId,
-      );
+      const accessible =
+        await this.accessScope.resolveAccessibleKnowledgeIds(actorId);
       const forbidden = sources.find((source) => {
         const knowledgeItemId = source.metadata?.knowledgeItemId;
         return (
@@ -406,14 +409,15 @@ export class ResearchService {
         }),
         { repository: this.repository, prisma: this.prisma },
       );
-      const sources = await this.hydrateStructuredSources(mappedSources, normalizedQuery);
+      const sources = await this.hydrateStructuredSources(
+        mappedSources,
+        normalizedQuery,
+      );
       const plan = this.semanticToPlan(result.resolution, legacyPlan);
       const usedExa = result.stages.some(
         (stage) => stage.key === 'exa' && stage.status === 'completed',
       );
-      const cacheExpiresAt = new Date(
-        Date.now() + this.cacheTtlSeconds * 1000,
-      );
+      const cacheExpiresAt = new Date(Date.now() + this.cacheTtlSeconds * 1000);
 
       await this.repository.completeRun({
         id: runId,
@@ -545,11 +549,15 @@ export class ResearchService {
     };
   }
 
-  private resolveSearchMode(query: string, selected: ResearchSearchMode): ResearchSearchMode {
+  private resolveSearchMode(
+    query: string,
+    selected: ResearchSearchMode,
+  ): ResearchSearchMode {
     if (selected === 'ai-search') return selected;
     const text = query.toLowerCase();
     // Explicit wording in the question takes precedence over the UI selection.
-    if (/混合|本地和网络|知识库和网络|知识库和exa|本地和外部/.test(text)) return 'mixed';
+    if (/混合|本地和网络|知识库和网络|知识库和exa|本地和外部/.test(text))
+      return 'mixed';
     if (/知识库|本地知识|本地数据|内部资料/.test(text)) return 'knowledge';
     if (/联网|网络|互联网|exa|外部来源|在线搜索/.test(text)) return 'exa';
     return selected;
@@ -593,8 +601,9 @@ export class ResearchService {
           filters: Object.fromEntries(
             Object.entries(filters).map(([key, values]) => [
               key,
-              [...new Set(values.map((value) => value.trim()).filter(Boolean))]
-                .sort(),
+              [
+                ...new Set(values.map((value) => value.trim()).filter(Boolean)),
+              ].sort(),
             ]),
           ),
           domains: [...domains].sort(),
@@ -687,7 +696,10 @@ export class ResearchService {
     return typeof value === 'string' ? value : undefined;
   }
 
-  private async searchExaBranches(queries: string[], domains: string[] = []): Promise<{
+  private async searchExaBranches(
+    queries: string[],
+    domains: string[] = [],
+  ): Promise<{
     results: ExaResult[];
     failed: number;
   }> {
@@ -760,23 +772,44 @@ export class ResearchService {
     ).filter((source): source is SourceEntity => Boolean(source));
   }
 
-  async hydrateStructuredSources(sources: SourceEntity[], query = ''): Promise<SourceEntity[]> {
-    const hydrated = await Promise.all(sources.map(async (source) => {
-      if (source.origin !== 'exa' || source.structuredData != null || !source.sourceUrl) return source;
-      const structured = await this.tryStructuredRemote({
-        title: source.title, url: source.sourceUrl, description: source.excerpt, extraSnippets: [],
-      }, source.metadata);
-      return structured ? { ...structured, score: source.score } : source;
-    }));
+  async hydrateStructuredSources(
+    sources: SourceEntity[],
+    query = '',
+  ): Promise<SourceEntity[]> {
+    const hydrated = await Promise.all(
+      sources.map(async (source) => {
+        if (
+          source.origin !== 'exa' ||
+          source.structuredData != null ||
+          !source.sourceUrl
+        )
+          return source;
+        const structured = await this.tryStructuredRemote(
+          {
+            title: source.title,
+            url: source.sourceUrl,
+            description: source.excerpt,
+            extraSnippets: [],
+          },
+          source.metadata,
+        );
+        return structured ? { ...structured, score: source.score } : source;
+      }),
+    );
     if (!this.siteDataDiscovery) return hydrated;
-    if (needsStructuredDiscovery(query) && hydrated.some((source) => source.sourceUrl)) {
+    if (
+      needsStructuredDiscovery(query) &&
+      hydrated.some((source) => source.sourceUrl)
+    ) {
       await reportResearchProgress({
         stage: 'discovering',
         message: '正在沿相关网站目录查找可下载的数据文件',
       });
     }
     const discovered = await this.siteDataDiscovery.discover(hydrated, query);
-    const saved = await Promise.all(discovered.map((input) => this.repository.createSource(input)));
+    const saved = await Promise.all(
+      discovered.map((input) => this.repository.createSource(input)),
+    );
     return this.dedupeSources([...hydrated, ...saved]);
   }
 
@@ -788,18 +821,24 @@ export class ResearchService {
     // Only the public, unauthenticated download path uses URL-based shared reuse.
     const key = `public-download-v1:${result.url}`;
     const input = await this.structuredStore.getOrLoad(
-      'remote', key, 24 * 3600_000,
+      'remote',
+      key,
       () => this.downloadStructuredRemote(result),
-      (value) => value?.storageType === 'structured' && value.structuredData != null,
+      (value) =>
+        value?.storageType === 'structured' && value.structuredData != null,
     );
     if (!input) return undefined;
-    return this.repository.createSource({ ...input, title: result.title, metadata: { ...metadata, ...input.metadata }, searchText: `${result.title}\n${input.textContent}` });
+    return this.repository.createSource({
+      ...input,
+      title: result.title,
+      metadata: { ...metadata, ...input.metadata },
+      searchText: `${result.title}\n${input.textContent}`,
+    });
   }
 
   private async downloadStructuredRemote(
     result: ExaResult,
   ): Promise<import('./research.types').CreateSourceInput | undefined> {
-
     try {
       const response = await fetch(result.url, {
         signal: AbortSignal.timeout(8_000),

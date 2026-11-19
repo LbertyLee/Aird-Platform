@@ -1,4 +1,4 @@
-jest.mock('@prisma/client', () => ({ CommonStatus: { active: 'active' } }));
+jest.mock('@prisma/client', () => ({ CommonStatus: { active: 'active' }, LocationKind: { country: 'country', region: 'region' } }));
 jest.mock('../../infrastructure/ai/deepseek-chat.service', () => ({
   DeepSeekChatService: class DeepSeekChatService {},
 }));
@@ -95,16 +95,20 @@ describe('collective entity resolution', () => {
 });
 
 describe('SemanticResolutionService local geography', () => {
-  function setup(parsed: Record<string, unknown> | null, ready = true) {
+  function setup(
+    parsed: Record<string, unknown> | null,
+    ready = true,
+    dictionaryItems: Array<{ type: string; code: string; name: string; aliases: string[]; locationKind?: string }> = [
+      { type: 'country_region', code: 'CN', name: '中国', aliases: [] },
+    ],
+  ) {
     const prisma = {
       dataset: { findMany: async () => [] },
       indicator: { findMany: async () => [] },
       semanticEntity: { findMany: async () => [] },
       semanticConcept: { findMany: async () => [] },
       dictionaryItem: {
-        findMany: async () => [
-          { type: 'country_region', code: 'CN', name: '中国', aliases: [] },
-        ],
+        findMany: async () => dictionaryItems,
       },
     };
     const chat = {
@@ -200,5 +204,24 @@ describe('SemanticResolutionService local geography', () => {
         indicatorId: 'growth',
       }),
     ]);
+  });
+
+  it('grounds first-level administrative areas as regions', async () => {
+    const service = setup({
+      metricCodes: [], entityCodes: [], conceptCodes: [], dimensionCodes: ['US-CA'],
+      time: { type: 'UNKNOWN' }, confidence: 0.9, intent: 'analysis',
+    }, true, [
+      { type: 'country_region', locationKind: 'country', code: 'US', name: '美国', aliases: ['United States'] },
+      { type: 'country_region', locationKind: 'region', code: 'US-CA', name: 'California', aliases: [] },
+    ]);
+
+    const result = await service.resolve('California GDP and 泉州');
+
+    expect(result.dimensions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'region', code: 'US-CA', name: 'California' }),
+        expect.objectContaining({ type: 'region', name: '泉州' }),
+      ]),
+    );
   });
 });

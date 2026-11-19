@@ -37,6 +37,13 @@ const sources = [
     file: 'world-countries.json',
     format: 'countries',
   },
+  {
+    id: 'world-regions',
+    url: 'https://raw.githubusercontent.com/country-regions/country-region-data/85244c5594a7a8543af5af0ce1a743557bfc5395/data.json',
+    file: 'world-regions.json',
+    format: 'regions',
+    license: 'MIT',
+  },
   ...(process.env.NATIONAL_INDUSTRY_URL
     ? [{
         id: 'national-industry',
@@ -66,6 +73,8 @@ for (const source of sources) {
     ? `${JSON.stringify(JSON.parse(body), null, 2)}\n`
     : source.format === 'countries'
       ? `${JSON.stringify(toCountryDictionary(JSON.parse(body)), null, 2)}\n`
+      : source.format === 'regions'
+        ? `${JSON.stringify(toRegionDictionary(JSON.parse(body)), null, 2)}\n`
       : normalizeTxt(body);
   const destination = path.join(outputDir, source.file);
   const temporary = `${destination}.tmp`;
@@ -112,4 +121,29 @@ function toCountryDictionary(countries) {
       code: country?.cca3 || country?.cca2,
     }];
   });
+}
+
+function toRegionDictionary(countries) {
+  if (!Array.isArray(countries)) throw new Error('world-regions: expected array');
+  const records = countries.flatMap((country) => {
+    const countryCode = country?.countryShortCode?.trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(countryCode ?? '')) return [];
+    return (country?.regions ?? []).flatMap((region, index) => {
+      const term = region?.name?.trim();
+      if (!term) return [];
+      const shortCode = region?.shortCode?.trim().toUpperCase();
+      const fallbackCode = term.normalize('NFKD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || `REGION-${index + 1}`;
+      const suffix = (shortCode || fallbackCode).replace(/[^A-Z0-9]+/g, '-');
+      return [{ term, aliases: [], category: 'region', code: `${countryCode}-${suffix}`, parent: countryCode }];
+    });
+  });
+  const codes = new Set(records.map((record) => record.code));
+  if (records.length < 4000 || codes.size !== records.length) {
+    throw new Error(`world-regions: invalid region data (${records.length} records)`);
+  }
+  return records;
 }
