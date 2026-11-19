@@ -386,8 +386,7 @@ export class WorldBankDataService {
     const { start, end } = this.resolvePeriod(plan.timeRanges, query);
     const countries = this.resolveCountries(plan.countries, query);
     // Never silently substitute world totals for an unrecognized country.
-    if (!countries.length || start > end || end - start >= 100)
-      return undefined;
+    if (!countries.length || start > end) return undefined;
     return {
       countries,
       indicatorCodes: indicators.map((indicator) => indicator.code),

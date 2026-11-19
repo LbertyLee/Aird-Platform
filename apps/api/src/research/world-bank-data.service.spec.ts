@@ -197,6 +197,22 @@ describe('World Bank selected source hydration', () => {
     expect(sources[0].structuredData).toBeUndefined();
   });
 
+  it('fetches available observations for a range longer than 100 years', async () => {
+    const api = jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify([{}, [row, { ...row, date: '2025', value: null }]])),
+    );
+    const result = await new WorldBankDataService().hydrateSources(
+      [page('page')],
+      { ...plan, timeRanges: ['1900-2026'] },
+      '美国1900-2026年GDP总量',
+      ['gdp_current_usd'],
+    );
+    expect(new URL(String(api.mock.calls[0][0])).searchParams.get('date')).toBe('1900:2026');
+    expect(result[0].structuredData).toEqual([
+      expect.objectContaining({ year: 2024, value: 29e12 }),
+    ]);
+  });
+
   it.each([
     'https://worldbank.org.attacker.test/indicator/NY.GDP.MKTP.CD',
     'https://attacker.test/?source=worldbank.org',
