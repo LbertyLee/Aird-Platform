@@ -313,6 +313,7 @@ export default function AnalysisResults({
       </section>
     );
   const selected = selectVisualData(dataset, presentation);
+  const comparisonDataset = datasets.find((entry) => entry.id === presentation.comparisonDatasetIds?.[0]);
   const ranking = dataset.entities
     .map((entity) => ({
       entity,
@@ -352,6 +353,7 @@ export default function AnalysisResults({
             <h2>
               {dataset.name}
               {dataset.unit && `（${dataset.unit}）`}
+              {comparisonDataset && ` / ${comparisonDataset.name}（${comparisonDataset.unit || '未标注单位'}）`}
             </h2>
             {dataset.definition && (
               <p className="visual-definition">{dataset.definition}</p>
@@ -359,8 +361,10 @@ export default function AnalysisResults({
             <AnalysisVisual
               dataset={dataset}
               presentation={presentation}
+              comparisonDataset={comparisonDataset}
               exports
             />
+            {comparisonDataset && <p className="visual-definition">折线图使用左右两个纵轴分别表示两个指标；缺失或冲突数据不连线。表格、地图和分析报告展示主指标。</p>}
             <div className="visual-source">
               数据来源：
               {dataset.sources.map((source) => source.title).join('、')} ·
@@ -453,23 +457,19 @@ export default function AnalysisResults({
                 ))}
             </div>
             <div className="visual-indicator-list">
-              <h3>指标信息</h3>
+              <h3>指标信息（最多选择两个）</h3>
               {datasets.map((entry) => (
                 <label key={entry.id}>
                   <input
-                    type="radio"
-                    name="visual-indicator"
-                    checked={entry.id === dataset.id}
-                    onChange={() => {
-                      setSelection({
-                        ...defaultPresentation(entry),
-                        ...(presentation.sourceIds
-                          ? { sourceIds: presentation.sourceIds }
-                          : {}),
-                        view: presentation.view,
-                        reportViews: presentation.reportViews,
-                      });
-                      setSearch('');
+                    type="checkbox"
+                    checked={entry.id === dataset.id || entry.id === comparisonDataset?.id}
+                    disabled={entry.id !== dataset.id && entry.id !== comparisonDataset?.id && !!comparisonDataset}
+                    onChange={(event) => {
+                      if (entry.id === dataset.id) {
+                        if (!event.target.checked && comparisonDataset) {
+                          setSelection({ ...defaultPresentation(comparisonDataset), sourceIds: presentation.sourceIds, view: presentation.view, reportViews: presentation.reportViews });
+                        }
+                      } else update({ comparisonDatasetIds: event.target.checked ? [entry.id] : [] });
                     }}
                   />
                   <span>{entry.name}</span>

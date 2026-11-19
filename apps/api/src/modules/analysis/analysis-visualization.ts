@@ -13,6 +13,8 @@ export function validatePresentation(
 ): AnalysisVisualDataset {
   const dataset = datasets.find((item) => item.id === input.datasetId);
   if (!dataset) throw new BadRequestException('所选指标不存在。');
+  if (input.comparisonDatasetIds?.some((id) => id === input.datasetId || !datasets.some((item) => item.id === id)))
+    throw new BadRequestException('对比指标不存在。');
   if (input.entities.some((entity) => !dataset.entities.includes(entity)))
     throw new BadRequestException('所选国家/地区不存在。');
   const start = dataset.periods.indexOf(input.startPeriod);

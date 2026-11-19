@@ -8,6 +8,7 @@ import type {
 } from '@agent/contracts';
 import {
   buildVisualOption,
+  buildComparisonOption,
   downloadVisualBlob,
   formatVisualValue,
   selectVisualData,
@@ -50,11 +51,13 @@ export default function AnalysisVisual({
   presentation,
   compact = false,
   exports = false,
+  comparisonDataset,
 }: {
   dataset: AnalysisVisualDataset;
   presentation: AnalysisPresentation;
   compact?: boolean;
   exports?: boolean;
+  comparisonDataset?: AnalysisVisualDataset;
 }) {
   const chartRef = useRef<ReactECharts>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,8 +76,10 @@ export default function AnalysisVisual({
     [dataset, presentation],
   );
   const option = useMemo(
-    () => buildVisualOption(dataset, presentation, compact || narrow),
-    [dataset, presentation, compact, narrow],
+    () => comparisonDataset && presentation.view === 'line'
+      ? buildComparisonOption(dataset, comparisonDataset, presentation, compact || narrow)
+      : buildVisualOption(dataset, presentation, compact || narrow),
+    [dataset, comparisonDataset, presentation, compact, narrow],
   );
   const tableSvg = useMemo(
     () => visualTableSvg(dataset, presentation),

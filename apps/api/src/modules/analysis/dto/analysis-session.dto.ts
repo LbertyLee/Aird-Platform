@@ -63,6 +63,14 @@ export class AnalysisPresentationDto {
   @MaxLength(500)
   datasetId!: string;
 
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(1)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  comparisonDatasetIds?: string[];
+
   @IsArray()
   @ArrayMaxSize(500)
   @ArrayUnique()

@@ -211,6 +211,8 @@ export interface AnalysisPresentation {
   /** Optional workbench source filter; omitted means all extracted sources. */
   sourceIds?: string[];
   datasetId: string;
+  /** Additional indicators displayed alongside the primary indicator. */
+  comparisonDatasetIds?: string[];
   entities: string[];
   /** Exact selected periods; omitted for a continuous range. */
   periods?: string[];
