@@ -11,12 +11,14 @@ import type {
   AnalysisPresentation,
   AnalysisVisualDataset,
   AnalysisVisualView,
+  AnalysisVisualReport,
   ResearchSearchResponse,
   ResearchSource,
 } from '@agent/contracts';
 import {
   createAnalysisSession,
   saveAnalysisPresentation,
+  saveAnalysisReportEdits,
   type AnalysisSession,
 } from '../api/data-analysis';
 import { apiErrorMessage } from '../api/research';
@@ -92,7 +94,10 @@ export default function AnalysisResults({
     setSelection(session?.presentation);
   }, [session?.id, session?.presentation]);
   useEffect(() => () => requestRef.current?.abort(), []);
-  const report = session?.visualReport;
+  const [draftReport, setDraftReport] = useState<AnalysisVisualReport>();
+  const [editingReport, setEditingReport] = useState(false);
+  useEffect(() => { setDraftReport(session?.visualReport); setEditingReport(false); }, [session?.id, session?.visualReport]);
+  const report = draftReport ?? session?.visualReport;
   const reportDatasets =
     session && report?.presentation.sourceIds
       ? buildVisualDatasets({
@@ -102,10 +107,23 @@ export default function AnalysisResults({
           ),
         })
       : (session?.visualDatasets ?? datasets);
-  const reportDataset = reportDatasets.find(
+  const originalReportDataset = reportDatasets.find(
     (entry) => entry.id === report?.presentation.datasetId,
   );
-  const reportComparison = reportDatasets.find((entry) => entry.id === report?.presentation.comparisonDatasetIds?.[0]);
+  const originalReportComparison = reportDatasets.find((entry) => entry.id === report?.presentation.comparisonDatasetIds?.[0]);
+  function applyEdits(dataset?: AnalysisVisualDataset) {
+    if (!dataset) return undefined;
+    const edits = report?.edits?.filter((item) => item.datasetId === dataset.id) ?? [];
+    return { ...dataset, points: [...dataset.points.filter((point) => !edits.some((item) => item.entity === point.entity && item.period === point.period)), ...edits.map((item) => ({ entity: item.entity, period: item.period, value: item.value, conflict: false, sourceIds: [] }))] };
+  }
+  const reportDataset = applyEdits(originalReportDataset);
+  const reportComparison = applyEdits(originalReportComparison);
+  async function saveReportEdits() {
+    if (!session || !report || busy) return;
+    setBusy(true); setError('');
+    try { const next = await saveAnalysisReportEdits(session.id, report); onSession(next, 'report'); setEditingReport(false); setMessage('报告修改已保存。'); }
+    catch (err) { setError(apiErrorMessage(err)); } finally { setBusy(false); }
+  }
   function update(patch: Partial<AnalysisPresentation>) {
     if (presentation) {
       setSelection({ ...presentation, ...patch });
@@ -221,9 +239,9 @@ export default function AnalysisResults({
         dataset: reportDataset,
         comparisonDataset: reportComparison,
         presentation: report.presentation,
-        figures: reportFigureRequests(report.presentation),
+        figures: reportFigureRequests(report.presentation).filter((figure) => figure.view !== 'table'),
       });
-      const blob = await buildAnalysisReportDocx(report, figures);
+      const blob = await buildAnalysisReportDocx(report, figures, [reportDataset, ...(reportComparison ? [reportComparison] : [])]);
       downloadVisualBlob(blob, analysisReportDocxFilename(report.title));
     } finally {
       setDownloadingReport(false);
@@ -257,10 +275,14 @@ export default function AnalysisResults({
           </button>
         )}
         {mode === 'report' && report && (
+          <button type="button" className="secondary-button" disabled={busy} onClick={() => editingReport ? void saveReportEdits() : setEditingReport(true)}>{editingReport ? '保存报告修改' : '编辑报告'}</button>
+        )}
+        {mode === 'report' && report && editingReport && <button type="button" className="secondary-button" onClick={() => { setDraftReport(session?.visualReport); setEditingReport(false); }}>取消编辑</button>}
+        {mode === 'report' && report && (
           <button
             type="button"
             className="secondary-button"
-            disabled={downloadingReport}
+            disabled={downloadingReport || editingReport}
             onClick={() => {
               void downloadReport().catch((error) =>
                 setError(apiErrorMessage(error)),
@@ -289,7 +311,7 @@ export default function AnalysisResults({
         <button
           type="button"
           className="primary-button"
-          disabled={busy || !presentation?.entities.length}
+          disabled={busy || editingReport || !presentation?.entities.length}
           onClick={() => void save(true)}
         >
           {busy ? (
@@ -503,7 +525,7 @@ export default function AnalysisResults({
           ) : (
             <>
               <header className="visual-report-identity">
-                <h2>{report.title}</h2>
+                {editingReport ? <input aria-label="报告标题" value={report.title} onChange={(event) => setDraftReport({ ...report, title: event.target.value })} /> : <h2>{report.title}</h2>}
                 <div className="visual-report-meta">
                   生成时间：{new Date(report.createdAt).toLocaleString('zh-CN')}{' '}
                   · 当前年份：{report.presentation.currentPeriod} · 覆盖{' '}
@@ -537,18 +559,17 @@ export default function AnalysisResults({
                     key={section.title}
                   >
                     <h3>{section.title}</h3>
-                    {section.paragraphs.map((paragraph, index) => (
-                      <p key={index}>{paragraph}</p>
-                    ))}
+                    {section.paragraphs.map((paragraph, index) => editingReport ? <textarea key={index} aria-label={`${section.title} 第${index + 1}段`} value={paragraph} onChange={(event) => setDraftReport({ ...report, sections: report.sections.map((item) => item === section ? { ...item, paragraphs: item.paragraphs.map((value, i) => i === index ? event.target.value : value) } : item) })} style={{ width: '100%', minHeight: 80 }} /> : <p key={index}>{paragraph}</p>)}
                   </section>
                 ))}
               <section className="visual-report-section">
                 <h3>数据分析表：{reportDataset.name}（单位：{reportDataset.unit || '—'}）</h3>
-                <AnalysisVisual
+                {editingReport ? <EditableReportTable dataset={reportDataset} presentation={report.presentation} report={report} onChange={setDraftReport} /> : <AnalysisVisual
                   dataset={reportDataset}
                   presentation={{ ...report.presentation, view: 'table' }}
-                />
-                {reportComparison && <><h3>数据分析表：{reportComparison.name}（单位：{reportComparison.unit || '—'}）</h3><AnalysisVisual dataset={reportComparison} presentation={{ ...report.presentation, periods: selectVisualData(reportDataset, report.presentation).periods, view: 'table' }} /></>}
+                />}
+                {reportComparison && <><h3>数据分析表：{reportComparison.name}（单位：{reportComparison.unit || '—'}）</h3>{editingReport ? <EditableReportTable dataset={reportComparison} presentation={{ ...report.presentation, periods: selectVisualData(reportDataset, report.presentation).periods }} report={report} onChange={setDraftReport} /> : <AnalysisVisual dataset={reportComparison} presentation={{ ...report.presentation, periods: selectVisualData(reportDataset, report.presentation).periods, view: 'table' }} />}</>}
+                {editingReport && <p>表格修改仅用于本报告；图表会同步显示，已有统计和分析文字不会自动重算，请一并检查修改。</p>}
               </section>
               <section className="visual-report-section">
                 <h3>可视化图表</h3>
@@ -594,9 +615,7 @@ export default function AnalysisResults({
                     key={section.title}
                   >
                     <h3>{section.title}</h3>
-                    {section.paragraphs.map((paragraph, index) => (
-                      <p key={index}>{paragraph}</p>
-                    ))}
+                    {section.paragraphs.map((paragraph, index) => editingReport ? <textarea key={index} aria-label={`${section.title} 第${index + 1}段`} value={paragraph} onChange={(event) => setDraftReport({ ...report, sections: report.sections.map((item) => item === section ? { ...item, paragraphs: item.paragraphs.map((value, i) => i === index ? event.target.value : value) } : item) })} style={{ width: '100%', minHeight: 80 }} /> : <p key={index}>{paragraph}</p>)}
                   </section>
                 ))}
             </>
@@ -605,6 +624,11 @@ export default function AnalysisResults({
       )}
     </section>
   );
+}
+
+function EditableReportTable({ dataset, presentation, report, onChange }: { dataset: AnalysisVisualDataset; presentation: AnalysisPresentation; report: AnalysisVisualReport; onChange: (report: AnalysisVisualReport) => void }) {
+  const { periods, rows } = selectVisualData(dataset, presentation);
+  return <div style={{ overflowX: 'auto' }}><table><thead><tr><th>国家/地区</th>{periods.map((period) => <th key={period}>{period}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.entity}><th>{row.entity}</th>{row.values.map((value, index) => <td key={periods[index]}><input aria-label={`${dataset.name} ${row.entity} ${periods[index]}`} type="number" step="any" style={{ width: 110 }} value={value ?? ''} onChange={(event) => { const next = event.target.value === '' ? null : event.target.valueAsNumber; if (next !== null && !Number.isFinite(next)) return; const edits = (report.edits ?? []).filter((item) => !(item.datasetId === dataset.id && item.entity === row.entity && item.period === periods[index])); onChange({ ...report, edits: [...edits, { datasetId: dataset.id, entity: row.entity, period: periods[index], value: next }] }); }} /></td>)}</tr>)}</tbody></table></div>;
 }
 
 function ReportViewSelection({

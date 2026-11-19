@@ -244,6 +244,7 @@ export interface AnalysisVisualReport {
   presentation: AnalysisPresentation;
   metrics: Array<{ label: string; value: string }>;
   sections: Array<{ title: string; paragraphs: string[] }>;
+  edits?: Array<{ datasetId: string; entity: string; period: string; value: number | null }>;
 }
 
 export { buildVisualDatasets } from './analysis-datasets.js';

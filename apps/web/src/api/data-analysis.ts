@@ -433,6 +433,12 @@ export async function saveAnalysisPresentation(
   ).data;
 }
 
+export async function saveAnalysisReportEdits(id: string, report: AnalysisVisualReport): Promise<AnalysisSession> {
+  return (await http.put<AnalysisSession>(`/analysis/sessions/${encodeURIComponent(id)}/report`, {
+    title: report.title, sections: report.sections, edits: report.edits ?? [],
+  })).data;
+}
+
 export async function createAnalysisSession(
   input: {
     runId: string;

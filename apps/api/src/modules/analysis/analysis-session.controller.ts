@@ -21,6 +21,7 @@ import {
   RecentAnalysisSessionsDto,
   CreateAnalysisSessionDto,
   ExportAnalysisSessionDto,
+  AnalysisReportEditDto,
 } from './dto/analysis-session.dto';
 import { AnalysisSessionService } from './analysis-session.service';
 
@@ -69,6 +70,12 @@ export class AnalysisSessionController {
     @CurrentUser() user: AuthUserContext,
   ) {
     return this.service.savePresentation(user.userId, id, dto, true);
+  }
+
+  @Put(':id/report')
+  @ApiOperation({ summary: '保存报告正文及表格修改' })
+  editReport(@Param('id') id: string, @Body() dto: AnalysisReportEditDto, @CurrentUser() user: AuthUserContext) {
+    return this.service.editReport(user.userId, id, dto);
   }
 
   @Post(':id/export.xlsx')

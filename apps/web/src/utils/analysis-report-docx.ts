@@ -12,8 +12,11 @@ import {
   Packer,
   Paragraph,
   TextRun,
+  Table,
+  TableRow,
+  TableCell,
 } from 'docx';
-import { visualTableSvg, visualViews } from './analysis-visualization';
+import { formatVisualValue, selectVisualData, visualTableSvg, visualViews } from './analysis-visualization';
 
 const REPORT_FONT = 'Microsoft YaHei';
 
@@ -75,8 +78,9 @@ function docxImage(figure: ReportFigureImage) {
 export async function buildAnalysisReportDocx(
   report: AnalysisVisualReport,
   figures: ReportFigureImage[],
+  datasets: AnalysisVisualDataset[] = [],
 ): Promise<Blob> {
-  const children: Paragraph[] = [
+  const children: (Paragraph | Table)[] = [
     heading(report.title, HeadingLevel.TITLE),
     bodyParagraph(
       `生成时间：${new Date(report.createdAt).toLocaleString('zh-CN')} · 当前年份：${report.presentation.currentPeriod}`,
@@ -97,6 +101,18 @@ export async function buildAnalysisReportDocx(
     children.push(heading(section.title, HeadingLevel.HEADING_2));
     for (const paragraph of section.paragraphs) {
       children.push(bodyParagraph(paragraph));
+    }
+  }
+
+  const primary = datasets[0];
+  for (const dataset of datasets) {
+    const selection = selectVisualData(dataset, { ...report.presentation, periods: primary ? selectVisualData(primary, report.presentation).periods : report.presentation.periods });
+    children.push(heading(`数据明细：${dataset.name}（${dataset.unit || '未注明单位'}）`, HeadingLevel.HEADING_2));
+    // Split wide time series into manageable editable tables in Word.
+    for (let start = 0; start < selection.periods.length; start += 8) {
+      const periods = selection.periods.slice(start, start + 8);
+      const row = (cells: string[]) => new TableRow({ children: cells.map((value) => new TableCell({ children: [new Paragraph(value)] })) });
+      children.push(new Table({ rows: [row(['国家/地区', ...periods]), ...selection.rows.map((entry) => row([entry.entity, ...entry.values.slice(start, start + 8).map(formatVisualValue)]))] }));
     }
   }
 

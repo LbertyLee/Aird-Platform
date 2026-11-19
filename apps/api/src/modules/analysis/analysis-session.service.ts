@@ -31,7 +31,7 @@ import {
 } from '../../research/exa-content-hydration.service';
 import type { SourceEntity } from '../../research/research.types';
 import { KnowledgeAccessScopeService } from '../knowledge/knowledge-access-scope.service';
-import type { CreateAnalysisSessionDto } from './dto/analysis-session.dto';
+import type { CreateAnalysisSessionDto, AnalysisReportEditDto } from './dto/analysis-session.dto';
 import { DeepSeekChatService } from '../../infrastructure/ai/deepseek-chat.service';
 import type { LlmExtractionTrace } from '../../infrastructure/ai/deepseek-chat.service';
 import type {
@@ -376,6 +376,27 @@ export class AnalysisSessionService {
     if (saved.count === 0)
       throw new NotFoundException('分析会话不存在或无权访问。');
     return { ...session, ...next, visualReport };
+  }
+
+  async editReport(userId: string, id: string, dto: AnalysisReportEditDto) {
+    const session = await this.get(userId, id);
+    const report = session.visualReport;
+    if (!report) throw new BadRequestException('请先生成分析报告。');
+    const datasets = report.presentation.sourceIds ? buildVisualDatasets({ ...session, observations: session.observations.filter((item) => report.presentation.sourceIds!.includes(item.sourceId)) }) : session.visualDatasets;
+    const allowedIds = [report.presentation.datasetId, ...(report.presentation.comparisonDatasetIds ?? [])];
+    const primary = datasets.find((item) => item.id === report.presentation.datasetId);
+    const periods = report.presentation.periods ?? primary?.periods.slice(primary.periods.indexOf(report.presentation.startPeriod), primary.periods.indexOf(report.presentation.endPeriod) + 1) ?? [];
+    const keys = new Set<string>();
+    for (const edit of dto.edits) {
+      const key = JSON.stringify([edit.datasetId, edit.entity, edit.period]);
+      if (!allowedIds.includes(edit.datasetId) || !report.presentation.entities.includes(edit.entity) || !periods.includes(edit.period) || keys.has(key)) throw new BadRequestException('报告表格修改包含无效或重复的单元格。');
+      keys.add(key);
+    }
+    const { id: _id, createdAt: _createdAt, visualDatasets: _datasets, ...result } = session;
+    const visualReport = { ...report, title: dto.title, sections: dto.sections, edits: dto.edits };
+    const saved = await this.prisma.analysisSession.updateMany({ where: { id, userId }, data: { resultJson: { ...result, visualReport } as unknown as Prisma.InputJsonValue } });
+    if (!saved.count) throw new NotFoundException('分析会话不存在或无权访问。');
+    return { ...session, visualReport };
   }
 
   async exportXlsx(

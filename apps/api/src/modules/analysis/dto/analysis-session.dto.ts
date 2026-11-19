@@ -8,6 +8,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  IsNumber,
   MaxLength,
   MinLength,
   ValidateNested,
@@ -108,6 +109,24 @@ export class AnalysisPresentationDto {
   @ArrayUnique()
   @IsIn(['line', 'map', 'table'], { each: true })
   reportViews!: AnalysisVisualView[];
+}
+
+export class ReportSectionEditDto {
+  @IsString() @MaxLength(500) title!: string;
+  @IsArray() @ArrayMaxSize(100) @IsString({ each: true }) @MaxLength(10000, { each: true }) paragraphs!: string[];
+}
+
+export class ReportPointEditDto {
+  @IsString() @MaxLength(500) datasetId!: string;
+  @IsString() @MaxLength(300) entity!: string;
+  @IsString() @MaxLength(100) period!: string;
+  @IsOptional() @IsNumber() value!: number | null;
+}
+
+export class AnalysisReportEditDto {
+  @IsString() @MaxLength(500) title!: string;
+  @IsArray() @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => ReportSectionEditDto) sections!: ReportSectionEditDto[];
+  @IsArray() @ArrayMaxSize(50000) @ValidateNested({ each: true }) @Type(() => ReportPointEditDto) edits!: ReportPointEditDto[];
 }
 
 export class ExportAnalysisSessionDto {
