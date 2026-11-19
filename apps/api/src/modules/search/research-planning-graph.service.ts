@@ -19,6 +19,7 @@ import {
 } from './research-query-plan';
 import { recentYearRangeForQueries } from '../../common/utils/recent-years';
 import { reportResearchProgress } from './research-progress';
+import { planChinaRegionalSeries } from './china-regional-series-plan';
 
 const PlanningState = Annotation.Root({
   query: Annotation<string>,
@@ -119,6 +120,7 @@ export class ResearchPlanningGraphService {
           sources,
           filters.sources,
         );
+        const regionalSeries = planChinaRegionalSeries(query);
         if (!planned)
           this.logger.warn(
             'AI source planner returned no plan; using bounded fallback discovery',
@@ -130,22 +132,32 @@ export class ResearchPlanningGraphService {
           }),
         );
         const seen = new Set<string>();
-        const chosen = (planned?.sources ?? fallback.sources).flatMap(
-          (source) => {
+        const chosen = [
+          ...(regionalSeries?.sources ?? []),
+          ...(planned?.sources ?? fallback.sources),
+        ]
+          .flatMap((source) => {
             const websiteUrl = publicResearchWebsite(source.websiteUrl);
             const { domain } = externalSearchDomain(websiteUrl);
-            if (!websiteUrl || !domain || seen.has(domain)) return [];
+            const identity = `${domain ?? ''}\n${source.query.trim().toLowerCase()}`;
+            if (!websiteUrl || !domain || seen.has(identity)) return [];
             if (filters.sources.length && !allowedDomains.has(domain))
               return [];
-            seen.add(domain);
+            seen.add(identity);
             return [{ ...source, websiteUrl }];
-          },
-        );
+          })
+          .slice(0, 5);
         return {
           resolution: {
             ...state.resolution,
             sourcePlan: {
               ...(planned ?? fallback),
+              dataNeeds: [
+                ...new Set([
+                  ...(planned?.dataNeeds ?? fallback.dataNeeds),
+                  ...(regionalSeries?.needs ?? []),
+                ]),
+              ],
               sources: chosen,
               allowDiscovery:
                 !filters.sources.length &&
