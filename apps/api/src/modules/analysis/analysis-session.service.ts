@@ -355,7 +355,7 @@ export class AnalysisSessionService {
     const dataset = validatePresentation(scopedDatasets, presentation);
     let visualReport: AnalysisVisualReport | undefined = session.visualReport;
     if (generateReport) {
-      visualReport = buildVisualReport(dataset, presentation, session.warnings);
+      visualReport = buildVisualReport(dataset, presentation, session.warnings, scopedDatasets.find((item) => item.id === presentation.comparisonDatasetIds?.[0]));
     }
     const {
       id: _id,

@@ -195,6 +195,45 @@ export function datasetsFromSources(
   }));
 }
 
+export function buildComparisonOption(
+  primary: AnalysisVisualDataset,
+  comparison: AnalysisVisualDataset,
+  presentation: AnalysisPresentation,
+  compact = false,
+) {
+  const periods = selectVisualData(primary, presentation).periods;
+  const datasets = [primary, comparison];
+  const series = datasets.flatMap((dataset, axis) =>
+    presentation.entities.map((entity, index) => ({
+      name: `${entity} · ${dataset.name}（${dataset.unit || '未标注单位'}）`,
+      type: 'line',
+      yAxisIndex: axis,
+      data: periods.map((period) => {
+        const point = dataset.points.find((item) => item.entity === entity && item.period === period);
+        return point && !point.conflict ? point.value : null;
+      }),
+      connectNulls: false,
+      symbolSize: compact ? 4 : 6,
+      lineStyle: { type: axis ? 'dashed' : 'solid' },
+      itemStyle: { color: visualPalette[(index * 2 + axis) % visualPalette.length] },
+    })),
+  );
+  return {
+    animation: false,
+    color: visualPalette,
+    tooltip: { trigger: 'axis', confine: true },
+    legend: { type: 'scroll', bottom: 0 },
+    grid: { top: 55, left: compact ? 10 : 20, right: compact ? 10 : 20, bottom: 45, containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: periods, axisLabel: { hideOverlap: true } },
+    yAxis: datasets.map((dataset, index) => ({
+      type: 'value', scale: true, name: `${dataset.name}（${dataset.unit || '未标注单位'}）`,
+      nameLocation: 'end', nameGap: 24, position: index ? 'right' : 'left',
+      splitLine: { show: index === 0, lineStyle: { type: 'dashed' } },
+    })),
+    series,
+  };
+}
+
 export function buildVisualOption(
   dataset: AnalysisVisualDataset,
   presentation: AnalysisPresentation,

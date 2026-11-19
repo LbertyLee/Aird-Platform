@@ -105,6 +105,7 @@ export default function AnalysisResults({
   const reportDataset = reportDatasets.find(
     (entry) => entry.id === report?.presentation.datasetId,
   );
+  const reportComparison = reportDatasets.find((entry) => entry.id === report?.presentation.comparisonDatasetIds?.[0]);
   function update(patch: Partial<AnalysisPresentation>) {
     if (presentation) {
       setSelection({ ...presentation, ...patch });
@@ -218,6 +219,7 @@ export default function AnalysisResults({
       const figures = await collectReportFigureImages({
         reportRoot: reportElement.current,
         dataset: reportDataset,
+        comparisonDataset: reportComparison,
         presentation: report.presentation,
         figures: reportFigureRequests(report.presentation),
       });
@@ -313,6 +315,7 @@ export default function AnalysisResults({
       </section>
     );
   const selected = selectVisualData(dataset, presentation);
+  const comparisonDataset = datasets.find((entry) => entry.id === presentation.comparisonDatasetIds?.[0]);
   const ranking = dataset.entities
     .map((entity) => ({
       entity,
@@ -352,6 +355,7 @@ export default function AnalysisResults({
             <h2>
               {dataset.name}
               {dataset.unit && `（${dataset.unit}）`}
+              {comparisonDataset && ` / ${comparisonDataset.name}（${comparisonDataset.unit || '未标注单位'}）`}
             </h2>
             {dataset.definition && (
               <p className="visual-definition">{dataset.definition}</p>
@@ -359,8 +363,10 @@ export default function AnalysisResults({
             <AnalysisVisual
               dataset={dataset}
               presentation={presentation}
+              comparisonDataset={comparisonDataset}
               exports
             />
+            {comparisonDataset && <p className="visual-definition">折线图使用左右两个纵轴分别表示两个指标；缺失或冲突数据不连线。表格、地图和分析报告展示主指标。</p>}
             <div className="visual-source">
               数据来源：
               {dataset.sources.map((source) => source.title).join('、')} ·
@@ -453,23 +459,19 @@ export default function AnalysisResults({
                 ))}
             </div>
             <div className="visual-indicator-list">
-              <h3>指标信息</h3>
+              <h3>指标信息（最多选择两个）</h3>
               {datasets.map((entry) => (
                 <label key={entry.id}>
                   <input
-                    type="radio"
-                    name="visual-indicator"
-                    checked={entry.id === dataset.id}
-                    onChange={() => {
-                      setSelection({
-                        ...defaultPresentation(entry),
-                        ...(presentation.sourceIds
-                          ? { sourceIds: presentation.sourceIds }
-                          : {}),
-                        view: presentation.view,
-                        reportViews: presentation.reportViews,
-                      });
-                      setSearch('');
+                    type="checkbox"
+                    checked={entry.id === dataset.id || entry.id === comparisonDataset?.id}
+                    disabled={entry.id !== dataset.id && entry.id !== comparisonDataset?.id && !!comparisonDataset}
+                    onChange={(event) => {
+                      if (entry.id === dataset.id) {
+                        if (!event.target.checked && comparisonDataset) {
+                          setSelection({ ...defaultPresentation(comparisonDataset), sourceIds: presentation.sourceIds, view: presentation.view, reportViews: presentation.reportViews });
+                        }
+                      } else update({ comparisonDatasetIds: event.target.checked ? [entry.id] : [] });
                     }}
                   />
                   <span>{entry.name}</span>
@@ -493,7 +495,7 @@ export default function AnalysisResults({
                 value={presentation.reportViews}
                 onChange={(reportViews) => update({ reportViews })}
               />
-              <AnalysisVisual dataset={dataset} presentation={presentation} />
+              <AnalysisVisual dataset={dataset} comparisonDataset={comparisonDataset} presentation={presentation} />
               <div className="visual-empty">
                 点击“生成分析结果”保存当前数据的分析与图表。
               </div>
@@ -541,11 +543,12 @@ export default function AnalysisResults({
                   </section>
                 ))}
               <section className="visual-report-section">
-                <h3>数据分析表（单位：{reportDataset.unit || '—'}）</h3>
+                <h3>数据分析表：{reportDataset.name}（单位：{reportDataset.unit || '—'}）</h3>
                 <AnalysisVisual
                   dataset={reportDataset}
                   presentation={{ ...report.presentation, view: 'table' }}
                 />
+                {reportComparison && <><h3>数据分析表：{reportComparison.name}（单位：{reportComparison.unit || '—'}）</h3><AnalysisVisual dataset={reportComparison} presentation={{ ...report.presentation, periods: selectVisualData(reportDataset, report.presentation).periods, view: 'table' }} /></>}
               </section>
               <section className="visual-report-section">
                 <h3>可视化图表</h3>
@@ -569,6 +572,7 @@ export default function AnalysisResults({
                     </figcaption>
                     <AnalysisVisual
                       dataset={reportDataset}
+                      comparisonDataset={reportComparison}
                       presentation={{
                         ...report.presentation,
                         reportViews: presentation.reportViews,
