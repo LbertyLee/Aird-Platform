@@ -13,7 +13,7 @@ export const ADMIN_PAGE_PERMISSIONS: Record<string, string | null> = {
   '/data/indicators': 'menu:data:indicator',
   '/data/dictionaries': 'menu:data:dict',
   '/data/datasets': 'menu:data:dataset',
-  '/data/structured-data': 'menu:data:structured-data',
+  '/data/structured-data': 'menu:data:structured-data|menu:data:dataset',
   '/data/field-mappings': 'menu:data:field-mapping',
   '/data/ingestion-jobs': 'menu:data:field-mapping|menu:knowledge:library',
   '/data/search-test': 'menu:data:field-mapping|menu:knowledge:library',

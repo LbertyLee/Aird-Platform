@@ -26,7 +26,7 @@ export class StructuredDataAdminController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
-  @RequirePermissions('menu:data:structured-data')
+  @RequirePermissions('menu:data:structured-data|menu:data:dataset')
   @ApiOperation({ summary: '分页查询本地结构化数据记录' })
   async page(@Query() query: StructuredDataPageQueryDto) {
     const { skip, take } = query.toSkipTake();
@@ -62,7 +62,7 @@ export class StructuredDataAdminController {
   }
 
   @Get(':id')
-  @RequirePermissions('menu:data:structured-data')
+  @RequirePermissions('menu:data:structured-data|menu:data:dataset')
   @ApiOperation({ summary: '查询结构化数据记录详情' })
   async detail(@Param('id') id: string) {
     const row = await this.prisma.structuredDataRecord.findUnique({
