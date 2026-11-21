@@ -1,4 +1,24 @@
-import { PrismaClient, PermissionType, RoleType, UserStatus, MembershipScope, BenefitValueType, CommonStatus, DataScopeType, PackageType, PackageTag, OrderStatus, SubscriptionStatus, AnnouncementAudienceScope, AnnouncementStatus, BusinessNotificationStatus, SensitiveWordCategory, LocationKind, KnowledgeLibraryType, KnowledgeVisibility } from '@prisma/client';
+import {
+  PrismaClient,
+  PermissionType,
+  RoleType,
+  UserStatus,
+  MembershipScope,
+  BenefitValueType,
+  CommonStatus,
+  DataScopeType,
+  PackageType,
+  PackageTag,
+  OrderStatus,
+  SubscriptionStatus,
+  AnnouncementAudienceScope,
+  AnnouncementStatus,
+  BusinessNotificationStatus,
+  SensitiveWordCategory,
+  LocationKind,
+  KnowledgeLibraryType,
+  KnowledgeVisibility,
+} from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import {
   AGENT_CATEGORY_SEEDS,
@@ -33,76 +53,451 @@ const permissions: Array<{
   sort: number;
   parentCode?: string;
 }> = [
-  { code: 'menu:dashboard', name: '运营看板', type: PermissionType.menu, path: '/', sort: 10 },
-  { code: 'menu:user', name: '用户管理', type: PermissionType.menu, path: '/users', sort: 30 },
-  { code: 'menu:agent', name: '智能体维护', type: PermissionType.menu, path: '/agents', sort: 35 },
-  { code: 'menu:membership:level', name: '会员等级', type: PermissionType.menu, path: '/membership', sort: 40 },
-  { code: 'menu:membership:order', name: '会员订单', type: PermissionType.menu, path: '/membership', sort: 41 },
-  { code: 'menu:payment:config', name: '订单与支付配置', type: PermissionType.menu, path: '/payment/config', sort: 50 },
-  { code: 'menu:rbac:role', name: '角色权限', type: PermissionType.menu, path: '/rbac/roles', sort: 60 },
-  { code: 'menu:data:indicator', name: '指标管理', type: PermissionType.menu, path: '/data/indicators', sort: 70 },
-  { code: 'menu:data:dict', name: '字典管理', type: PermissionType.menu, path: '/data/dictionaries', sort: 71 },
-  { code: 'menu:data:dataset', name: '来源管理', type: PermissionType.menu, path: '/data/datasets', sort: 72 },
-  { code: 'menu:data:field-mapping', name: '字段映射', type: PermissionType.menu, path: '/data/field-mappings', sort: 73 },
-  { code: 'menu:knowledge:library', name: '知识库管理', type: PermissionType.menu, path: '/knowledge/library', sort: 80 },
-  { code: 'menu:knowledge:user', name: '用户知识库管理', type: PermissionType.menu, path: '/knowledge/user', sort: 81 },
-  { code: 'menu:knowledge:public-review', name: '公开数据审核', type: PermissionType.menu, path: '/knowledge/public-review', sort: 82 },
-  { code: 'menu:knowledge:index', name: '知识索引', type: PermissionType.menu, path: '/knowledge/indexes', sort: 86 },
-  { code: 'menu:oper:log', name: '操作日志', type: PermissionType.menu, path: '/oper-logs', sort: 90 },
-  { code: 'menu:operation:announcement', name: '消息公告', type: PermissionType.menu, path: '/operation/announcements', sort: 91 },
-  { code: 'menu:system:backup', name: '数据备份', type: PermissionType.menu, path: '/system/backups', sort: 95 },
-  { code: 'button:user:create', name: '用户新增', type: PermissionType.button, sort: 100 },
-  { code: 'button:user:update', name: '用户编辑', type: PermissionType.button, sort: 101 },
-  { code: 'button:user:disable', name: '用户禁用', type: PermissionType.button, sort: 102 },
-  { code: 'button:user:reset_password', name: '重置密码', type: PermissionType.button, sort: 103 },
-  { code: 'button:user:delete', name: '用户删除', type: PermissionType.button, sort: 104 },
-  { code: 'button:rbac:role:delete', name: '角色删除', type: PermissionType.button, sort: 105 },
-  { code: 'button:membership:bind_benefit', name: '配置权益', type: PermissionType.button, sort: 120 },
-  { code: 'button:payment:channel:create', name: '支付渠道新增', type: PermissionType.button, sort: 121 },
-  { code: 'button:payment:channel:update', name: '支付渠道编辑', type: PermissionType.button, sort: 122 },
-  { code: 'button:payment:channel:disable', name: '支付渠道停用', type: PermissionType.button, sort: 123 },
-  { code: 'button:payment:credential:update', name: '支付密钥更新', type: PermissionType.button, sort: 124 },
-  { code: 'button:payment:order:close', name: '订单关闭', type: PermissionType.button, sort: 125 },
-  { code: 'button:payment:order:refund', name: '订单退款', type: PermissionType.button, sort: 126 },
-  { code: 'button:payment:order:process', name: '异常订单处理', type: PermissionType.button, sort: 127 },
-  { code: 'button:data:indicator:create', name: '指标新增', type: PermissionType.button, sort: 130 },
-  { code: 'button:data:indicator:update', name: '指标编辑', type: PermissionType.button, sort: 131 },
-  { code: 'button:data:indicator:delete', name: '指标删除', type: PermissionType.button, sort: 132 },
-  { code: 'button:data:dict:create', name: '字典新增', type: PermissionType.button, sort: 140 },
-  { code: 'button:data:dict:update', name: '字典编辑', type: PermissionType.button, sort: 141 },
-  { code: 'button:data:dict:delete', name: '字典删除', type: PermissionType.button, sort: 142 },
-  { code: 'button:data:dataset:create', name: '来源新增', type: PermissionType.button, sort: 150 },
-  { code: 'button:data:dataset:update', name: '来源编辑', type: PermissionType.button, sort: 151 },
-  { code: 'button:data:dataset:delete', name: '来源删除', type: PermissionType.button, sort: 152 },
-  { code: 'button:data:dataset:publish', name: '来源上下架', type: PermissionType.button, sort: 153 },
-  { code: 'button:data:dataset:upload', name: '来源文件上传', type: PermissionType.button, sort: 154 },
-  { code: 'button:data:field-mapping:create', name: '字段映射新增', type: PermissionType.button, sort: 155 },
-  { code: 'button:data:field-mapping:update', name: '字段映射编辑', type: PermissionType.button, sort: 156 },
-  { code: 'button:data:field-mapping:delete', name: '字段映射删除', type: PermissionType.button, sort: 157 },
-  { code: 'button:knowledge:library:create', name: '知识库新增', type: PermissionType.button, sort: 158 },
-  { code: 'button:knowledge:library:update', name: '知识库编辑', type: PermissionType.button, sort: 159 },
-  { code: 'button:knowledge:library:delete', name: '知识库删除', type: PermissionType.button, sort: 160 },
-  { code: 'button:knowledge:item:create', name: '知识条目新增', type: PermissionType.button, sort: 161 },
-  { code: 'button:knowledge:item:update', name: '知识条目编辑', type: PermissionType.button, sort: 162 },
-  { code: 'button:knowledge:item:delete', name: '知识条目删除', type: PermissionType.button, sort: 163 },
-  { code: 'button:knowledge:item:publish', name: '知识条目上下架', type: PermissionType.button, sort: 164 },
-  { code: 'button:knowledge:item:upload', name: '知识条目上传', type: PermissionType.button, sort: 165 },
-  { code: 'button:knowledge:audit:approve', name: '知识审核通过', type: PermissionType.button, sort: 166 },
-  { code: 'button:knowledge:audit:reject', name: '知识审核驳回', type: PermissionType.button, sort: 167 },
-  { code: 'button:knowledge:category:create', name: '知识分类新增', type: PermissionType.button, sort: 170 },
-  { code: 'button:knowledge:category:update', name: '知识分类编辑', type: PermissionType.button, sort: 171 },
-  { code: 'button:knowledge:category:delete', name: '知识分类删除', type: PermissionType.button, sort: 172 },
-  { code: 'button:knowledge:tag:create', name: '知识标签新增', type: PermissionType.button, sort: 173 },
-  { code: 'button:knowledge:tag:update', name: '知识标签编辑', type: PermissionType.button, sort: 174 },
-  { code: 'button:knowledge:tag:delete', name: '知识标签删除', type: PermissionType.button, sort: 175 },
-  { code: 'button:knowledge:index:rebuild', name: '知识索引重建', type: PermissionType.button, sort: 180 },
-  { code: 'button:knowledge:index:cleanup', name: '知识索引清理', type: PermissionType.button, sort: 181 },
-  { code: 'button:operation:announcement:create', name: '公告新增', type: PermissionType.button, sort: 190 },
-  { code: 'button:operation:announcement:update', name: '公告编辑', type: PermissionType.button, sort: 191 },
-  { code: 'button:operation:announcement:publish', name: '公告发布撤回', type: PermissionType.button, sort: 192 },
-  { code: 'button:system:backup:run', name: '手动触发备份', type: PermissionType.button, sort: 195 },
-  { code: 'button:system:backup:restore', name: '一键恢复备份', type: PermissionType.button, sort: 196 },
-  { code: 'export:user', name: '导出用户', type: PermissionType.export, sort: 200 },
+  {
+    code: 'menu:dashboard',
+    name: '运营看板',
+    type: PermissionType.menu,
+    path: '/',
+    sort: 10,
+  },
+  {
+    code: 'menu:user',
+    name: '用户管理',
+    type: PermissionType.menu,
+    path: '/users',
+    sort: 30,
+  },
+  {
+    code: 'menu:agent',
+    name: '智能体维护',
+    type: PermissionType.menu,
+    path: '/agents',
+    sort: 35,
+  },
+  {
+    code: 'menu:membership:level',
+    name: '会员等级',
+    type: PermissionType.menu,
+    path: '/membership',
+    sort: 40,
+  },
+  {
+    code: 'menu:membership:order',
+    name: '会员订单',
+    type: PermissionType.menu,
+    path: '/membership',
+    sort: 41,
+  },
+  {
+    code: 'menu:payment:config',
+    name: '订单与支付配置',
+    type: PermissionType.menu,
+    path: '/payment/config',
+    sort: 50,
+  },
+  {
+    code: 'menu:rbac:role',
+    name: '角色权限',
+    type: PermissionType.menu,
+    path: '/rbac/roles',
+    sort: 60,
+  },
+  {
+    code: 'menu:data:indicator',
+    name: '指标管理',
+    type: PermissionType.menu,
+    path: '/data/indicators',
+    sort: 70,
+  },
+  {
+    code: 'menu:data:dict',
+    name: '字典管理',
+    type: PermissionType.menu,
+    path: '/data/dictionaries',
+    sort: 71,
+  },
+  {
+    code: 'menu:data:dataset',
+    name: '来源管理',
+    type: PermissionType.menu,
+    path: '/data/datasets',
+    sort: 72,
+  },
+  {
+    code: 'menu:data:structured-data',
+    name: '结构化数据',
+    type: PermissionType.menu,
+    path: '/data/structured-data',
+    sort: 72.5,
+  },
+  {
+    code: 'menu:data:field-mapping',
+    name: '字段映射',
+    type: PermissionType.menu,
+    path: '/data/field-mappings',
+    sort: 73,
+  },
+  {
+    code: 'menu:knowledge:library',
+    name: '知识库管理',
+    type: PermissionType.menu,
+    path: '/knowledge/library',
+    sort: 80,
+  },
+  {
+    code: 'menu:knowledge:user',
+    name: '用户知识库管理',
+    type: PermissionType.menu,
+    path: '/knowledge/user',
+    sort: 81,
+  },
+  {
+    code: 'menu:knowledge:public-review',
+    name: '公开数据审核',
+    type: PermissionType.menu,
+    path: '/knowledge/public-review',
+    sort: 82,
+  },
+  {
+    code: 'menu:knowledge:index',
+    name: '知识索引',
+    type: PermissionType.menu,
+    path: '/knowledge/indexes',
+    sort: 86,
+  },
+  {
+    code: 'menu:oper:log',
+    name: '操作日志',
+    type: PermissionType.menu,
+    path: '/oper-logs',
+    sort: 90,
+  },
+  {
+    code: 'menu:operation:announcement',
+    name: '消息公告',
+    type: PermissionType.menu,
+    path: '/operation/announcements',
+    sort: 91,
+  },
+  {
+    code: 'menu:system:backup',
+    name: '数据备份',
+    type: PermissionType.menu,
+    path: '/system/backups',
+    sort: 95,
+  },
+  {
+    code: 'button:user:create',
+    name: '用户新增',
+    type: PermissionType.button,
+    sort: 100,
+  },
+  {
+    code: 'button:user:update',
+    name: '用户编辑',
+    type: PermissionType.button,
+    sort: 101,
+  },
+  {
+    code: 'button:user:disable',
+    name: '用户禁用',
+    type: PermissionType.button,
+    sort: 102,
+  },
+  {
+    code: 'button:user:reset_password',
+    name: '重置密码',
+    type: PermissionType.button,
+    sort: 103,
+  },
+  {
+    code: 'button:user:delete',
+    name: '用户删除',
+    type: PermissionType.button,
+    sort: 104,
+  },
+  {
+    code: 'button:rbac:role:delete',
+    name: '角色删除',
+    type: PermissionType.button,
+    sort: 105,
+  },
+  {
+    code: 'button:membership:bind_benefit',
+    name: '配置权益',
+    type: PermissionType.button,
+    sort: 120,
+  },
+  {
+    code: 'button:payment:channel:create',
+    name: '支付渠道新增',
+    type: PermissionType.button,
+    sort: 121,
+  },
+  {
+    code: 'button:payment:channel:update',
+    name: '支付渠道编辑',
+    type: PermissionType.button,
+    sort: 122,
+  },
+  {
+    code: 'button:payment:channel:disable',
+    name: '支付渠道停用',
+    type: PermissionType.button,
+    sort: 123,
+  },
+  {
+    code: 'button:payment:credential:update',
+    name: '支付密钥更新',
+    type: PermissionType.button,
+    sort: 124,
+  },
+  {
+    code: 'button:payment:order:close',
+    name: '订单关闭',
+    type: PermissionType.button,
+    sort: 125,
+  },
+  {
+    code: 'button:payment:order:refund',
+    name: '订单退款',
+    type: PermissionType.button,
+    sort: 126,
+  },
+  {
+    code: 'button:payment:order:process',
+    name: '异常订单处理',
+    type: PermissionType.button,
+    sort: 127,
+  },
+  {
+    code: 'button:data:indicator:create',
+    name: '指标新增',
+    type: PermissionType.button,
+    sort: 130,
+  },
+  {
+    code: 'button:data:indicator:update',
+    name: '指标编辑',
+    type: PermissionType.button,
+    sort: 131,
+  },
+  {
+    code: 'button:data:indicator:delete',
+    name: '指标删除',
+    type: PermissionType.button,
+    sort: 132,
+  },
+  {
+    code: 'button:data:dict:create',
+    name: '字典新增',
+    type: PermissionType.button,
+    sort: 140,
+  },
+  {
+    code: 'button:data:dict:update',
+    name: '字典编辑',
+    type: PermissionType.button,
+    sort: 141,
+  },
+  {
+    code: 'button:data:dict:delete',
+    name: '字典删除',
+    type: PermissionType.button,
+    sort: 142,
+  },
+  {
+    code: 'button:data:dataset:create',
+    name: '来源新增',
+    type: PermissionType.button,
+    sort: 150,
+  },
+  {
+    code: 'button:data:dataset:update',
+    name: '来源编辑',
+    type: PermissionType.button,
+    sort: 151,
+  },
+  {
+    code: 'button:data:dataset:delete',
+    name: '来源删除',
+    type: PermissionType.button,
+    sort: 152,
+  },
+  {
+    code: 'button:data:dataset:publish',
+    name: '来源上下架',
+    type: PermissionType.button,
+    sort: 153,
+  },
+  {
+    code: 'button:data:dataset:upload',
+    name: '来源文件上传',
+    type: PermissionType.button,
+    sort: 154,
+  },
+  {
+    code: 'button:data:field-mapping:create',
+    name: '字段映射新增',
+    type: PermissionType.button,
+    sort: 155,
+  },
+  {
+    code: 'button:data:field-mapping:update',
+    name: '字段映射编辑',
+    type: PermissionType.button,
+    sort: 156,
+  },
+  {
+    code: 'button:data:field-mapping:delete',
+    name: '字段映射删除',
+    type: PermissionType.button,
+    sort: 157,
+  },
+  {
+    code: 'button:knowledge:library:create',
+    name: '知识库新增',
+    type: PermissionType.button,
+    sort: 158,
+  },
+  {
+    code: 'button:knowledge:library:update',
+    name: '知识库编辑',
+    type: PermissionType.button,
+    sort: 159,
+  },
+  {
+    code: 'button:knowledge:library:delete',
+    name: '知识库删除',
+    type: PermissionType.button,
+    sort: 160,
+  },
+  {
+    code: 'button:knowledge:item:create',
+    name: '知识条目新增',
+    type: PermissionType.button,
+    sort: 161,
+  },
+  {
+    code: 'button:knowledge:item:update',
+    name: '知识条目编辑',
+    type: PermissionType.button,
+    sort: 162,
+  },
+  {
+    code: 'button:knowledge:item:delete',
+    name: '知识条目删除',
+    type: PermissionType.button,
+    sort: 163,
+  },
+  {
+    code: 'button:knowledge:item:publish',
+    name: '知识条目上下架',
+    type: PermissionType.button,
+    sort: 164,
+  },
+  {
+    code: 'button:knowledge:item:upload',
+    name: '知识条目上传',
+    type: PermissionType.button,
+    sort: 165,
+  },
+  {
+    code: 'button:knowledge:audit:approve',
+    name: '知识审核通过',
+    type: PermissionType.button,
+    sort: 166,
+  },
+  {
+    code: 'button:knowledge:audit:reject',
+    name: '知识审核驳回',
+    type: PermissionType.button,
+    sort: 167,
+  },
+  {
+    code: 'button:knowledge:category:create',
+    name: '知识分类新增',
+    type: PermissionType.button,
+    sort: 170,
+  },
+  {
+    code: 'button:knowledge:category:update',
+    name: '知识分类编辑',
+    type: PermissionType.button,
+    sort: 171,
+  },
+  {
+    code: 'button:knowledge:category:delete',
+    name: '知识分类删除',
+    type: PermissionType.button,
+    sort: 172,
+  },
+  {
+    code: 'button:knowledge:tag:create',
+    name: '知识标签新增',
+    type: PermissionType.button,
+    sort: 173,
+  },
+  {
+    code: 'button:knowledge:tag:update',
+    name: '知识标签编辑',
+    type: PermissionType.button,
+    sort: 174,
+  },
+  {
+    code: 'button:knowledge:tag:delete',
+    name: '知识标签删除',
+    type: PermissionType.button,
+    sort: 175,
+  },
+  {
+    code: 'button:knowledge:index:rebuild',
+    name: '知识索引重建',
+    type: PermissionType.button,
+    sort: 180,
+  },
+  {
+    code: 'button:knowledge:index:cleanup',
+    name: '知识索引清理',
+    type: PermissionType.button,
+    sort: 181,
+  },
+  {
+    code: 'button:operation:announcement:create',
+    name: '公告新增',
+    type: PermissionType.button,
+    sort: 190,
+  },
+  {
+    code: 'button:operation:announcement:update',
+    name: '公告编辑',
+    type: PermissionType.button,
+    sort: 191,
+  },
+  {
+    code: 'button:operation:announcement:publish',
+    name: '公告发布撤回',
+    type: PermissionType.button,
+    sort: 192,
+  },
+  {
+    code: 'button:system:backup:run',
+    name: '手动触发备份',
+    type: PermissionType.button,
+    sort: 195,
+  },
+  {
+    code: 'button:system:backup:restore',
+    name: '一键恢复备份',
+    type: PermissionType.button,
+    sort: 196,
+  },
+  {
+    code: 'export:user',
+    name: '导出用户',
+    type: PermissionType.export,
+    sort: 200,
+  },
   { code: 'data:all', name: '全部数据', type: PermissionType.data, sort: 300 },
 ];
 
@@ -115,7 +510,13 @@ async function main() {
       (id) =>
         prisma.permission.update({
           where: { id },
-          data: { name: item.name, type: item.type, path: item.path, sort: item.sort, deletedAt: null },
+          data: {
+            name: item.name,
+            type: item.type,
+            path: item.path,
+            sort: item.sort,
+            deletedAt: null,
+          },
         }),
       () =>
         prisma.permission.create({
@@ -252,11 +653,40 @@ async function main() {
     });
   }
   if ((await prisma.agent.count()) === 0) {
-    await prisma.agent.createMany({ data: [
-      { name: '学习搭子', description: '好好学习，搭桥向上！', categoryCode: 'learning', author: '智谱清言', icon: '🧠', iconColor: '#d9f99d', usageCount: 65100, sort: 1 },
-      { name: '高情商杨老师', description: '话术大师帮你出招—语言的艺术，人格的魅力', categoryCode: 'workplace', author: '呆老师DAI-Lord', icon: '💬', iconColor: '#4f46e5', usageCount: 181000, sort: 2 },
-      { name: 'AI画图', description: '打开你的脑洞，所想即所画！', categoryCode: 'ai_tools', author: '智谱清言', icon: '✦', iconColor: '#e9b7f7', usageCount: 13430000, sort: 3 },
-    ] });
+    await prisma.agent.createMany({
+      data: [
+        {
+          name: '学习搭子',
+          description: '好好学习，搭桥向上！',
+          categoryCode: 'learning',
+          author: '智谱清言',
+          icon: '🧠',
+          iconColor: '#d9f99d',
+          usageCount: 65100,
+          sort: 1,
+        },
+        {
+          name: '高情商杨老师',
+          description: '话术大师帮你出招—语言的艺术，人格的魅力',
+          categoryCode: 'workplace',
+          author: '呆老师DAI-Lord',
+          icon: '💬',
+          iconColor: '#4f46e5',
+          usageCount: 181000,
+          sort: 2,
+        },
+        {
+          name: 'AI画图',
+          description: '打开你的脑洞，所想即所画！',
+          categoryCode: 'ai_tools',
+          author: '智谱清言',
+          icon: '✦',
+          iconColor: '#e9b7f7',
+          usageCount: 13430000,
+          sort: 3,
+        },
+      ],
+    });
   }
   await prisma.dataScope.upsert({
     where: { roleId: platformAdminId },
@@ -277,10 +707,30 @@ async function main() {
 
   // 权益定义
   const benefits = [
-    { code: 'search_quota', name: '搜索次数', valueType: BenefitValueType.int, unit: '次/周期' },
-    { code: 'export_quota', name: '导出次数', valueType: BenefitValueType.int, unit: '次/周期' },
-    { code: 'max_agents', name: 'Agent 数量', valueType: BenefitValueType.int, unit: '个' },
-    { code: 'storage_bytes', name: '存储容量', valueType: BenefitValueType.bytes, unit: '字节' },
+    {
+      code: 'search_quota',
+      name: '搜索次数',
+      valueType: BenefitValueType.int,
+      unit: '次/周期',
+    },
+    {
+      code: 'export_quota',
+      name: '导出次数',
+      valueType: BenefitValueType.int,
+      unit: '次/周期',
+    },
+    {
+      code: 'max_agents',
+      name: 'Agent 数量',
+      valueType: BenefitValueType.int,
+      unit: '个',
+    },
+    {
+      code: 'storage_bytes',
+      name: '存储容量',
+      valueType: BenefitValueType.bytes,
+      unit: '字节',
+    },
   ];
   for (const b of benefits) {
     await prisma.benefitDefinition.upsert({
@@ -378,7 +828,10 @@ async function main() {
     },
   ];
 
-  const seededLevels: Record<string, { id: string; monthlyPrice: number; scenario: string }> = {};
+  const seededLevels: Record<
+    string,
+    { id: string; monthlyPrice: number; scenario: string }
+  > = {};
   for (const def of levelDefs) {
     const level = await upsertByFinder(
       () => prisma.membershipLevel.findFirst({ where: { code: def.code } }),
@@ -422,10 +875,17 @@ async function main() {
     for (const pb of def.benefits) {
       await prisma.levelBenefit.upsert({
         where: {
-          levelId_benefitCode: { levelId: level.id, benefitCode: pb.benefitCode },
+          levelId_benefitCode: {
+            levelId: level.id,
+            benefitCode: pb.benefitCode,
+          },
         },
         update: { valueJson: pb.valueJson },
-        create: { levelId: level.id, benefitCode: pb.benefitCode, valueJson: pb.valueJson },
+        create: {
+          levelId: level.id,
+          benefitCode: pb.benefitCode,
+          valueJson: pb.valueJson,
+        },
       });
     }
   }
@@ -531,16 +991,20 @@ async function main() {
         sort: 2,
       },
     );
-    const quarterlyPkg = await upsertPackage(levelMeta.id, PackageType.quarterly, {
-      name: '季付',
-      price: quarterly,
-      originalPrice: quarterlyOrigin,
-      priceLabel: `¥${quarterly.toFixed(2)} / 季`,
-      description: `约 ¥${firstMonth.toFixed(2)}/月 · 一次付 3 个月，到期手动续费`,
-      tag: PackageTag.on_sale,
-      durationDays: 90,
-      sort: 3,
-    });
+    const quarterlyPkg = await upsertPackage(
+      levelMeta.id,
+      PackageType.quarterly,
+      {
+        name: '季付',
+        price: quarterly,
+        originalPrice: quarterlyOrigin,
+        priceLabel: `¥${quarterly.toFixed(2)} / 季`,
+        description: `约 ¥${firstMonth.toFixed(2)}/月 · 一次付 3 个月，到期手动续费`,
+        tag: PackageTag.on_sale,
+        durationDays: 90,
+        sort: 3,
+      },
+    );
     const yearlyPkg = await upsertPackage(levelMeta.id, PackageType.yearly, {
       name: '年付',
       price: yearly,
@@ -638,14 +1102,18 @@ async function main() {
     });
   };
 
-  const liSub = await upsertDemoSubscription('seed-li-sub', demoUserIds.li_research, {
-    levelId: proLevel.id,
-    packageId: autoRenewPkg.id,
-    status: SubscriptionStatus.active,
-    startAt: daysFromNow(-24),
-    endAt: daysFromNow(6),
-    autoRenew: true,
-  });
+  const liSub = await upsertDemoSubscription(
+    'seed-li-sub',
+    demoUserIds.li_research,
+    {
+      levelId: proLevel.id,
+      packageId: autoRenewPkg.id,
+      status: SubscriptionStatus.active,
+      startAt: daysFromNow(-24),
+      endAt: daysFromNow(6),
+      autoRenew: true,
+    },
+  );
 
   await upsertDemoSubscription('seed-zhao-sub', demoUserIds.zhao_member, {
     levelId: proLevel.id,
@@ -892,7 +1360,11 @@ async function main() {
   await prisma.userProfile.upsert({
     where: { userId: admin.id },
     update: { displayName: '超级管理员' },
-    create: { userId: admin.id, displayName: '超级管理员', remark: '系统内置超级管理员账号' },
+    create: {
+      userId: admin.id,
+      displayName: '超级管理员',
+      remark: '系统内置超级管理员账号',
+    },
   });
 
   const existingBinding = await prisma.userRole.findFirst({
@@ -1037,7 +1509,12 @@ async function main() {
     aliases: string[];
     sort: number;
   }> = [
-    { code: 'CN', name: '中国', aliases: ['中华人民共和国', 'China', 'PRC'], sort: 10 },
+    {
+      code: 'CN',
+      name: '中国',
+      aliases: ['中华人民共和国', 'China', 'PRC'],
+      sort: 10,
+    },
     { code: 'US', name: '美国', aliases: ['USA', 'United States'], sort: 20 },
     { code: 'JP', name: '日本', aliases: ['Japan'], sort: 30 },
     { code: 'IN', name: '印度', aliases: ['India'], sort: 40 },
@@ -1260,7 +1737,9 @@ async function main() {
   ]);
   let categorySort = 90;
   for (const name of categoryNames) {
-    const preset = defaultIndicatorCategories.find((item) => item.name === name);
+    const preset = defaultIndicatorCategories.find(
+      (item) => item.name === name,
+    );
     const code = preset?.code ?? slugify(name);
     const sort = preset?.sort ?? categorySort;
     categorySort += 10;
@@ -1547,7 +2026,8 @@ async function main() {
     await prisma.businessNotification.createMany({
       data: [
         {
-          content: '《中美GDP增长率对比分析报告》已生成，可在历史记录与成果中查看。',
+          content:
+            '《中美GDP增长率对比分析报告》已生成，可在历史记录与成果中查看。',
           receiverId: receiverA,
           status: BusinessNotificationStatus.unread,
           bizType: 'report_ready',
@@ -1612,9 +2092,24 @@ async function main() {
     hitCount: number;
     status: CommonStatus;
   }> = [
-    { word: '词A', category: SensitiveWordCategory.political, hitCount: 3, status: CommonStatus.active },
-    { word: '词B', category: SensitiveWordCategory.porn, hitCount: 0, status: CommonStatus.disabled },
-    { word: '词C', category: SensitiveWordCategory.ad, hitCount: 1, status: CommonStatus.active },
+    {
+      word: '词A',
+      category: SensitiveWordCategory.political,
+      hitCount: 3,
+      status: CommonStatus.active,
+    },
+    {
+      word: '词B',
+      category: SensitiveWordCategory.porn,
+      hitCount: 0,
+      status: CommonStatus.disabled,
+    },
+    {
+      word: '词C',
+      category: SensitiveWordCategory.ad,
+      hitCount: 1,
+      status: CommonStatus.active,
+    },
   ];
   for (const item of sensitiveSeeds) {
     await upsertByFinder(

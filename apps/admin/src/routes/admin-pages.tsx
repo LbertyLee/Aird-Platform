@@ -6,6 +6,7 @@ import {
   CrownOutlined,
   DashboardOutlined,
   DatabaseOutlined,
+  TableOutlined,
   ApartmentOutlined,
   ExperimentOutlined,
   FileSearchOutlined,
@@ -41,6 +42,7 @@ import { SystemBackupsPage } from '../pages/SystemBackupsPage';
 import { UsersPage } from '../pages/UsersPage';
 import { AgentsPage } from '../pages/AgentsPage';
 import { SearchModelsPage } from '../pages/SearchModelsPage';
+import { StructuredDataPage } from '../pages/StructuredDataPage';
 
 /** 管理端可缓存页签定义 */
 export type AdminPageDef = {
@@ -77,7 +79,13 @@ export const ADMIN_PAGES: Record<string, AdminPageDef> = {
     component: UsersPage,
     flush: true,
   },
-  '/agents': { title: '智能体维护', sub: '智能体内容、分类与上架状态管理', icon: <RobotOutlined />, component: AgentsPage, flush: true },
+  '/agents': {
+    title: '智能体维护',
+    sub: '智能体内容、分类与上架状态管理',
+    icon: <RobotOutlined />,
+    component: AgentsPage,
+    flush: true,
+  },
   '/membership': {
     title: '会员管理',
     sub: '套餐方案、缴费订单与续费提醒',
@@ -119,7 +127,11 @@ export const ADMIN_PAGES: Record<string, AdminPageDef> = {
     component: SystemBackupsPage,
   },
   '/system/search-models': {
-    title: '搜索模型', sub: '用户可选大模型配置', icon: <RobotOutlined />, component: SearchModelsPage, flush: true,
+    title: '搜索模型',
+    sub: '用户可选大模型配置',
+    icon: <RobotOutlined />,
+    component: SearchModelsPage,
+    flush: true,
   },
   '/data/indicators': {
     title: '指标管理',
@@ -138,6 +150,13 @@ export const ADMIN_PAGES: Record<string, AdminPageDef> = {
     sub: '数据来源网站/目录配置（非文件上传）',
     icon: <DatabaseOutlined />,
     component: DatasetsPage,
+  },
+  '/data/structured-data': {
+    title: '结构化数据',
+    sub: '本地数据库中的结构化数据记录',
+    icon: <TableOutlined />,
+    component: StructuredDataPage,
+    flush: true,
   },
   '/data/field-mappings': {
     title: '字段映射',

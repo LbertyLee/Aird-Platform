@@ -5,11 +5,28 @@ import type {
 } from '@agent/contracts';
 import { http } from './http';
 
-export type SearchModelItem = { id: string; value: string; label: string; status: 'active' | 'disabled'; sort: number };
-export const fetchSearchModels = async () => (await http.get<SearchModelItem[]>('/admin/search-models')).data;
-export const createSearchModel = async (payload: { value: string; label: string; sort?: number }) => (await http.post<SearchModelItem>('/admin/search-models', payload)).data;
-export const updateSearchModel = async (id: string, payload: Partial<Omit<SearchModelItem, 'id'>>) => (await http.put<SearchModelItem>(`/admin/search-models/${id}`, payload)).data;
-export const deleteSearchModel = async (id: string) => { await http.delete(`/admin/search-models/${id}`); };
+export type SearchModelItem = {
+  id: string;
+  value: string;
+  label: string;
+  status: 'active' | 'disabled';
+  sort: number;
+};
+export const fetchSearchModels = async () =>
+  (await http.get<SearchModelItem[]>('/admin/search-models')).data;
+export const createSearchModel = async (payload: {
+  value: string;
+  label: string;
+  sort?: number;
+}) => (await http.post<SearchModelItem>('/admin/search-models', payload)).data;
+export const updateSearchModel = async (
+  id: string,
+  payload: Partial<Omit<SearchModelItem, 'id'>>,
+) =>
+  (await http.put<SearchModelItem>(`/admin/search-models/${id}`, payload)).data;
+export const deleteSearchModel = async (id: string) => {
+  await http.delete(`/admin/search-models/${id}`);
+};
 
 export type AgentItem = {
   id: string;
@@ -44,12 +61,17 @@ export type AgentCategoryOption = {
   name: string;
   sort: number;
 };
-export const fetchAgents = async (q?: string) => (await http.get<AgentItem[]>('/admin/agents', { params: { q } })).data;
+export const fetchAgents = async (q?: string) =>
+  (await http.get<AgentItem[]>('/admin/agents', { params: { q } })).data;
 export const fetchAgentCategories = async () =>
   (await http.get<AgentCategoryOption[]>('/agents/categories')).data;
-export const createAgent = async (payload: AgentPayload) => (await http.post<AgentItem>('/admin/agents', payload)).data;
-export const updateAgent = async (id: string, payload: Partial<AgentPayload>) => (await http.put<AgentItem>(`/admin/agents/${id}`, payload)).data;
-export const deleteAgent = async (id: string) => { await http.delete(`/admin/agents/${id}`); };
+export const createAgent = async (payload: AgentPayload) =>
+  (await http.post<AgentItem>('/admin/agents', payload)).data;
+export const updateAgent = async (id: string, payload: Partial<AgentPayload>) =>
+  (await http.put<AgentItem>(`/admin/agents/${id}`, payload)).data;
+export const deleteAgent = async (id: string) => {
+  await http.delete(`/admin/agents/${id}`);
+};
 
 /** 通用分页结果 */
 export type PageResult<T> = {
@@ -58,6 +80,35 @@ export type PageResult<T> = {
   page: number;
   pageSize: number;
 };
+
+export type StructuredDataRecord = {
+  id: string;
+  namespace: 'sources' | 'remote' | 'extractions';
+  fingerprint: string;
+  checksum: string;
+  createdAt: string;
+  updatedAt: string;
+};
+export type StructuredDataRecordDetail = StructuredDataRecord & {
+  data: unknown;
+};
+export async function fetchStructuredData(params: {
+  page?: number;
+  pageSize?: number;
+  namespace?: string;
+  keyword?: string;
+}) {
+  return (
+    await http.get<PageResult<StructuredDataRecord>>('/admin/structured-data', {
+      params,
+    })
+  ).data;
+}
+export async function fetchStructuredDataDetail(id: string) {
+  return (
+    await http.get<StructuredDataRecordDetail>(`/admin/structured-data/${id}`)
+  ).data;
+}
 
 export type UserItem = {
   id: string;
@@ -249,9 +300,12 @@ export type DashboardRangeParams = {
 
 /** 运营看板总览（支持时间范围 / 时区） */
 export async function fetchOverview(params: DashboardRangeParams = {}) {
-  const { data } = await http.get<PlatformOverview>('/admin/dashboard/overview', {
-    params,
-  });
+  const { data } = await http.get<PlatformOverview>(
+    '/admin/dashboard/overview',
+    {
+      params,
+    },
+  );
   return data;
 }
 
@@ -383,11 +437,24 @@ export async function fetchMembershipOverview() {
   );
   return data;
 }
-export async function fetchPointAccounts(params?: { page?: number; pageSize?: number; keyword?: string }) {
-  return (await http.get<PageResult<PointAccountItem>>('/admin/membership/points/accounts', { params })).data;
+export async function fetchPointAccounts(params?: {
+  page?: number;
+  pageSize?: number;
+  keyword?: string;
+}) {
+  return (
+    await http.get<PageResult<PointAccountItem>>(
+      '/admin/membership/points/accounts',
+      { params },
+    )
+  ).data;
 }
 export async function fetchPointLedgers(userId: string) {
-  return (await http.get<PointLedgerItem[]>(`/admin/membership/points/accounts/${userId}/ledgers`)).data;
+  return (
+    await http.get<PointLedgerItem[]>(
+      `/admin/membership/points/accounts/${userId}/ledgers`,
+    )
+  ).data;
 }
 export async function fetchPointRules() {
   return (await http.get<PointRules>('/admin/membership/points/rules')).data;
@@ -406,7 +473,8 @@ export async function updatePointRules(payload: {
   }>;
   levelMonthlyPoints?: Array<{ levelId: string; monthlyPoints: number }>;
 }) {
-  return (await http.put<PointRules>('/admin/membership/points/rules', payload)).data;
+  return (await http.put<PointRules>('/admin/membership/points/rules', payload))
+    .data;
 }
 
 /** 会员套餐 */
@@ -433,11 +501,15 @@ export async function updatePackage(
   return data;
 }
 export async function offShelfPackage(id: string) {
-  const { data } = await http.patch(`/admin/membership/packages/${id}/off-shelf`);
+  const { data } = await http.patch(
+    `/admin/membership/packages/${id}/off-shelf`,
+  );
   return data;
 }
 export async function onShelfPackage(id: string) {
-  const { data } = await http.patch(`/admin/membership/packages/${id}/on-shelf`);
+  const { data } = await http.patch(
+    `/admin/membership/packages/${id}/on-shelf`,
+  );
   return data;
 }
 
@@ -688,7 +760,10 @@ export async function setRoleDataScope(
 ) {
   await http.put(`/admin/roles/${id}/data-scope`, payload);
 }
-export async function updateRoleStatus(id: string, status: 'active' | 'disabled') {
+export async function updateRoleStatus(
+  id: string,
+  status: 'active' | 'disabled',
+) {
   const { data } = await http.patch(`/admin/roles/${id}/status`, { status });
   return data;
 }
@@ -1613,7 +1688,9 @@ export async function fetchKnowledgeCategoryTree() {
   return data;
 }
 
-export async function createKnowledgeCategory(payload: Record<string, unknown>) {
+export async function createKnowledgeCategory(
+  payload: Record<string, unknown>,
+) {
   const { data } = await http.post('/admin/knowledge/categories', payload);
   return data;
 }
@@ -1846,7 +1923,9 @@ export type SearchTestResult = {
 };
 
 export async function fetchSearchTestStatus() {
-  const { data } = await http.get<SearchTestStatus>('/admin/search-test/status');
+  const { data } = await http.get<SearchTestStatus>(
+    '/admin/search-test/status',
+  );
   return data;
 }
 
@@ -1854,7 +1933,10 @@ export async function runSearchTest(body: {
   query: string;
   mode?: 'mixed' | 'exa' | 'knowledge';
 }) {
-  const { data } = await http.post<SearchTestResult>('/admin/search-test', body);
+  const { data } = await http.post<SearchTestResult>(
+    '/admin/search-test',
+    body,
+  );
   return data;
 }
 
@@ -2237,10 +2319,11 @@ export async function exportHotWords(range: '7d' | '30d' = '7d') {
 }
 
 export async function setQuickSearch(keyword: string) {
-  const { data } = await http.post<{ ok: boolean; id: string; keyword: string }>(
-    '/admin/operation/search-ops/quick-search',
-    { keyword },
-  );
+  const { data } = await http.post<{
+    ok: boolean;
+    id: string;
+    keyword: string;
+  }>('/admin/operation/search-ops/quick-search', { keyword });
   return data;
 }
 
@@ -2257,10 +2340,11 @@ export async function fetchNoResultWords(params?: {
 }
 
 export async function markNoResultWord(keyword: string, note?: string) {
-  const { data } = await http.post<{ ok: boolean; keyword: string; handled: boolean }>(
-    '/admin/operation/search-ops/no-result-words/mark',
-    { keyword, note },
-  );
+  const { data } = await http.post<{
+    ok: boolean;
+    keyword: string;
+    handled: boolean;
+  }>('/admin/operation/search-ops/no-result-words/mark', { keyword, note });
   return data;
 }
 
@@ -2379,9 +2463,12 @@ export async function runSystemBackup() {
 }
 
 export async function updateBackupSchedule(enabled: boolean) {
-  const { data } = await http.put<BackupStatus>('/admin/system/backups/schedule', {
-    enabled,
-  });
+  const { data } = await http.put<BackupStatus>(
+    '/admin/system/backups/schedule',
+    {
+      enabled,
+    },
+  );
   return data;
 }
 

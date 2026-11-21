@@ -27,10 +27,7 @@ import { logoutApi, meApi } from '../api/auth';
 import { cancelAccessTokenRefresh } from '../api/http';
 import { KeepAliveOutlet } from '../components/KeepAliveOutlet';
 import { PageTabs } from '../components/PageTabs';
-import {
-  ADMIN_PAGES,
-  normalizeAdminPath,
-} from '../routes/admin-pages';
+import { ADMIN_PAGES, normalizeAdminPath } from '../routes/admin-pages';
 import { canAccessAdminPage } from '../routes/admin-permissions';
 import { useSessionStore } from '../stores/session';
 import { useTabsStore } from '../stores/tabs';
@@ -133,6 +130,12 @@ export function AdminLayout() {
           label: '来源管理',
           code: 'menu:data:dataset',
         },
+        {
+          key: '/data/structured-data',
+          icon: <DatabaseOutlined />,
+          label: '结构化数据',
+          code: 'menu:data:structured-data',
+        },
       ].filter((m) => canAccessAdminPage(m.key, permissionCodes)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [permissionCodes],
@@ -226,7 +229,12 @@ export function AdminLayout() {
 
   const showDashboard = canAccessAdminPage('/', permissionCodes);
   const showUserGroup = userChildren.length > 0;
-  const agentMenu = { key: '/agents', icon: <RobotOutlined />, label: '智能体管理', code: 'menu:agent' };
+  const agentMenu = {
+    key: '/agents',
+    icon: <RobotOutlined />,
+    label: '智能体管理',
+    code: 'menu:agent',
+  };
   const showAgent = canAccessAdminPage(agentMenu.key, permissionCodes);
   const showDataResource = dataResourceChildren.length > 0;
   const showKnowledge = knowledgeChildren.length > 0;
@@ -340,11 +348,9 @@ export function AdminLayout() {
     systemChildren,
   ]);
 
-  const underUserGroup = [
-    '/users',
-    '/membership',
-    '/rbac/roles',
-  ].includes(activePath);
+  const underUserGroup = ['/users', '/membership', '/rbac/roles'].includes(
+    activePath,
+  );
 
   const underDataResource = [
     '/data/indicators',
@@ -468,9 +474,7 @@ export function AdminLayout() {
                 ? '/knowledge/user'
                 : activePath,
           ]}
-          {...(collapsed
-            ? {}
-            : { openKeys, onOpenChange: setOpenKeys })}
+          {...(collapsed ? {} : { openKeys, onOpenChange: setOpenKeys })}
           items={menuItems}
           onClick={(info) => {
             onMenuClick(info);

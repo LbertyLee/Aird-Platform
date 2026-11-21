@@ -18,6 +18,7 @@ import { UserOptionsController } from './user-options.controller';
 import { UserKnowledgeController } from './user-knowledge.controller';
 import { SiteDataDiscoveryService } from './site-data-discovery.service';
 import { OurWorldInDataService } from './our-world-in-data.service';
+import { StructuredDataAdminController } from './structured-data-admin.controller';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { OurWorldInDataService } from './our-world-in-data.service';
     ResearchAdminController,
     UserOptionsController,
     UserKnowledgeController,
+    StructuredDataAdminController,
   ],
   providers: [
     ResearchService,

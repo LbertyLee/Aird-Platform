@@ -41,7 +41,9 @@ describe('OurWorldInDataService', () => {
   it('hydrates the requested country and years with source metadata', async () => {
     const fetch = jest
       .spyOn(globalThis, 'fetch')
-      .mockImplementation(() => new Response(csvFixture(), { status: 200 }));
+      .mockImplementation(
+        async () => new Response(csvFixture(), { status: 200 }),
+      );
 
     const result = await new OurWorldInDataService().hydrateSources(
       [source()],
@@ -75,7 +77,9 @@ describe('OurWorldInDataService', () => {
   it('selects named regions, defaults to World, and rejects lookalike hosts', async () => {
     const fetch = jest
       .spyOn(globalThis, 'fetch')
-      .mockImplementation(() => new Response(csvFixture(), { status: 200 }));
+      .mockImplementation(
+        async () => new Response(csvFixture(), { status: 200 }),
+      );
     const service = new OurWorldInDataService();
 
     const region = await service.hydrateSources(

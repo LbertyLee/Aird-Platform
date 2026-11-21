@@ -3,6 +3,7 @@ import { parse } from 'csv-parse/sync';
 import { StructuredDataStore } from './structured-data-store';
 import { QUERY_COUNTRIES } from '../common/utils/query-countries';
 import type { SourceEntity } from './research.types';
+import { PrismaService } from '../infrastructure/prisma/prisma.service';
 
 export const OWID_MADDISON_PAGE_URL =
   'https://ourworldindata.org/grapher/gdp-per-capita-maddison-project-database';
@@ -40,11 +41,16 @@ export function isOwidMaddisonSource(source: SourceEntity): boolean {
 @Injectable()
 export class OurWorldInDataService {
   private readonly logger = new Logger(OurWorldInDataService.name);
-  private readonly store = new StructuredDataStore(
-    undefined,
-    undefined,
-    (message) => this.logger.warn(message),
-  );
+  private readonly store: StructuredDataStore;
+
+  constructor(prisma?: PrismaService) {
+    this.store = new StructuredDataStore(
+      undefined,
+      undefined,
+      (message) => this.logger.warn(message),
+      prisma,
+    );
+  }
 
   async hydrateSources(
     sources: SourceEntity[],

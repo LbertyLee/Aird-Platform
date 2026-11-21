@@ -115,6 +115,7 @@ export function buildPermissionTreeFromFlat(
         'menu:data:indicator',
         'menu:data:dict',
         'menu:data:dataset',
+        'menu:data:structured-data',
         'menu:data:field-mapping',
       ],
     },
@@ -209,17 +210,16 @@ export function PermissionTreeSelect({
 
   const treeData = useMemo(() => toAntTreeData(tree), [tree]);
 
-  const handleCheck: NonNullable<
-    React.ComponentProps<typeof Tree>['onCheck']
-  > = useCallback(
-    (checked) => {
-      const keys = (Array.isArray(checked) ? checked : checked.checked).map(
-        (key) => String(key),
-      );
-      onChange(keys.filter((key) => !key.startsWith('section:')));
-    },
-    [onChange],
-  );
+  const handleCheck: NonNullable<React.ComponentProps<typeof Tree>['onCheck']> =
+    useCallback(
+      (checked) => {
+        const keys = (Array.isArray(checked) ? checked : checked.checked).map(
+          (key) => String(key),
+        );
+        onChange(keys.filter((key) => !key.startsWith('section:')));
+      },
+      [onChange],
+    );
 
   return (
     <div className="perm-tree-select">
@@ -233,9 +233,7 @@ export function PermissionTreeSelect({
         </Checkbox>
         <Checkbox
           disabled={disabled}
-          onChange={(e) =>
-            onChange(e.target.checked ? [...leafKeys] : [])
-          }
+          onChange={(e) => onChange(e.target.checked ? [...leafKeys] : [])}
         >
           全选/全不选
         </Checkbox>
