@@ -61,6 +61,96 @@ export class StructuredDataAdminController {
     return new PageResultDto(rows, total, query.page, query.pageSize);
   }
 
+  @Get('observations')
+  @RequirePermissions('menu:data:structured-data|menu:data:dataset')
+  @ApiOperation({ summary: '分页查询结构化观测数据' })
+  async observations(@Query() query: StructuredDataPageQueryDto) {
+    const { skip, take } = query.toSkipTake();
+    const keyword = query.keyword?.trim();
+    const where = {
+      ...(query.namespace ? { namespace: query.namespace } : {}),
+      ...(keyword
+        ? {
+            OR: [
+              {
+                indicatorEnglish: {
+                  contains: keyword,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                indicatorChinese: {
+                  contains: keyword,
+                  mode: 'insensitive' as const,
+                },
+              },
+              { region: { contains: keyword, mode: 'insensitive' as const } },
+              {
+                sourceOrganization: {
+                  contains: keyword,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                sourceProject: {
+                  contains: keyword,
+                  mode: 'insensitive' as const,
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.structuredDataObservation.findMany({
+        where,
+        select: {
+          id: true,
+          namespace: true,
+          indicatorEnglish: true,
+          indicatorChinese: true,
+          sourceOrganization: true,
+          sourceProject: true,
+          region: true,
+          regionType: true,
+          parentRegion: true,
+          startTime: true,
+          endTime: true,
+          timeIndicatorType: true,
+          dataValue: true,
+          unit: true,
+          sourceUrl: true,
+          publishedAt: true,
+          indicatorExplanation: true,
+          inputBy: true,
+          inputAt: true,
+          isPublic: true,
+          dataOwner: true,
+          lastModifiedBy: true,
+          lastModifiedAt: true,
+          annotations: true,
+          createdAt: true,
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip,
+        take,
+      }),
+      this.prisma.structuredDataObservation.count({ where }),
+    ]);
+    return new PageResultDto(rows, total, query.page, query.pageSize);
+  }
+
+  @Get('observations/:id')
+  @RequirePermissions('menu:data:structured-data|menu:data:dataset')
+  @ApiOperation({ summary: '查询结构化观测数据详情' })
+  async observationDetail(@Param('id') id: string) {
+    const row = await this.prisma.structuredDataObservation.findUnique({
+      where: { id },
+    });
+    if (!row) throw new NotFoundException('结构化观测数据不存在');
+    return row;
+  }
+
   @Get(':id')
   @RequirePermissions('menu:data:structured-data|menu:data:dataset')
   @ApiOperation({ summary: '查询结构化数据记录详情' })

@@ -110,6 +110,57 @@ export async function fetchStructuredDataDetail(id: string) {
   ).data;
 }
 
+export type StructuredObservation = {
+  id: string;
+  namespace: 'sources' | 'remote' | 'extractions';
+  indicatorEnglish: string | null;
+  indicatorChinese: string | null;
+  sourceOrganization: string | null;
+  sourceProject: string | null;
+  region: string | null;
+  regionType: string | null;
+  parentRegion: string | null;
+  startTime: number | null;
+  endTime: number | null;
+  timeIndicatorType: string | null;
+  dataValue: unknown;
+  unit: string | null;
+  sourceUrl: string | null;
+  publishedAt: string | null;
+  indicatorExplanation: string | null;
+  inputBy: string | null;
+  inputAt: string | null;
+  isPublic: boolean | null;
+  dataOwner: string | null;
+  lastModifiedBy: string | null;
+  lastModifiedAt: string | null;
+  annotations: unknown;
+  createdAt: string;
+};
+export type StructuredObservationDetail = StructuredObservation & {
+  rawData: unknown;
+};
+export async function fetchStructuredObservations(params: {
+  page?: number;
+  pageSize?: number;
+  namespace?: string;
+  keyword?: string;
+}) {
+  return (
+    await http.get<PageResult<StructuredObservation>>(
+      '/admin/structured-data/observations',
+      { params },
+    )
+  ).data;
+}
+export async function fetchStructuredObservationDetail(id: string) {
+  return (
+    await http.get<StructuredObservationDetail>(
+      `/admin/structured-data/observations/${id}`,
+    )
+  ).data;
+}
+
 export type UserItem = {
   id: string;
   username: string;

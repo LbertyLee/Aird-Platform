@@ -84,7 +84,17 @@ describe('persistent structured data storage', () => {
   });
 
   it('backfills valid legacy records into the database without applying their old TTL', async () => {
-    const data = [{ value: 3 }];
+    const data = [
+      {
+        indicatorCode: 'GDP_PC',
+        indicatorChinese: '人均国内生产总值',
+        source: 'Example Bureau',
+        country: 'Exampleland',
+        year: -500,
+        value: 12.5,
+        unit: 'USD',
+      },
+    ];
     const key = 'old-wpp-key';
     const fingerprint = store.fingerprint(key);
     const legacyDirectory = join(directory, 'remote');
@@ -99,11 +109,23 @@ describe('persistent structured data storage', () => {
         data,
       }),
     );
+    const recordDelegate = {
+      findUnique: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn().mockResolvedValue({ id: 'record-1' }),
+    };
+    const observationDelegate = {
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    };
+    const transaction = {
+      structuredDataRecord: recordDelegate,
+      structuredDataObservation: observationDelegate,
+    };
     const database = {
-      structuredDataRecord: {
-        findUnique: jest.fn().mockResolvedValue(null),
-        upsert: jest.fn().mockResolvedValue({}),
-      },
+      ...transaction,
+      $transaction: jest.fn((callback: (tx: typeof transaction) => unknown) =>
+        callback(transaction),
+      ),
     } as unknown as PrismaService;
     const load = jest.fn().mockResolvedValue([{ value: 99 }]);
 
@@ -116,7 +138,7 @@ describe('persistent structured data storage', () => {
       ),
     ).resolves.toEqual(data);
     expect(load).not.toHaveBeenCalled();
-    expect(database.structuredDataRecord.upsert).toHaveBeenCalledWith(
+    expect(recordDelegate.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
           namespace: 'remote',
@@ -126,6 +148,22 @@ describe('persistent structured data storage', () => {
         }),
       }),
     );
+    expect(observationDelegate.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          recordId: 'record-1',
+          rowIndex: 0,
+          indicatorEnglish: 'GDP_PC',
+          indicatorChinese: '人均国内生产总值',
+          sourceOrganization: 'Example Bureau',
+          region: 'Exampleland',
+          startTime: -500,
+          endTime: -500,
+          dataValue: 12.5,
+          unit: 'USD',
+        }),
+      ],
+    });
   });
 
   it('keeps source scopes and extraction content/catalog/query fingerprints separate', async () => {

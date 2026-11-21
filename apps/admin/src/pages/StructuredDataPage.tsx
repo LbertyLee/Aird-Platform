@@ -13,10 +13,10 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  fetchStructuredData,
-  fetchStructuredDataDetail,
-  type StructuredDataRecord,
-  type StructuredDataRecordDetail,
+  fetchStructuredObservationDetail,
+  fetchStructuredObservations,
+  type StructuredObservation,
+  type StructuredObservationDetail,
 } from '../api/admin';
 
 const namespaceLabels: Record<string, string> = {
@@ -24,70 +24,22 @@ const namespaceLabels: Record<string, string> = {
   remote: '外部数据',
   extractions: '抽取结果',
 };
-const fields: Array<[string, string[]]> = [
-  [
-    '指标（中文名称）',
-    ['indicatorNameZh', 'indicatorZh', '指标（中文名称）', 'indicator'],
-  ],
-  [
-    '数据指标来源机构',
-    [
-      'sourceOrganization',
-      'dataSourceOrganization',
-      'organization',
-      '数据指标来源机构',
-    ],
-  ],
-  [
-    '数据指标来源项目',
-    ['sourceProject', 'dataSourceProject', 'project', '数据指标来源项目'],
-  ],
-  ['国别/地区', ['country', 'region', 'entity', '国家', '地区', '国别/地区']],
-  ['国别/地区指标类型', ['regionType', 'areaType', '国别/地区指标类型']],
-  ['上级地区', ['parentRegion', 'parentArea', '上级地区']],
-  ['起始时间', ['startTime', 'startYear', 'year', '年份', '起始时间']],
-  ['截至时间', ['endTime', 'endYear', '截至时间']],
-  ['时间指标类型', ['timeType', 'timeIndicatorType', '时间指标类型']],
-  ['数据值', ['value', 'dataValue', '数据值']],
-  ['单位', ['unit', '数据单位', '单位']],
-  ['数据来源网址', ['sourceUrl', 'url', '数据来源网址']],
-  ['数据发布时间', ['publishedAt', 'publicationDate', '数据发布时间']],
-  ['数据指标解释', ['indicatorDescription', 'description', '数据指标解释']],
-  ['数据输入者', ['inputBy', 'createdBy', '数据输入者']],
-  ['数据输入时间', ['inputAt', 'createdAt', '数据输入时间']],
-  ['是否公共数据', ['isPublic', 'shared', '是否公共数据']],
-  ['数据所有人', ['owner', 'ownerName', '数据所有人']],
-  ['数据最后修改人', ['updatedBy', '数据最后修改人']],
-  ['数据最后修改时间', ['updatedAt', '数据最后修改时间']],
-  ['数据最后修改频率', ['updateFrequency', '数据最后修改频率']],
-  ['其它数据标准元数据', ['metadata', '其它数据标准元数据']],
-];
-
-function observations(data: unknown): Record<string, unknown>[] {
-  if (Array.isArray(data))
-    return data.filter(
-      (item): item is Record<string, unknown> =>
-        !!item && typeof item === 'object' && !Array.isArray(item),
-    );
-  if (data && typeof data === 'object') {
-    const object = data as Record<string, unknown>;
-    for (const key of [
-      'rows',
-      'items',
-      'observations',
-      'structuredData',
-      'data',
-    ]) {
-      if (Array.isArray(object[key])) return observations(object[key]);
-    }
-    return [object];
-  }
-  return [];
-}
 
 function display(value: unknown) {
   if (value == null || value === '') return '—';
   return typeof value === 'object' ? JSON.stringify(value) : String(value);
+}
+
+function safeSourceUrl(value: string | null): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? url.toString()
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function StructuredDataPage() {
@@ -96,17 +48,17 @@ export function StructuredDataPage() {
   const [namespace, setNamespace] = useState<string>();
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<{
-    items: StructuredDataRecord[];
+    items: StructuredObservation[];
     total: number;
   }>();
-  const [detail, setDetail] = useState<StructuredDataRecordDetail>();
+  const [detail, setDetail] = useState<StructuredObservationDetail>();
   const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(
-    async (nextPage = page) => {
+    async (nextPage = 1) => {
       setLoading(true);
       try {
-        const response = await fetchStructuredData({
+        const response = await fetchStructuredObservations({
           page: nextPage,
           pageSize: 20,
           namespace,
@@ -120,17 +72,17 @@ export function StructuredDataPage() {
         setLoading(false);
       }
     },
-    [keyword, namespace, page],
+    [keyword, namespace],
   );
 
   useEffect(() => {
     void load(1);
-  }, [namespace]);
+  }, [load]);
 
   const showDetail = async (id: string) => {
     setDetailLoading(true);
     try {
-      setDetail(await fetchStructuredDataDetail(id));
+      setDetail(await fetchStructuredObservationDetail(id));
     } catch {
       message.error('加载数据详情失败');
     } finally {
@@ -138,48 +90,104 @@ export function StructuredDataPage() {
     }
   };
 
-  const columns: ColumnsType<StructuredDataRecord> = [
+  const columns: ColumnsType<StructuredObservation> = [
+    { title: '指标（英文）', dataIndex: 'indicatorEnglish', width: 180 },
+    { title: '指标（中文）', dataIndex: 'indicatorChinese', width: 180 },
+    { title: '数据指标来源机构', dataIndex: 'sourceOrganization', width: 180 },
+    { title: '数据指标来源项目', dataIndex: 'sourceProject', width: 180 },
     {
-      title: '数据空间',
-      dataIndex: 'namespace',
-      width: 120,
-      render: (v: string) => <Tag>{namespaceLabels[v] ?? v}</Tag>,
+      title: '国别地区（Region, subregion, country or area）',
+      dataIndex: 'region',
+      width: 280,
     },
     {
-      title: '记录指纹',
-      dataIndex: 'fingerprint',
-      width: 310,
-      ellipsis: true,
-      render: (v: string) => (
-        <Typography.Text code copyable>
-          {v}
-        </Typography.Text>
-      ),
+      title:
+        '国别地区指标类型（世界/国家/省州/市县区/乡镇街道/村团社区/其他特定区域）',
+      dataIndex: 'regionType',
+      width: 360,
     },
     {
-      title: '校验值',
-      dataIndex: 'checksum',
+      title: '上级地区（对应全球行政区划）',
+      dataIndex: 'parentRegion',
+      width: 220,
+    },
+    { title: '起始时间（负值为公元前）', dataIndex: 'startTime', width: 180 },
+    { title: '截至时间（负值为公元前）', dataIndex: 'endTime', width: 180 },
+    { title: '时间指标类型', dataIndex: 'timeIndicatorType', width: 150 },
+    {
+      title: '数据值',
+      dataIndex: 'dataValue',
+      width: 150,
+      render: (value: unknown) => display(value),
+    },
+    { title: '单位', dataIndex: 'unit', width: 110 },
+    {
+      title: '数据来源网址',
+      dataIndex: 'sourceUrl',
       width: 220,
       ellipsis: true,
-      render: (v: string) => <Typography.Text code>{v}</Typography.Text>,
+      render: (value: string | null) => {
+        const href = safeSourceUrl(value);
+        return href ? (
+          <Typography.Link href={href} target="_blank" rel="noreferrer">
+            {value}
+          </Typography.Link>
+        ) : (
+          display(value)
+        );
+      },
     },
     {
-      title: '首次存储时间',
-      dataIndex: 'createdAt',
+      title: '数据发布时间（来源或统计预测日期）',
+      dataIndex: 'publishedAt',
+      width: 260,
+    },
+    {
+      title: '数据指标解释',
+      dataIndex: 'indicatorExplanation',
+      width: 240,
+      ellipsis: true,
+    },
+    { title: '数据输入者', dataIndex: 'inputBy', width: 140 },
+    {
+      title: '数据输入时间',
+      dataIndex: 'inputAt',
       width: 180,
-      render: (v: string) => new Date(v).toLocaleString(),
+      render: (value: string | null) =>
+        value ? new Date(value).toLocaleString() : '—',
     },
     {
-      title: '最近更新时间',
-      dataIndex: 'updatedAt',
+      title: '是否公共数据',
+      dataIndex: 'isPublic',
+      width: 130,
+      render: (value: boolean | null) =>
+        value == null ? (
+          '—'
+        ) : (
+          <Tag color={value ? 'green' : 'default'}>{value ? '是' : '否'}</Tag>
+        ),
+    },
+    { title: '数据所有人', dataIndex: 'dataOwner', width: 150 },
+    { title: '数据最后修改人', dataIndex: 'lastModifiedBy', width: 150 },
+    {
+      title: '数据最后修改时间',
+      dataIndex: 'lastModifiedAt',
       width: 180,
-      render: (v: string) => new Date(v).toLocaleString(),
+      render: (value: string | null) =>
+        value ? new Date(value).toLocaleString() : '—',
     },
     {
-      title: '操作',
+      title: '其它数据标注',
+      dataIndex: 'annotations',
+      width: 220,
+      ellipsis: true,
+      render: (value: unknown) => display(value),
+    },
+    {
+      title: '原始记录',
       key: 'action',
       fixed: 'right',
-      width: 90,
+      width: 100,
       render: (_, row) => (
         <Button
           type="link"
@@ -191,27 +199,13 @@ export function StructuredDataPage() {
       ),
     },
   ];
-  const rows = observations(detail?.data);
-  const observationColumns: ColumnsType<Record<string, unknown>> = fields.map(
-    ([title, aliases]) => ({
-      title,
-      key: title,
-      width: 170,
-      render: (_, row) =>
-        display(
-          aliases
-            .map((key) => row[key])
-            .find((value) => value != null && value !== ''),
-        ),
-    }),
-  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Space wrap>
         <Input
           allowClear
-          placeholder="记录指纹"
+          placeholder="指标 / 地区 / 来源"
           prefix={<SearchOutlined />}
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
@@ -232,7 +226,7 @@ export function StructuredDataPage() {
         <Button icon={<SearchOutlined />} onClick={() => void load(1)}>
           查询
         </Button>
-        <Button icon={<ReloadOutlined />} onClick={() => void load()}>
+        <Button icon={<ReloadOutlined />} onClick={() => void load(page)}>
           刷新
         </Button>
       </Space>
@@ -241,7 +235,7 @@ export function StructuredDataPage() {
         loading={loading}
         columns={columns}
         dataSource={result?.items ?? []}
-        scroll={{ x: 1100 }}
+        scroll={{ x: 3900 }}
         pagination={{
           current: page,
           pageSize: 20,
@@ -251,8 +245,8 @@ export function StructuredDataPage() {
         }}
       />
       <Drawer
-        title="结构化数据详情"
-        width="min(96vw, 1400px)"
+        title="结构化数据原始记录"
+        width="min(96vw, 1000px)"
         open={!!detail || detailLoading}
         onClose={() => setDetail(undefined)}
         loading={detailLoading}
@@ -260,35 +254,21 @@ export function StructuredDataPage() {
         {detail && (
           <>
             <Typography.Paragraph type="secondary">
-              数据空间：{namespaceLabels[detail.namespace] ?? detail.namespace}
-              　指纹：{detail.fingerprint}
+              {namespaceLabels[detail.namespace] ?? detail.namespace} /{' '}
+              {detail.region ?? '未标注地区'} /{' '}
+              {detail.startTime ?? '未标注时间'}
             </Typography.Paragraph>
-            <Typography.Title level={5}>观测数据</Typography.Title>
-            <Table
-              size="small"
-              rowKey={(_, index) => String(index)}
-              columns={observationColumns}
-              dataSource={rows}
-              scroll={{ x: 3740, y: 360 }}
-              pagination={{ pageSize: 20, showSizeChanger: false }}
-              locale={{
-                emptyText: '该缓存记录不是可识别的逐行观测数组，请查看原始数据',
-              }}
-            />
-            <Typography.Title level={5} style={{ marginTop: 20 }}>
-              原始数据
-            </Typography.Title>
             <pre
               style={{
                 whiteSpace: 'pre-wrap',
                 overflowWrap: 'anywhere',
-                maxHeight: 360,
+                maxHeight: '70vh',
                 overflow: 'auto',
                 padding: 12,
                 background: '#f5f5f5',
               }}
             >
-              {JSON.stringify(detail.data, null, 2)}
+              {JSON.stringify(detail.rawData, null, 2)}
             </pre>
           </>
         )}

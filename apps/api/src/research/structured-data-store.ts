@@ -13,6 +13,163 @@ type LegacyEntry<T> = {
   data: T;
 };
 
+type ObservationRow = Record<string, unknown>;
+
+function isObservation(row: ObservationRow): boolean {
+  return [
+    'indicatorEnglish',
+    'indicatorChinese',
+    'indicatorNameZh',
+    'indicatorCode',
+    'indicator',
+    'dataValue',
+    'value',
+    'region',
+    'country',
+    'entity',
+    'year',
+    'Year',
+    '国别地区',
+    '数据值',
+  ].some((key) => row[key] != null);
+}
+
+function observationRows(data: unknown): ObservationRow[] {
+  if (Array.isArray(data)) {
+    return data.filter(
+      (row): row is ObservationRow =>
+        row !== null &&
+        typeof row === 'object' &&
+        !Array.isArray(row) &&
+        isObservation(row as ObservationRow),
+    );
+  }
+  if (!data || typeof data !== 'object') return [];
+  const object = data as ObservationRow;
+  for (const key of [
+    'rows',
+    'items',
+    'observations',
+    'structuredData',
+    'data',
+  ]) {
+    if (Array.isArray(object[key])) return observationRows(object[key]);
+  }
+  return isObservation(object) ? [object] : [];
+}
+
+function firstValue(row: ObservationRow, keys: string[]): unknown {
+  return keys
+    .map((key) => row[key])
+    .find((value) => value != null && value !== '');
+}
+
+function stringValue(row: ObservationRow, keys: string[]): string | undefined {
+  const value = firstValue(row, keys);
+  return ['string', 'number', 'boolean'].includes(typeof value)
+    ? String(value)
+    : undefined;
+}
+
+function integerValue(row: ObservationRow, keys: string[]): number | undefined {
+  const value = firstValue(row, keys);
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const numeric = Number(value);
+  return Number.isInteger(numeric) ? numeric : undefined;
+}
+
+function dateValue(row: ObservationRow, keys: string[]): Date | undefined {
+  const value = firstValue(row, keys);
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function booleanValue(
+  row: ObservationRow,
+  keys: string[],
+): boolean | undefined {
+  const value = firstValue(row, keys);
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return undefined;
+}
+
+function toObservationInput(
+  row: ObservationRow,
+  recordId: string,
+  rowIndex: number,
+  namespace: Namespace,
+): Prisma.StructuredDataObservationCreateManyInput {
+  const year = ['year', 'Year', '年份'];
+  const dataValue = firstValue(row, ['dataValue', 'value', '数据值']);
+  const annotations = firstValue(row, [
+    'annotations',
+    'otherMetadata',
+    'metadata',
+  ]);
+  return {
+    recordId,
+    rowIndex,
+    namespace,
+    indicatorEnglish: stringValue(row, [
+      'indicatorEnglish',
+      'indicatorCode',
+      'indicator',
+      'code',
+    ]),
+    indicatorChinese: stringValue(row, [
+      'indicatorChinese',
+      'indicatorNameZh',
+      '指标（中文）',
+    ]),
+    sourceOrganization: stringValue(row, [
+      'sourceOrganization',
+      'dataSourceOrganization',
+      'organization',
+      'source',
+    ]),
+    sourceProject: stringValue(row, ['sourceProject', 'project', 'revision']),
+    region: stringValue(row, ['region', 'country', 'entity', '地区', '国家']),
+    regionType: stringValue(row, ['regionType', 'areaType']),
+    parentRegion: stringValue(row, ['parentRegion', 'parentArea']),
+    startTime: integerValue(row, ['startTime', 'startYear', ...year]),
+    endTime: integerValue(row, ['endTime', 'endYear', ...year]),
+    timeIndicatorType: stringValue(row, [
+      'timeIndicatorType',
+      'timeType',
+      'estimateType',
+    ]),
+    ...(dataValue !== undefined
+      ? { dataValue: dataValue as Prisma.InputJsonValue }
+      : {}),
+    unit: stringValue(row, ['unit', '数据单位']),
+    sourceUrl: stringValue(row, ['sourceUrl', 'url']),
+    publishedAt: stringValue(row, [
+      'publishedAt',
+      'sourcePublishedAt',
+      'publicationDate',
+    ]),
+    indicatorExplanation: stringValue(row, [
+      'indicatorExplanation',
+      'description',
+    ]),
+    inputBy: stringValue(row, ['inputBy', 'createdBy']) ?? 'system',
+    inputAt: dateValue(row, ['inputAt', 'createdAt']) ?? new Date(),
+    isPublic: booleanValue(row, ['isPublic', 'shared']),
+    dataOwner: stringValue(row, ['dataOwner', 'owner']),
+    lastModifiedBy:
+      stringValue(row, ['lastModifiedBy', 'updatedBy']) ?? 'system',
+    lastModifiedAt:
+      dateValue(row, ['lastModifiedAt', 'updatedAt']) ?? new Date(),
+    ...(annotations !== undefined
+      ? { annotations: annotations as Prisma.InputJsonValue }
+      : {}),
+    rawData: row as Prisma.InputJsonValue,
+  };
+}
+
 /** Persistent structured data store with a one-time legacy disk import path. */
 export class StructuredDataStore {
   private static readonly pending = new Map<string, Promise<unknown>>();
@@ -143,18 +300,34 @@ export class StructuredDataStore {
   ): Promise<boolean> {
     if (!this.prisma) return false;
     try {
-      await this.prisma.structuredDataRecord.upsert({
-        where: { namespace_fingerprint: { namespace, fingerprint } },
-        create: {
-          namespace,
-          fingerprint,
-          checksum: this.fingerprint(data),
-          data: data as Prisma.InputJsonValue,
-        },
-        update: {
-          checksum: this.fingerprint(data),
-          data: data as Prisma.InputJsonValue,
-        },
+      await this.prisma.$transaction(async (transaction) => {
+        const record = await transaction.structuredDataRecord.upsert({
+          where: { namespace_fingerprint: { namespace, fingerprint } },
+          create: {
+            namespace,
+            fingerprint,
+            checksum: this.fingerprint(data),
+            data: data as Prisma.InputJsonValue,
+          },
+          update: {
+            checksum: this.fingerprint(data),
+            data: data as Prisma.InputJsonValue,
+          },
+          select: { id: true },
+        });
+        await transaction.structuredDataObservation.deleteMany({
+          where: { recordId: record.id },
+        });
+        const rows = observationRows(data);
+        for (let offset = 0; offset < rows.length; offset += 500) {
+          await transaction.structuredDataObservation.createMany({
+            data: rows
+              .slice(offset, offset + 500)
+              .map((row, index) =>
+                toObservationInput(row, record.id, offset + index, namespace),
+              ),
+          });
+        }
       });
       return true;
     } catch {
