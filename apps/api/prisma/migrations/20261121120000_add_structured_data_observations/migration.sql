@@ -1,6 +1,7 @@
 CREATE TABLE "structured_data_observations" (
     "id" TEXT NOT NULL,
     "record_id" TEXT NOT NULL,
+    "dedupe_key" VARCHAR(32) NOT NULL,
     "row_index" INTEGER NOT NULL,
     "namespace" VARCHAR(32) NOT NULL,
     "indicator_english" TEXT,
@@ -35,6 +36,8 @@ CREATE TABLE "structured_data_observations" (
 
 CREATE UNIQUE INDEX "structured_data_observations_record_id_row_index_key"
     ON "structured_data_observations"("record_id", "row_index");
+CREATE UNIQUE INDEX "structured_data_observations_record_id_dedupe_key_key"
+    ON "structured_data_observations"("record_id", "dedupe_key");
 CREATE INDEX "structured_data_observations_namespace_created_at_idx"
     ON "structured_data_observations"("namespace", "created_at");
 CREATE INDEX "structured_data_observations_indicator_english_region_start_time_idx"
@@ -69,9 +72,53 @@ WITH records AS (
     COALESCE(raw_data->>'startTime', raw_data->>'startYear', raw_data->>'year', raw_data->>'Year') AS start_text,
     COALESCE(raw_data->>'endTime', raw_data->>'endYear', raw_data->>'year', raw_data->>'Year') AS end_text
   FROM observations
+), canonical AS (
+  SELECT *,
+    COALESCE(raw_data->>'catalogIndicatorCode', raw_data->>'indicatorCode', raw_data->>'code', raw_data->>'indicatorEnglish') AS metric_code,
+    COALESCE(raw_data->>'indicatorChinese', raw_data->>'indicatorNameZh') AS metric_chinese,
+    CASE btrim(COALESCE(raw_data->>'region', raw_data->>'country', raw_data->>'entity', raw_data->>'地区', raw_data->>'国家'))
+      WHEN '上海' THEN '上海市'
+      ELSE btrim(COALESCE(raw_data->>'region', raw_data->>'country', raw_data->>'entity', raw_data->>'地区', raw_data->>'国家'))
+    END AS canonical_region
+  FROM mapped
+), resolved AS (
+  SELECT canonical.*,
+    COALESCE(metric_chinese,
+      CASE WHEN raw_data->>'indicator' ~ '[一-龥]' THEN raw_data->>'indicator' END,
+      indicator.name) AS resolved_indicator_chinese,
+    COALESCE(raw_data->>'indicatorEnglish', metric_code,
+      CASE WHEN raw_data->>'indicator' !~ '[一-龥]' THEN raw_data->>'indicator' END) AS resolved_indicator_english,
+    CASE WHEN start_text ~ '^-?[0-9]{1,9}$' THEN start_text::integer END AS start_number,
+    CASE WHEN end_text ~ '^-?[0-9]{1,9}$' THEN end_text::integer END AS end_number,
+    COALESCE(raw_data->>'timeIndicatorType', raw_data->>'timeType', raw_data->>'estimateType') AS normalized_time_type,
+    COALESCE(raw_data->>'unit', raw_data->>'数据单位') AS normalized_unit,
+    COALESCE(raw_data->>'sourceOrganization', raw_data->>'dataSourceOrganization', raw_data->>'organization', raw_data->>'source') AS normalized_organization,
+    COALESCE(raw_data->>'sourceProject', raw_data->>'project', raw_data->>'revision') AS normalized_project
+  FROM canonical
+  LEFT JOIN indicators AS indicator ON indicator.code = canonical.metric_code AND indicator.deleted_at IS NULL
+), keyed AS (
+  SELECT *,
+    CASE
+      WHEN resolved_indicator_english IS NOT NULL AND canonical_region IS NOT NULL THEN md5(
+        lower(resolved_indicator_english) || chr(31) || lower(canonical_region) || chr(31) ||
+        COALESCE(start_number::text, '') || chr(31) || COALESCE(end_number::text, '') || chr(31) ||
+        lower(COALESCE(normalized_time_type, '')) || chr(31) || lower(COALESCE(normalized_unit, '')) || chr(31) ||
+        lower(COALESCE(normalized_organization, '')) || chr(31) || lower(COALESCE(normalized_project, ''))
+      )
+      ELSE md5('row' || chr(31) || record_id || chr(31) || row_index::text)
+    END AS dedupe_key
+  FROM resolved
+), ranked AS (
+  SELECT keyed.*,
+    ROW_NUMBER() OVER (
+      PARTITION BY record_id, dedupe_key
+      ORDER BY CASE WHEN canonical_region = btrim(COALESCE(raw_data->>'region', raw_data->>'country', raw_data->>'entity', raw_data->>'地区', raw_data->>'国家')) THEN 0 ELSE 1 END,
+        record_id, row_index
+    ) AS duplicate_rank
+  FROM keyed
 )
 INSERT INTO structured_data_observations (
-  id, record_id, row_index, namespace, indicator_english, indicator_chinese,
+  id, record_id, dedupe_key, row_index, namespace, indicator_english, indicator_chinese,
   source_organization, source_project, region, region_type, parent_region,
   start_time, end_time, time_indicator_type, data_value, unit, source_url,
   published_at, indicator_explanation, input_by, input_at, is_public,
@@ -79,12 +126,12 @@ INSERT INTO structured_data_observations (
   created_at, updated_at
 )
 SELECT
-  'backfill-' || record_id || '-' || row_index, record_id, row_index, namespace,
-  COALESCE(raw_data->>'indicatorEnglish', raw_data->>'indicatorCode', raw_data->>'indicator', raw_data->>'code'),
-  COALESCE(raw_data->>'indicatorChinese', raw_data->>'indicatorNameZh'),
+  'backfill-' || record_id || '-' || row_index, record_id, dedupe_key, row_index, namespace,
+  resolved_indicator_english,
+  resolved_indicator_chinese,
   COALESCE(raw_data->>'sourceOrganization', raw_data->>'dataSourceOrganization', raw_data->>'organization', raw_data->>'source'),
   COALESCE(raw_data->>'sourceProject', raw_data->>'project', raw_data->>'revision'),
-  COALESCE(raw_data->>'region', raw_data->>'country', raw_data->>'entity', raw_data->>'地区', raw_data->>'国家'),
+  canonical_region,
   COALESCE(raw_data->>'regionType', raw_data->>'areaType'),
   COALESCE(raw_data->>'parentRegion', raw_data->>'parentArea'),
   CASE WHEN start_text ~ '^-?[0-9]{1,9}$' THEN start_text::integer END,
@@ -104,4 +151,5 @@ SELECT
   NULL,
   COALESCE(raw_data->'annotations', raw_data->'otherMetadata', raw_data->'metadata'),
   raw_data, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-FROM mapped;
+FROM ranked
+WHERE duplicate_rank = 1;

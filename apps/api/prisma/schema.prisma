@@ -1711,6 +1711,7 @@ model StructuredDataRecord {
 model StructuredDataObservation {
   id                   String               @id @default(cuid())
   recordId             String               @map("record_id")
+  dedupeKey            String               @map("dedupe_key") @db.VarChar(32)
   record               StructuredDataRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
   rowIndex             Int                  @map("row_index")
   namespace            String               @db.VarChar(32)
@@ -1741,6 +1742,7 @@ model StructuredDataObservation {
   updatedAt            DateTime             @updatedAt @map("updated_at")
 
   @@unique([recordId, rowIndex])
+  @@unique([recordId, dedupeKey])
   @@index([namespace, createdAt])
   @@index([indicatorEnglish, region, startTime])
   @@map("structured_data_observations")

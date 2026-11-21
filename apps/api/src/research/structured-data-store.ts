@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Prisma } from '@prisma/client';
 import type { PrismaService } from '../infrastructure/prisma/prisma.service';
+import { CHINA_REGIONS } from '../common/utils/china-regions';
 
 type Namespace = 'sources' | 'remote' | 'extractions';
 type LegacyEntry<T> = {
@@ -14,6 +15,72 @@ type LegacyEntry<T> = {
 };
 
 type ObservationRow = Record<string, unknown>;
+
+const regionAliasIndex = new Map<string, Set<string>>();
+const exactRegionIndex = new Map<string, string>();
+for (const province of CHINA_REGIONS) {
+  for (const canonical of [province.name, ...province.cities]) {
+    const normalized = canonical.trim().toLocaleLowerCase();
+    exactRegionIndex.set(normalized, canonical);
+    const base = normalized.replace(
+      /(特别行政区|壮族自治区|回族自治区|维吾尔自治区|自治区|自治州|省|市|地区|盟)$/,
+      '',
+    );
+    for (const alias of [normalized, base]) {
+      const matches = regionAliasIndex.get(alias) ?? new Set<string>();
+      matches.add(canonical);
+      regionAliasIndex.set(alias, matches);
+    }
+  }
+}
+
+function canonicalRegion(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().replace(/\s+/g, '').toLocaleLowerCase();
+  const exact = exactRegionIndex.get(normalized);
+  if (exact) return exact;
+  const matches = regionAliasIndex.get(normalized);
+  return matches?.size === 1 ? [...matches][0] : value.trim();
+}
+
+function containsChinese(value: string): boolean {
+  return /[\u4e00-\u9fff]/.test(value);
+}
+
+function observationDedupeKey(
+  row: Pick<
+    Prisma.StructuredDataObservationCreateManyInput,
+    | 'indicatorEnglish'
+    | 'region'
+    | 'startTime'
+    | 'endTime'
+    | 'timeIndicatorType'
+    | 'unit'
+    | 'sourceOrganization'
+    | 'sourceProject'
+  >,
+  recordId: string,
+  rowIndex: number,
+): string {
+  const fields =
+    row.indicatorEnglish && row.region
+      ? [
+          row.indicatorEnglish.toLowerCase(),
+          row.region.toLowerCase(),
+          row.startTime?.toString() ?? '',
+          row.endTime?.toString() ?? '',
+          row.timeIndicatorType?.toLowerCase() ?? '',
+          row.unit?.toLowerCase() ?? '',
+          row.sourceOrganization?.toLowerCase() ?? '',
+          row.sourceProject?.toLowerCase() ?? '',
+        ]
+      : ['row', recordId, String(rowIndex)];
+  return createHash('md5').update(fields.join('\u001f')).digest('hex');
+}
+
+const indicatorChineseFallback: Record<string, string> = {
+  gdp_current_usd: '国内生产总值(现价美元)',
+};
 
 function isObservation(row: ObservationRow): boolean {
   return [
@@ -101,29 +168,60 @@ function toObservationInput(
   recordId: string,
   rowIndex: number,
   namespace: Namespace,
+  indicatorNames: Map<string, string>,
 ): Prisma.StructuredDataObservationCreateManyInput {
   const year = ['year', 'Year', '年份'];
   const dataValue = firstValue(row, ['dataValue', 'value', '数据值']);
+  const indicatorCodes = [
+    'catalogIndicatorCode',
+    'indicatorCode',
+    'code',
+    'indicatorEnglish',
+  ]
+    .map((key) => stringValue(row, [key]))
+    .filter((value): value is string => !!value);
+  const indicatorCode = indicatorCodes[0];
+  const region = stringValue(row, [
+    'region',
+    'country',
+    'entity',
+    '地区',
+    '国家',
+  ]);
+  const rowIndicatorName = stringValue(row, [
+    'indicatorEnglish',
+    'indicator',
+    'indicatorName',
+  ]);
+  const explicitChineseName =
+    stringValue(row, ['indicatorChinese', 'indicatorNameZh', '指标（中文）']) ??
+    [rowIndicatorName, indicatorCode]
+      .filter((value): value is string => !!value && containsChinese(value))
+      .find((value) => !!value);
+  const indicatorChinese =
+    explicitChineseName ??
+    indicatorCodes
+      .map((code) => indicatorNames.get(code) ?? indicatorChineseFallback[code])
+      .find((name) => !!name);
   const annotations = firstValue(row, [
     'annotations',
     'otherMetadata',
     'metadata',
   ]);
-  return {
+  const input: Omit<
+    Prisma.StructuredDataObservationCreateManyInput,
+    'dedupeKey'
+  > = {
     recordId,
     rowIndex,
     namespace,
-    indicatorEnglish: stringValue(row, [
-      'indicatorEnglish',
-      'indicatorCode',
-      'indicator',
-      'code',
-    ]),
-    indicatorChinese: stringValue(row, [
-      'indicatorChinese',
-      'indicatorNameZh',
-      '指标（中文）',
-    ]),
+    indicatorEnglish:
+      stringValue(row, ['indicatorEnglish']) ??
+      indicatorCode ??
+      (rowIndicatorName && !containsChinese(rowIndicatorName)
+        ? rowIndicatorName
+        : undefined),
+    indicatorChinese,
     sourceOrganization: stringValue(row, [
       'sourceOrganization',
       'dataSourceOrganization',
@@ -131,7 +229,7 @@ function toObservationInput(
       'source',
     ]),
     sourceProject: stringValue(row, ['sourceProject', 'project', 'revision']),
-    region: stringValue(row, ['region', 'country', 'entity', '地区', '国家']),
+    region: canonicalRegion(region),
     regionType: stringValue(row, ['regionType', 'areaType']),
     parentRegion: stringValue(row, ['parentRegion', 'parentArea']),
     startTime: integerValue(row, ['startTime', 'startYear', ...year]),
@@ -167,6 +265,10 @@ function toObservationInput(
       ? { annotations: annotations as Prisma.InputJsonValue }
       : {}),
     rawData: row as Prisma.InputJsonValue,
+  };
+  return {
+    ...input,
+    dedupeKey: observationDedupeKey(input, recordId, rowIndex),
   };
 }
 
@@ -319,13 +421,73 @@ export class StructuredDataStore {
           where: { recordId: record.id },
         });
         const rows = observationRows(data);
-        for (let offset = 0; offset < rows.length; offset += 500) {
+        const indicatorCodes = [
+          ...new Set(
+            rows.flatMap((row) =>
+              [
+                'catalogIndicatorCode',
+                'indicatorCode',
+                'code',
+                'indicatorEnglish',
+              ]
+                .map((key) => stringValue(row, [key]))
+                .filter((code): code is string => !!code),
+            ),
+          ),
+        ];
+        const indicators = indicatorCodes.length
+          ? await transaction.indicator.findMany({
+              where: { code: { in: indicatorCodes }, deletedAt: null },
+              select: { code: true, name: true },
+            })
+          : [];
+        const indicatorNames = new Map(
+          indicators.map((indicator) => [indicator.code, indicator.name]),
+        );
+        const distinctRows = new Map<
+          string,
+          {
+            row: Prisma.StructuredDataObservationCreateManyInput;
+            canonicalRegion: boolean;
+          }
+        >();
+        rows.forEach((row, index) => {
+          const normalized = toObservationInput(
+            row,
+            record.id,
+            index,
+            namespace,
+            indicatorNames,
+          );
+          const regionInput = stringValue(row, [
+            'region',
+            'country',
+            'entity',
+            '地区',
+            '国家',
+          ]);
+          const isCanonicalRegion =
+            !!regionInput && regionInput.trim() === normalized.region;
+          const dedupeKey = observationDedupeKey(
+            normalized,
+            record.id,
+            index,
+          );
+          const current = distinctRows.get(dedupeKey);
+          if (!current || (isCanonicalRegion && !current.canonicalRegion)) {
+            distinctRows.set(dedupeKey, {
+              row: normalized,
+              canonicalRegion: isCanonicalRegion,
+            });
+          }
+        });
+        const normalizedRows = [...distinctRows.values()].map(
+          (item) => item.row,
+        );
+        for (let offset = 0; offset < normalizedRows.length; offset += 500) {
           await transaction.structuredDataObservation.createMany({
-            data: rows
-              .slice(offset, offset + 500)
-              .map((row, index) =>
-                toObservationInput(row, record.id, offset + index, namespace),
-              ),
+            data: normalizedRows.slice(offset, offset + 500),
+            skipDuplicates: true,
           });
         }
       });

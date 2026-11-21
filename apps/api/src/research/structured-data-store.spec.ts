@@ -84,16 +84,17 @@ describe('persistent structured data storage', () => {
   });
 
   it('backfills valid legacy records into the database without applying their old TTL', async () => {
+    const observation = {
+      indicatorCode: 'GDP_PC',
+      source: 'Example Bureau',
+      year: -500,
+      value: 12.5,
+      unit: 'USD',
+    };
     const data = [
-      {
-        indicatorCode: 'GDP_PC',
-        indicatorChinese: '人均国内生产总值',
-        source: 'Example Bureau',
-        country: 'Exampleland',
-        year: -500,
-        value: 12.5,
-        unit: 'USD',
-      },
+      { ...observation, country: '上海' },
+      { ...observation, country: '上海市' },
+      { ...observation, country: '北京' },
     ];
     const key = 'old-wpp-key';
     const fingerprint = store.fingerprint(key);
@@ -117,9 +118,15 @@ describe('persistent structured data storage', () => {
       deleteMany: jest.fn(),
       createMany: jest.fn(),
     };
+    const indicatorDelegate = {
+      findMany: jest
+        .fn()
+        .mockResolvedValue([{ code: 'GDP_PC', name: '人均国内生产总值' }]),
+    };
     const transaction = {
       structuredDataRecord: recordDelegate,
       structuredDataObservation: observationDelegate,
+      indicator: indicatorDelegate,
     };
     const database = {
       ...transaction,
@@ -149,21 +156,26 @@ describe('persistent structured data storage', () => {
       }),
     );
     expect(observationDelegate.createMany).toHaveBeenCalledWith({
-      data: [
+      data: expect.arrayContaining([
         expect.objectContaining({
           recordId: 'record-1',
-          rowIndex: 0,
+          rowIndex: 1,
           indicatorEnglish: 'GDP_PC',
           indicatorChinese: '人均国内生产总值',
           sourceOrganization: 'Example Bureau',
-          region: 'Exampleland',
+          region: '上海市',
           startTime: -500,
           endTime: -500,
           dataValue: 12.5,
           unit: 'USD',
         }),
-      ],
+        expect.objectContaining({ region: '北京市' }),
+      ]),
+      skipDuplicates: true,
     });
+    expect(observationDelegate.createMany.mock.calls[0][0].data).toHaveLength(
+      2,
+    );
   });
 
   it('keeps source scopes and extraction content/catalog/query fingerprints separate', async () => {
